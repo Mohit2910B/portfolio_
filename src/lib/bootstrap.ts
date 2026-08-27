@@ -63,11 +63,20 @@ async function count(table: string): Promise<number> {
 }
 async function seedAdmin() {
   if ((await count("admins")) > 0) return;
+
   const name = process.env.SEED_ADMIN_NAME || "Mohit Babariya";
-  const email = (process.env.SEED_ADMIN_EMAIL || "admin@mohitbabariya.studio").toLowerCase();
+  const email = (
+    process.env.SEED_ADMIN_EMAIL || "admin@mohitbabariya.studio"
+  ).toLowerCase();
   const username = process.env.SEED_ADMIN_USERNAME || "mohit";
-  const password = process.env.SEED_ADMIN_PASSWORD
+  const password = process.env.SEED_ADMIN_PASSWORD;
+
+  if (!password) {
+    throw new Error("SEED_ADMIN_PASSWORD environment variable is required");
+  }
+
   const { admins } = await import("@/db/schema");
+
   await db.insert(admins).values({
     name,
     email,
