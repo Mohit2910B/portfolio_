@@ -1,14 +1,10 @@
-﻿import dotenv from "dotenv";
-
-dotenv.config({ path: ".env.local" });
-dotenv.config({ path: ".env" });
-
+﻿import "dotenv/config";
 import type { Config } from "drizzle-kit";
 
 export default {
-  dialect: "postgresql",
+  dialect: "mysql",
   schema: "./src/db/schema.ts",
   dbCredentials: {
-    url: process.env.DATABASE_URL,
+    url: process.env.DATABASE_URL!,
   },
 } satisfies Config;
