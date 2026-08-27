@@ -66,7 +66,7 @@ async function seedAdmin() {
   const name = process.env.SEED_ADMIN_NAME || "Mohit Babariya";
   const email = (process.env.SEED_ADMIN_EMAIL || "admin@mohitbabariya.studio").toLowerCase();
   const username = process.env.SEED_ADMIN_USERNAME || "mohit";
-  const password = process.env.SEED_ADMIN_PASSWORD || "Mohit@2026";
+  const password = process.env.SEED_ADMIN_PASSWORD
   const { admins } = await import("@/db/schema");
   await db.insert(admins).values({
     name,

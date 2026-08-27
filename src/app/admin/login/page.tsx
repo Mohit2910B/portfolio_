@@ -105,7 +105,7 @@ export default function AdminLoginPage() {
         <div className="hairline mt-6 pt-5">
           <p className="text-[0.6rem] uppercase tracking-[0.16em] text-ink/40">First run</p>
           <p className="mono mt-2 text-[0.68rem] leading-relaxed text-ink/55">
-            admin@mohitbabariya.studio · Mohit@2026
+            admin@mohitbabariya.studio
             <br />
             Change the password after your first sign-in by registering a new admin and removing
             shared credentials.
