@@ -9,6 +9,7 @@ if ([string]::IsNullOrWhiteSpace($MySqlHost)) { $MySqlHost = "localhost" }
 if ([string]::IsNullOrWhiteSpace($MySqlPort)) { $MySqlPort = "3306" }
 
 $mysql = Get-Command mysql.exe -ErrorAction SilentlyContinue
+
 if ($mysql) {
   $mysqlExe = $mysql.Source
 } else {
@@ -16,7 +17,10 @@ if ($mysql) {
     "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe",
     "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe"
   )
-  $mysqlExe = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+  $mysqlExe = $candidates |
+    Where-Object { Test-Path $_ } |
+    Select-Object -First 1
 }
 
 if (-not $mysqlExe) {
@@ -27,10 +31,18 @@ Write-Host "Initializing MySQL database 'smeet_portfolio' on $MySqlHost`:$MySqlP
 Write-Host "This setup is additive: it will not drop existing tables or delete rows." -ForegroundColor Yellow
 Write-Host "You will be prompted for the MySQL password twice." -ForegroundColor Yellow
 
-& $mysqlExe -u $MySqlUser -h $MySqlHost -P $MySqlPort -p --default-character-set=utf8mb4 < "db/mysql/001_complete_schema.sql"
-if ($LASTEXITCODE -ne 0) { throw "001_complete_schema.sql failed" }
+Get-Content -Raw "db/mysql/001_complete_schema.sql" |
+  & $mysqlExe -u $MySqlUser -h $MySqlHost -P $MySqlPort -p --default-character-set=utf8mb4
 
-& $mysqlExe -u $MySqlUser -h $MySqlHost -P $MySqlPort -p --default-character-set=utf8mb4 smeet_portfolio < "db/mysql/002_safe_additive_migration.sql"
-if ($LASTEXITCODE -ne 0) { throw "002_safe_additive_migration.sql failed" }
+if ($LASTEXITCODE -ne 0) {
+  throw "001_complete_schema.sql failed"
+}
+
+Get-Content -Raw "db/mysql/002_safe_additive_migration.sql" |
+  & $mysqlExe -u $MySqlUser -h $MySqlHost -P $MySqlPort -p --default-character-set=utf8mb4 smeet_portfolio
+
+if ($LASTEXITCODE -ne 0) {
+  throw "002_safe_additive_migration.sql failed"
+}
 
 Write-Host "MySQL schema initialization complete. Existing data was preserved." -ForegroundColor Green
