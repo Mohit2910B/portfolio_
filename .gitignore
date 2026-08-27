@@ -5,3 +5,9 @@ build/
 .next/
 .env.local
 .next/
+
+.netlify/
+.env
+.env.*
+!.env.example
+storage/uploads/
