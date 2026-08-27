@@ -1,0 +1,7 @@
+{
+  "dialect": "mysql",
+  "schema": "./src/db/schema.ts",
+  "dbCredentials": {
+    "url": "mysql://root:YOUR_MYSQL_PASSWORD@localhost:3306/smeet_portfolio"
+  }
+}
