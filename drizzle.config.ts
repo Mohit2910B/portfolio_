@@ -9,8 +9,6 @@ export default {
   dialect: "postgresql",
   schema: "./src/db/schema.ts",
   dbCredentials: {
-    url:
-      process.env.DATABASE_URL ??
-      "postgresql://postgres:Postgres%402026@127.0.0.1:5432/smeet_portfolio",
+    url: process.env.DATABASE_URL,
   },
 } satisfies Config;
