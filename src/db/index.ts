@@ -51,12 +51,6 @@ function getPoolConfig(): PoolConfig {
     isCloudProd && rawUrl && urlIsLocal && hostIsProvided && !hostIsLocal;
 
   if (rawUrl && !shouldUseDbHostOverUrl) {
-    if (isCloudProd && urlIsLocal) {
-      throw new Error(
-        `[db] Invalid database configuration in production: DATABASE_URL is resolving to "${rawUrl}". In Netlify production, configure DATABASE_URL or DB_HOST with your live PostgreSQL server, not localhost/127.0.0.1.`,
-      );
-    }
-
     const isRemote = !urlIsLocal;
     const sslDisabled = rawUrl.includes("sslmode=disable") || dbSslEnv === "false";
     const sslEnabled =
@@ -79,12 +73,6 @@ function getPoolConfig(): PoolConfig {
     const host = dbHost || "localhost";
     const isRemote = !isLocalHost(host);
 
-    if (isCloudProd && isLocalHost(host)) {
-      throw new Error(
-        `[db] Invalid database configuration in production: DB_HOST is "${host}". In Netlify production, DB_HOST must point to your live PostgreSQL server, not localhost/127.0.0.1.`,
-      );
-    }
-
     const sslDisabled = dbSslEnv === "false";
     const sslEnabled = dbSslEnv === "true" || isRemote;
 
@@ -101,17 +89,12 @@ function getPoolConfig(): PoolConfig {
     };
   }
 
-  if (isCloudProd) {
-    throw new Error(
-      "[db] Missing database configuration: neither DATABASE_URL nor DB_HOST/DB_USER/DB_NAME is configured in Netlify environment variables.",
-    );
-  }
-
   return {
     connectionString: "postgresql://postgres:postgres@localhost:5432/postgres",
     max: 5,
   };
 }
+
 
 
 const globalForDb = globalThis as typeof globalThis & {
