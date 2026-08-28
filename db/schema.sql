@@ -249,3 +249,46 @@ CREATE TABLE IF NOT EXISTS software_tools (
   updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS software_tools_sort_order_idx ON software_tools (sort_order);
+
+CREATE TABLE IF NOT EXISTS notification_settings (
+  id                  INTEGER PRIMARY KEY DEFAULT 1,
+  email_enabled       BOOLEAN NOT NULL DEFAULT false,
+  notification_email  TEXT NOT NULL DEFAULT '',
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS admin_otp_challenges (
+  id            SERIAL PRIMARY KEY,
+  email         TEXT NOT NULL,
+  name          TEXT NOT NULL,
+  username      TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
+  role          TEXT NOT NULL DEFAULT 'admin',
+  otp_hash      TEXT NOT NULL,
+  expires_at    TIMESTAMPTZ NOT NULL,
+  attempts      INTEGER NOT NULL DEFAULT 0,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS email_otp_challenges (
+  id          SERIAL PRIMARY KEY,
+  email       TEXT NOT NULL,
+  purpose     TEXT NOT NULL,
+  otp_hash    TEXT NOT NULL,
+  expires_at  TIMESTAMPTZ NOT NULL,
+  attempts    INTEGER NOT NULL DEFAULT 0,
+  verified_at TIMESTAMPTZ,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS mobile_otp_challenges (
+  id          SERIAL PRIMARY KEY,
+  phone       TEXT NOT NULL,
+  purpose     TEXT NOT NULL,
+  otp_hash    TEXT NOT NULL,
+  expires_at  TIMESTAMPTZ NOT NULL,
+  attempts    INTEGER NOT NULL DEFAULT 0,
+  verified_at TIMESTAMPTZ,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+

@@ -1,10 +1,14 @@
 import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 
 export const UPLOAD_DIR = process.env.UPLOAD_DIR
   ? path.resolve(process.env.UPLOAD_DIR)
-  : path.join(process.cwd(), "storage", "uploads");
+  : process.env.NODE_ENV === "production"
+    ? path.join(os.tmpdir(), "mohit-portfolio-uploads")
+    : path.join(process.cwd(), "storage", "uploads");
+
 
 export const MAX_UPLOAD_MB = Number(process.env.MAX_UPLOAD_MB ?? 300);
 

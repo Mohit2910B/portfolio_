@@ -1,12 +1,118 @@
-﻿import "dotenv/config";
+import "dotenv/config";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { Pool } from "pg";
+import { Pool, type PoolConfig } from "pg";
 
-const databaseUrl = process.env.DATABASE_URL;
-
-if (!databaseUrl) {
-  throw new Error("DATABASE_URL is required");
+function isLocalHost(host: string): boolean {
+  const h = host.toLowerCase().trim();
+  return (
+    h === "localhost" ||
+    h === "127.0.0.1" ||
+    h === "::1" ||
+    h === "0.0.0.0" ||
+    h.endsWith(".localhost")
+  );
 }
+
+function isCloudEnvironment(): boolean {
+  return (
+    process.env.NETLIFY === "true" ||
+    Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME) ||
+    Boolean(process.env.VERCEL) ||
+    Boolean(process.env.RENDER) ||
+    Boolean(process.env.FLY_APP_NAME)
+  );
+}
+
+function getPoolConfig(): PoolConfig {
+  const isCloudProd = isCloudEnvironment();
+  const rawUrl = process.env.DATABASE_URL?.trim();
+  const dbHost = process.env.DB_HOST?.trim();
+  const dbPort = process.env.DB_PORT ? Number(process.env.DB_PORT) : 5432;
+  const dbUser = process.env.DB_USER?.trim();
+  const dbPassword = process.env.DB_PASSWORD ?? "";
+  const dbName = process.env.DB_NAME?.trim();
+  const dbSslEnv = process.env.DB_SSL?.trim()?.toLowerCase();
+
+  let urlIsLocal = false;
+  if (rawUrl) {
+    try {
+      const parsed = new URL(rawUrl);
+      urlIsLocal = isLocalHost(parsed.hostname);
+    } catch {
+      urlIsLocal = rawUrl.includes("localhost") || rawUrl.includes("127.0.0.1");
+    }
+  }
+
+  const hostIsProvided = Boolean(dbHost);
+  const hostIsLocal = dbHost ? isLocalHost(dbHost) : false;
+
+  // In cloud production (e.g. Netlify), if DATABASE_URL points to localhost but DB_HOST points to a remote host, prefer DB_*
+  const shouldUseDbHostOverUrl =
+    isCloudProd && rawUrl && urlIsLocal && hostIsProvided && !hostIsLocal;
+
+  if (rawUrl && !shouldUseDbHostOverUrl) {
+    if (isCloudProd && urlIsLocal) {
+      throw new Error(
+        `[db] Invalid database configuration in production: DATABASE_URL is resolving to "${rawUrl}". In Netlify production, configure DATABASE_URL or DB_HOST with your live PostgreSQL server, not localhost/127.0.0.1.`,
+      );
+    }
+
+    const isRemote = !urlIsLocal;
+    const sslDisabled = rawUrl.includes("sslmode=disable") || dbSslEnv === "false";
+    const sslEnabled =
+      dbSslEnv === "true" ||
+      rawUrl.includes("sslmode=require") ||
+      rawUrl.includes("sslmode=prefer") ||
+      rawUrl.includes("sslmode=verify") ||
+      isRemote;
+
+    return {
+      connectionString: rawUrl,
+      ssl: sslEnabled && !sslDisabled ? { rejectUnauthorized: false } : undefined,
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
+    };
+  }
+
+  if (dbHost || dbUser || dbName) {
+    const host = dbHost || "localhost";
+    const isRemote = !isLocalHost(host);
+
+    if (isCloudProd && isLocalHost(host)) {
+      throw new Error(
+        `[db] Invalid database configuration in production: DB_HOST is "${host}". In Netlify production, DB_HOST must point to your live PostgreSQL server, not localhost/127.0.0.1.`,
+      );
+    }
+
+    const sslDisabled = dbSslEnv === "false";
+    const sslEnabled = dbSslEnv === "true" || isRemote;
+
+    return {
+      host,
+      port: dbPort,
+      user: dbUser || "postgres",
+      password: dbPassword,
+      database: dbName || "postgres",
+      ssl: sslEnabled && !sslDisabled ? { rejectUnauthorized: false } : undefined,
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
+    };
+  }
+
+  if (isCloudProd) {
+    throw new Error(
+      "[db] Missing database configuration: neither DATABASE_URL nor DB_HOST/DB_USER/DB_NAME is configured in Netlify environment variables.",
+    );
+  }
+
+  return {
+    connectionString: "postgresql://postgres:postgres@localhost:5432/postgres",
+    max: 5,
+  };
+}
+
 
 const globalForDb = globalThis as typeof globalThis & {
   __arenaNextJsPostgresqlPool?: Pool;
@@ -14,12 +120,11 @@ const globalForDb = globalThis as typeof globalThis & {
 
 export const pool =
   globalForDb.__arenaNextJsPostgresqlPool ??
-  new Pool({
-    connectionString: databaseUrl,
-  });
+  new Pool(getPoolConfig());
 
 if (process.env.NODE_ENV !== "production") {
   globalForDb.__arenaNextJsPostgresqlPool = pool;
 }
 
 export const db = drizzle(pool);
+
