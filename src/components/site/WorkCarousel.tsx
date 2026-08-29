@@ -51,12 +51,17 @@ export default function WorkCarousel({ data }: { data: SiteData }) {
     setIndex(0);
   }, [activeCategory]);
 
-  const gap = vw >= 1024 ? 28 : vw >= 640 ? 20 : 14;
+  const gap = vw >= 1024 ? 28 : vw >= 640 ? 20 : 12;
   const dims = useMemo(() => {
     if (vw >= 1024)
       return { large: [660, 470], medium: [420, 330], small: [270, 225] } as const;
-    if (vw >= 640) return { large: [480, 380], medium: [330, 275], small: [215, 190] } as const;
-    return { large: [315, 300], medium: [235, 235], small: [155, 165] } as const;
+    if (vw >= 640)
+      return { large: [480, 380], medium: [330, 275], small: [215, 190] } as const;
+    return {
+      large: [Math.min(vw * 0.84, 330), 400],
+      medium: [Math.min(vw * 0.76, 270), 320],
+      small: [Math.min(vw * 0.58, 200), 240],
+    } as const;
   }, [vw]);
 
   const sizeOf = useCallback(
@@ -85,7 +90,7 @@ export default function WorkCarousel({ data }: { data: SiteData }) {
     }));
   }, [items, sizeOf, gap]);
 
-  const containerWidth = vw < 1024 ? vw - 32 : Math.min(vw * 0.92, 1400);
+  const containerWidth = vw < 1024 ? vw : Math.min(vw * 0.92, 1400);
   const centerOffset = measured[index] ? measured[index].offset + measured[index].width / 2 : 0;
   const translate = containerWidth / 2 - centerOffset + drag;
 
@@ -118,20 +123,71 @@ export default function WorkCarousel({ data }: { data: SiteData }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [goTo, index, viewer]);
 
-  const onPointerDown = (event: React.PointerEvent) => {
-    dragState.current = { startX: event.clientX, active: true };
+  // Touch and Pointer gesture engine optimized for mobile
+  const gesture = useRef<{
+    startX: number;
+    startY: number;
+    startTime: number;
+    isDown: boolean;
+    isHorizontal: boolean | null;
+    lastDeltaX: number;
+  }>({
+    startX: 0,
+    startY: 0,
+    startTime: 0,
+    isDown: false,
+    isHorizontal: null,
+    lastDeltaX: 0,
+  });
+
+  const onStart = (clientX: number, clientY: number) => {
+    gesture.current = {
+      startX: clientX,
+      startY: clientY,
+      startTime: Date.now(),
+      isDown: true,
+      isHorizontal: null,
+      lastDeltaX: 0,
+    };
   };
-  const onPointerMove = (event: React.PointerEvent) => {
-    if (!dragState.current.active) return;
-    setDrag(event.clientX - dragState.current.startX);
+
+  const onMove = (clientX: number, clientY: number) => {
+    if (!gesture.current.isDown) return;
+    const diffX = clientX - gesture.current.startX;
+    const diffY = clientY - gesture.current.startY;
+
+    if (gesture.current.isHorizontal === null) {
+      if (Math.abs(diffX) > 6 || Math.abs(diffY) > 6) {
+        gesture.current.isHorizontal = Math.abs(diffX) > Math.abs(diffY);
+      }
+    }
+
+    if (gesture.current.isHorizontal) {
+      gesture.current.lastDeltaX = diffX;
+      // Soft resistance at boundaries
+      const isStart = index === 0 && diffX > 0;
+      const isEnd = index === items.length - 1 && diffX < 0;
+      setDrag(isStart || isEnd ? diffX * 0.35 : diffX);
+    }
   };
-  const onPointerUp = () => {
-    if (!dragState.current.active) return;
-    const delta = drag;
-    dragState.current.active = false;
+
+  const onEnd = () => {
+    if (!gesture.current.isDown) return;
+    const diffX = gesture.current.lastDeltaX;
+    const elapsed = Math.max(Date.now() - gesture.current.startTime, 1);
+    const velocity = Math.abs(diffX) / elapsed;
+    const isHorizontal = gesture.current.isHorizontal;
+
+    gesture.current.isDown = false;
+    gesture.current.isHorizontal = null;
     setDrag(0);
-    if (Math.abs(delta) > 70) {
-      goTo(delta < 0 ? index + 1 : index - 1);
+
+    if (isHorizontal && (Math.abs(diffX) > 35 || (velocity > 0.28 && Math.abs(diffX) > 15))) {
+      if (diffX < 0) {
+        goTo(index + 1);
+      } else {
+        goTo(index - 1);
+      }
     }
   };
 
@@ -206,11 +262,22 @@ export default function WorkCarousel({ data }: { data: SiteData }) {
       <div
         ref={containerRef}
         className="relative mt-10 select-none overflow-hidden py-6"
-        style={{ cursor: drag !== 0 ? "grabbing" : "grab" }}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerLeave={onPointerUp}
+        style={{
+          cursor: drag !== 0 ? "grabbing" : "grab",
+          touchAction: "pan-y",
+        }}
+        onPointerDown={(e) => onStart(e.clientX, e.clientY)}
+        onPointerMove={(e) => onMove(e.clientX, e.clientY)}
+        onPointerUp={onEnd}
+        onPointerLeave={onEnd}
+        onTouchStart={(e) => {
+          if (e.touches[0]) onStart(e.touches[0].clientX, e.touches[0].clientY);
+        }}
+        onTouchMove={(e) => {
+          if (e.touches[0]) onMove(e.touches[0].clientX, e.touches[0].clientY);
+        }}
+        onTouchEnd={onEnd}
+        onTouchCancel={onEnd}
         aria-roledescription="carousel"
         aria-label="Portfolio carousel"
         tabIndex={0}
@@ -246,7 +313,11 @@ export default function WorkCarousel({ data }: { data: SiteData }) {
                 >
                   <button
                     type="button"
-                    onClick={() => (isCenter ? setViewer(project) : setIndex(i))}
+                    onClick={() => {
+                      if (Math.abs(gesture.current.lastDeltaX) > 8) return;
+                      if (isCenter) setViewer(project);
+                      else setIndex(i);
+                    }}
                     aria-label={`Open project ${project.title}`}
                     className="group relative block w-full overflow-hidden rounded-[22px] bg-ink text-left shadow-[0_30px_80px_-50px_rgba(11,11,12,0.85)]"
                     style={{ height: box.height }}
