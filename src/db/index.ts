@@ -6,7 +6,7 @@ export class DatabaseNotConfiguredError extends Error {
   constructor(message?: string) {
     super(
       message ||
-        "Production database is not configured. In Netlify Site settings -> Environment variables, set DATABASE_URL to your remote PostgreSQL database URL (e.g. Neon, Supabase, AWS RDS).",
+        "Production database is not configured. In Vercel Project Settings -> Environment Variables, set DATABASE_URL to your remote PostgreSQL database URL (e.g. Neon, Supabase, Vercel Postgres, AWS RDS).",
     );
     this.name = "DatabaseNotConfiguredError";
   }
@@ -54,10 +54,11 @@ function extractHostname(rawUrl: string): string | null {
 
 function isCloudOrProduction(): boolean {
   return (
-    process.env.NETLIFY === "true" ||
-    process.env.NODE_ENV === "production" ||
-    Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME) ||
+    process.env.VERCEL === "1" ||
     Boolean(process.env.VERCEL) ||
+    process.env.NODE_ENV === "production" ||
+    process.env.NETLIFY === "true" ||
+    Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME) ||
     Boolean(process.env.RENDER) ||
     Boolean(process.env.FLY_APP_NAME)
   );
@@ -176,56 +177,61 @@ export function getDatabaseResolution(): DbResolution {
   };
 }
 
-let cachedPool: Pool | null = null;
-let cachedKey = "";
+const globalForDb = globalThis as unknown as {
+  cachedPgPool?: Pool;
+  cachedPgKey?: string;
+};
 
 export function getPool(): Pool {
   const resolution = getDatabaseResolution();
   const currentKey = JSON.stringify(resolution);
 
-  if (cachedPool && cachedKey === currentKey) {
-    return cachedPool;
+  if (globalForDb.cachedPgPool && globalForDb.cachedPgKey === currentKey) {
+    return globalForDb.cachedPgPool;
   }
 
   if (resolution.type === "remote-url") {
-    cachedPool = new Pool({
+    const pool = new Pool({
       connectionString: resolution.connectionString,
       ssl: resolution.ssl ? { rejectUnauthorized: false } : undefined,
-      max: 10,
-      idleTimeoutMillis: 30000,
+      max: 5,
+      idleTimeoutMillis: 10000,
       connectionTimeoutMillis: 10000,
     });
-    cachedKey = currentKey;
-    return cachedPool;
+    globalForDb.cachedPgPool = pool;
+    globalForDb.cachedPgKey = currentKey;
+    return pool;
   }
 
   if (resolution.type === "remote-params") {
-    cachedPool = new Pool({
+    const pool = new Pool({
       host: resolution.host,
       port: resolution.port,
       user: resolution.user,
       password: resolution.password,
       database: resolution.database,
       ssl: resolution.ssl ? { rejectUnauthorized: false } : undefined,
-      max: 10,
-      idleTimeoutMillis: 30000,
+      max: 5,
+      idleTimeoutMillis: 10000,
       connectionTimeoutMillis: 10000,
     });
-    cachedKey = currentKey;
-    return cachedPool;
+    globalForDb.cachedPgPool = pool;
+    globalForDb.cachedPgKey = currentKey;
+    return pool;
   }
 
   if (resolution.type === "local-url") {
-    cachedPool = new Pool({
+    const pool = new Pool({
       connectionString: resolution.connectionString,
       max: 5,
     });
-    cachedKey = currentKey;
-    return cachedPool;
+    globalForDb.cachedPgPool = pool;
+    globalForDb.cachedPgKey = currentKey;
+    return pool;
   }
 
   if (resolution.type === "local-params") {
-    cachedPool = new Pool({
+    const pool = new Pool({
       host: resolution.host,
       port: resolution.port,
       user: resolution.user,
@@ -233,8 +239,9 @@ export function getPool(): Pool {
       database: resolution.database,
       max: 5,
     });
-    cachedKey = currentKey;
-    return cachedPool;
+    globalForDb.cachedPgPool = pool;
+    globalForDb.cachedPgKey = currentKey;
+    return pool;
   }
 
   const unconfiguredPool = new Pool({
@@ -247,21 +254,21 @@ export function getPool(): Pool {
 
   unconfiguredPool.query = (async () => {
     console.error(
-      "[db] Production database error: Neither DATABASE_URL nor DB_HOST points to a live remote PostgreSQL server in Netlify environment variables.",
+      "[db] Production database error: Neither DATABASE_URL nor DB_HOST points to a live remote PostgreSQL server in environment variables.",
     );
     throw unconfiguredError;
   }) as unknown as typeof unconfiguredPool.query;
 
   unconfiguredPool.connect = (async () => {
     console.error(
-      "[db] Production database error: Neither DATABASE_URL nor DB_HOST points to a live remote PostgreSQL server in Netlify environment variables.",
+      "[db] Production database error: Neither DATABASE_URL nor DB_HOST points to a live remote PostgreSQL server in environment variables.",
     );
     throw unconfiguredError;
   }) as unknown as typeof unconfiguredPool.connect;
 
-  cachedPool = unconfiguredPool;
-  cachedKey = currentKey;
-  return cachedPool;
+  globalForDb.cachedPgPool = unconfiguredPool;
+  globalForDb.cachedPgKey = currentKey;
+  return unconfiguredPool;
 }
 
 export const pool = new Proxy({} as Pool, {

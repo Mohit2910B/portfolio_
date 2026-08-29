@@ -49,7 +49,7 @@ export async function POST(request: Request) {
       });
     }
 
-    // 1. Try DB Authentication
+    // 1. Try DB Authentication with scrypt password verification
     try {
       await ensureDatabase();
       const rows = await db
@@ -76,34 +76,32 @@ export async function POST(request: Request) {
         });
       }
     } catch (dbErr) {
-      console.warn("[admin] DB check skipped during login, checking master credentials:", dbErr);
+      console.warn("[admin] DB check during login skipped/failed:", dbErr);
     }
 
-    // 2. Check Master / Seed Admin Credentials with constant-time hash
-    const seedUser = cleanEnvValue(process.env.SEED_ADMIN_USERNAME || "mohit").toLowerCase();
-    const seedEmail = cleanEnvValue(process.env.SEED_ADMIN_EMAIL || "mohitbabariyaa@gmail.com").toLowerCase();
-    const seedPassword = cleanEnvValue(process.env.SEED_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD);
-    const seedName = cleanEnvValue(process.env.SEED_ADMIN_NAME) || "MOHIT BABARIYA";
-
-    const passHash = createHash("sha256").update(password).digest("hex");
-    const isMasterPassword =
-      passHash === "4d5c235445ef8f25f87738c5c9931a4e7d4b8ae0c75cb7ed841a8b36330ecbd0" || // Mohit@2910
-      passHash === "9039f50124f315a08e56a08bdd3402a84eac72decd5e6b6783981e2a8f5a560d" || // Mohit@2026
-      (Boolean(seedPassword) && password === seedPassword);
+    // 2. Check Seed/Configured Admin Credentials from Environment Variables
+    const configuredUser = cleanEnvValue(
+      process.env.SEED_ADMIN_USERNAME || process.env.ADMIN_USERNAME || "mohit",
+    ).toLowerCase();
+    const configuredEmail = cleanEnvValue(
+      process.env.SEED_ADMIN_EMAIL || process.env.ADMIN_EMAIL || "mohitbabariyaa@gmail.com",
+    ).toLowerCase();
+    const configuredPassword = cleanEnvValue(
+      process.env.SEED_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD,
+    );
+    const configuredName =
+      cleanEnvValue(process.env.SEED_ADMIN_NAME || process.env.ADMIN_NAME) || "MOHIT BABARIYA";
 
     const isAuthorizedIdentity =
-      identity === seedUser ||
-      identity === seedEmail ||
-      identity === "mohit" ||
-      identity === "mohitbabariyaa@gmail.com" ||
-      identity === "admin@mohitbabariya.studio";
+      identity === configuredUser ||
+      identity === configuredEmail;
 
-    if (isAuthorizedIdentity && isMasterPassword) {
+    if (configuredPassword && isAuthorizedIdentity && password === configuredPassword) {
       const adminPayload = {
         id: 1,
-        name: seedName,
-        email: seedEmail,
-        username: seedUser,
+        name: configuredName,
+        email: configuredEmail,
+        username: configuredUser,
         role: "owner",
       };
       await createSession(1, adminPayload);
@@ -112,7 +110,7 @@ export async function POST(request: Request) {
       });
     }
 
-    return unauthorized("Incorrect credentials. Please try again.");
+    return unauthorized("Incorrect email/username or password. Please try again.");
   });
 }
 

@@ -103,11 +103,9 @@ export default function AdminLoginPage() {
         </form>
 
         <div className="hairline mt-6 pt-5">
-          <p className="text-[0.6rem] uppercase tracking-[0.16em] text-ink/40">First run</p>
+          <p className="text-[0.6rem] uppercase tracking-[0.16em] text-ink/40">Security notice</p>
           <p className="mono mt-2 text-[0.68rem] leading-relaxed text-ink/55">
-            mohitbabariyaa@gmail.com
-            <br />
-            Change the password after your first sign-in in Studio CMS Settings.
+            Restricted area. All session activities and sign-in attempts are logged.
           </p>
         </div>
 

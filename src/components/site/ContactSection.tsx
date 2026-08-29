@@ -262,7 +262,7 @@ export default function ContactSection({ data }: { data: SiteData }) {
                         <Field label="Email OTP *" error={!otpVerified && message.includes("OTP") ? message : undefined} className="flex-1">
                           <input className="field" inputMode="numeric" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} placeholder="6-digit OTP" disabled={otpVerified} />
                         </Field>
-                        <button type="button" className="btn btn-ghost btn-xs" disabled={otpBusy} onClick={() => { setOtpSent(false); setOtpVerified(false); setOtp(""); }}>Change number</button>
+                        <button type="button" className="btn btn-ghost btn-xs" disabled={otpBusy} onClick={() => { setOtpSent(false); setOtpVerified(false); setOtp(""); }}>Change email / details</button>
                       </div>
                       {otpVerified && <p className="mt-2 text-xs text-green-700">✓ Email verified</p>}
                     </div>
