@@ -56,8 +56,17 @@ export default async function HomePage() {
     }
   };
 
+  const isDarkClay = theme.preset === "dark-clay" || theme.preset === "3d-dark";
+  const wrapperClass = [
+    isDarkClay ? "theme-dark-clay" : "",
+    theme.grain ? "grain" : "",
+    "relative min-h-screen",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <div style={themeStyle} className={theme.grain ? "grain relative" : "relative"}>
+    <div style={themeStyle} className={wrapperClass}>
       <SiteNav name={homepage.ownerName} availability={homepage.availabilityLabel} />
       <main>
         {order.map((key, index) => (
