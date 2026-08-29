@@ -52,11 +52,11 @@ function extractHostname(rawUrl: string): string | null {
   }
 }
 
-function isCloudOrProduction(): boolean {
+function isCloudDeployment(): boolean {
   return (
     process.env.VERCEL === "1" ||
     Boolean(process.env.VERCEL) ||
-    process.env.NODE_ENV === "production" ||
+    Boolean(process.env.VERCEL_ENV) ||
     process.env.NETLIFY === "true" ||
     Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME) ||
     Boolean(process.env.RENDER) ||
@@ -87,7 +87,7 @@ export type DbResolution =
   | { type: "unconfigured" };
 
 export function getDatabaseResolution(): DbResolution {
-  const isCloud = isCloudOrProduction();
+  const isCloud = isCloudDeployment();
 
   const rawUrl =
     cleanEnvValue(process.env.DATABASE_URL) ||
