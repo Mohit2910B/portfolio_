@@ -47,12 +47,17 @@ export async function guard(fn: () => Promise<Response>): Promise<Response> {
       return conflict("That record already exists.");
     }
     if (/relation .* does not exist/i.test(message)) {
-      return serverError("Database tables are missing. Run `npx drizzle-kit push`.");
+      return serverError("Database tables are missing. Please verify database initialization.");
     }
-    if (/ECONNREFUSED|password authentication/i.test(message)) {
-      return serverError("Database connection failed. Check DATABASE_URL.");
+    if (/DatabaseNotConfiguredError|Production database is not configured/i.test(message)) {
+      return serverError(
+        "Database is not configured. Please configure your remote PostgreSQL DATABASE_URL in Netlify environment variables.",
+      );
     }
-    return serverError();
+    if (/ECONNREFUSED|password authentication|ENOTFOUND|getaddrinfo/i.test(message)) {
+      return serverError("Database connection failed. Please check DATABASE_URL credentials in Netlify.");
+    }
+    return serverError("Unable to complete request right now. Please try again.");
   }
 }
 
