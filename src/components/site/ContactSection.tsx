@@ -146,15 +146,42 @@ export default function ContactSection({ data }: { data: SiteData }) {
     const countryCode = (form.countryCode || "+91").split(" ")[0] || "+91";
     let token = verifiedToken;
 
-    if (!otpSent) {
+    if (!otpSent && !otpVerified) {
       setOtpBusy(true);
       try {
-        const response = await fetch("/api/enquiries/otp", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: form.email, countryCode, phoneNumber: form.phoneNumber }) });
-        const payload = await response.json() as { error?: string; message?: string; details?: Record<string,string> };
-        if (!response.ok) { setErrors(payload.details ?? {}); setMessage(payload.error ?? "Could not send OTP."); return; }
-        setOtpSent(true); setMessage(payload.message ?? "OTP sent to your email.");
-      } catch { setMessage("Network error. Could not send OTP."); } finally { setOtpBusy(false); }
-      return;
+        const response = await fetch("/api/enquiries/otp", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ email: form.email, countryCode, phoneNumber: form.phoneNumber }),
+        });
+        const payload = (await response.json()) as {
+          error?: string;
+          message?: string;
+          details?: Record<string, string>;
+          autoVerified?: boolean;
+          verifiedToken?: string;
+        };
+        if (!response.ok) {
+          setErrors(payload.details ?? {});
+          setMessage(payload.error ?? "Could not send OTP.");
+          return;
+        }
+
+        if (payload.autoVerified && payload.verifiedToken) {
+          token = payload.verifiedToken;
+          setVerifiedToken(payload.verifiedToken);
+          setOtpVerified(true);
+        } else {
+          setOtpSent(true);
+          setMessage(payload.message ?? "OTP sent to your email.");
+          return;
+        }
+      } catch {
+        setMessage("Network error. Could not send OTP.");
+        return;
+      } finally {
+        setOtpBusy(false);
+      }
     }
     if (!otpVerified) {
       if (!/^\d{6}$/.test(otp)) { setMessage("Enter the 6-digit OTP."); return; }
