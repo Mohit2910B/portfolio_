@@ -1,5 +1,6 @@
 {
-  "name": "nextjs-postgresql-template",
+  "name": "mohit-creative-portfolio",
+  "version": "1.0.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
