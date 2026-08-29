@@ -1,5 +1,4 @@
-import { db, getDatabaseResolution } from "@/db";
-import { sql } from "drizzle-orm";
+import { getDatabaseResolution, getPool } from "@/db";
 import { ensureDatabase } from "@/lib/bootstrap";
 
 export const dynamic = "force-dynamic";
@@ -14,11 +13,12 @@ export async function GET() {
 
   try {
     await ensureDatabase();
-    const res = await db.execute(sql`SELECT 1 AS ok`);
-    if (res) dbStatus = "connected";
+    const pool = getPool();
+    await pool.query("SELECT 1 AS ok");
+    dbStatus = "connected";
 
     // Fetch counts from real tables
-    const countQuery = await db.execute(sql`
+    const countQuery = await pool.query(`
       SELECT 
         (SELECT count(*)::int FROM projects) AS projects,
         (SELECT count(*)::int FROM categories) AS categories,
@@ -26,7 +26,7 @@ export async function GET() {
         (SELECT count(*)::int FROM chat_conversations) AS chats,
         (SELECT count(*)::int FROM inquiries) AS enquiries
     `);
-    const rawCounts = (countQuery as { rows?: Record<string, number>[] }).rows?.[0] || {};
+    const rawCounts = countQuery.rows?.[0] || {};
     counts = {
       projects: Number(rawCounts.projects ?? 0),
       categories: Number(rawCounts.categories ?? 0),
