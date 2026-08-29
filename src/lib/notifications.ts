@@ -60,7 +60,16 @@ export async function sendEmail(
   }
 
   const rawFrom = cleanEnvValue(process.env.EMAIL_FROM);
-  const from = rawFrom || "Portfolio <onboarding@resend.dev>";
+  let from = "Portfolio <onboarding@resend.dev>";
+  if (
+    rawFrom &&
+    !rawFrom.toLowerCase().includes("@gmail.") &&
+    !rawFrom.toLowerCase().includes("@yahoo.") &&
+    !rawFrom.toLowerCase().includes("@outlook.") &&
+    !rawFrom.toLowerCase().includes("@hotmail.")
+  ) {
+    from = rawFrom;
+  }
 
   try {
     const response = await fetch("https://api.resend.com/emails", {
