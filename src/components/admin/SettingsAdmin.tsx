@@ -286,6 +286,7 @@ function ContactForm({
 }
 
 type ThemeSettings = {
+  preset?: string;
   accent: string;
   glassOpacity: number;
   glassBlur: number;
@@ -293,6 +294,7 @@ type ThemeSettings = {
 };
 
 const DEFAULT_THEME: ThemeSettings = {
+  preset: "3d-neo",
   accent: "#e0147f",
   glassOpacity: 45,
   glassBlur: 20,
@@ -306,7 +308,7 @@ export function ThemeAdmin({ onChanged }: { onChanged: () => void }) {
     <div>
       <SectionTitle
         title="Theme Studio"
-        subtitle="Customise your website's glassmorphism transparency and blur strength."
+        subtitle="Customise your website's 3D UI depth, glassmorphism transparency, and blur strength."
       />
       {error && <Notice tone="error">{error}</Notice>}
       {notice && (
@@ -336,18 +338,46 @@ function ThemeForm({
   onSave: (draft: ThemeSettings) => void;
 }) {
   const [draft, setDraft] = useState<ThemeSettings>({
+    preset: initial.preset || DEFAULT_THEME.preset,
     accent: initial.accent || DEFAULT_THEME.accent,
     glassOpacity: initial.glassOpacity ?? DEFAULT_THEME.glassOpacity,
     glassBlur: initial.glassBlur ?? DEFAULT_THEME.glassBlur,
     grain: initial.grain ?? DEFAULT_THEME.grain,
   });
 
+  const is3dActive = draft.preset === "3d-neo" || draft.preset === "vision-clay" || !draft.preset;
+
   return (
     <div className="mt-5 space-y-6">
+      {/* 3D UI Mode & Grain */}
+      <Card className="p-6">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-ink">3D UI (Tactile Neomorphic Depth)</h3>
+            <p className="text-xs text-ink/55 mt-0.5 max-w-xl leading-relaxed">
+              Enables 3D embossed cards, soft dual-shadows, inset tactile grooves, and elevated interactive buttons across your portfolio.
+            </p>
+          </div>
+          <div className="shrink-0">
+            <Toggle
+              checked={is3dActive}
+              onChange={(value) =>
+                setDraft({
+                  ...draft,
+                  preset: value ? "3d-neo" : "glass-flat",
+                })
+              }
+              label={is3dActive ? "3D UI Enabled" : "3D UI Disabled"}
+            />
+          </div>
+        </div>
+      </Card>
+
+      {/* Glass Transparency & Blur */}
       <Card className="grid gap-6 p-6 sm:grid-cols-2">
         <Field
           label={`Glass Opacity — ${draft.glassOpacity}%`}
-          hint="Controls the background opacity of glass panels across the site (0% - 100%)."
+          hint="Controls the background opacity of frosted cards across the site (0% - 100%)."
         >
           <input
             type="range"
