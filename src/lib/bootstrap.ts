@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   carouselSettings,
@@ -360,23 +360,32 @@ async function count(table: string): Promise<number> {
   return Number(value ?? 0);
 }
 async function seedAdmin() {
-  if ((await count("admins")) > 0) return;
-
+  const name = process.env.SEED_ADMIN_NAME || "MOHIT BABARIYA";
+  const email = (
+    process.env.SEED_ADMIN_EMAIL || "mohitbabariyaa@gmail.com"
+  ).toLowerCase();
+  const username = (process.env.SEED_ADMIN_USERNAME || "mohit").toLowerCase();
   const password = process.env.SEED_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD;
+
+  const { admins } = await import("@/db/schema");
+
+  if ((await count("admins")) > 0) {
+    // If admin exists with old email, update to new email
+    if (email) {
+      await db
+        .update(admins)
+        .set({ email, name })
+        .where(eq(admins.username, username));
+    }
+    return;
+  }
+
   if (!password) {
     console.warn(
       "[bootstrap] SEED_ADMIN_PASSWORD is not set. Skipping initial admin seeding.",
     );
     return;
   }
-
-  const name = process.env.SEED_ADMIN_NAME || "Mohit Babariya";
-  const email = (
-    process.env.SEED_ADMIN_EMAIL || "admin@mohitbabariya.studio"
-  ).toLowerCase();
-  const username = process.env.SEED_ADMIN_USERNAME || "mohit";
-
-  const { admins } = await import("@/db/schema");
 
   await db.insert(admins).values({
     name,
