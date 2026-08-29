@@ -71,26 +71,17 @@ export async function POST(request: Request) {
           "Invalid RESEND_API_KEY: Please verify your RESEND_API_KEY in Netlify Site settings -> Environment variables matches your active key from resend.com/api-keys.",
         );
       }
-      if (
-        err.toLowerCase().includes("testing emails") ||
-        err.toLowerCase().includes("only send testing") ||
-        err.toLowerCase().includes("domain") ||
-        err.toLowerCase().includes("not verified")
-      ) {
-        // In Resend sandbox mode, route OTP to registered admin email so verification flow never breaks
-        const adminEmail =
-          process.env.NOTIFICATION_EMAIL ||
-          process.env.SEED_ADMIN_EMAIL ||
-          "mohitbabariyaa@gmail.com";
-        await sendOtpEmail(
-          adminEmail,
-          otp,
-          `Client Enquiry Verification (${email})`,
+      if (err.toLowerCase().includes("testing emails") || err.toLowerCase().includes("only send testing")) {
+        return badRequest(
+          `Resend test restriction: To send OTPs to client emails (${email}), please add and verify your custom sending domain in Resend Dashboard (resend.com/domains). In test sandbox mode, Resend only allows sending to the account owner.`,
         );
-        console.warn(`[otp] Resend sandbox restriction: OTP for ${email} routed to ${adminEmail}`);
-      } else {
-        return badRequest(`Email OTP could not be sent: ${err}`);
       }
+      if (err.toLowerCase().includes("domain") || err.toLowerCase().includes("not verified")) {
+        return badRequest(
+          "Resend domain error: The sender domain configured in EMAIL_FROM is not verified in Resend. Please verify your domain in Resend dashboard.",
+        );
+      }
+      return badRequest(`Unable to send OTP: ${err}`);
     }
 
     const jar = await cookies();
