@@ -177,16 +177,9 @@ async function taxonomyPatch(table: TaxonomyTable, body: Record<string, unknown>
   return ok({ record: await one(updated) });
 }
 
-/* ------------------------------- GET ------------------------------- */
-
 export async function GET(_request: Request, ctx: Params) {
   return guard(async () => {
     await requireAdmin();
-    try {
-      await ensureDatabase();
-    } catch {
-      // DB unconfigured fallback
-    }
 
     const parts = await seg(ctx);
     const [resource, second, third] = parts;
@@ -194,46 +187,39 @@ export async function GET(_request: Request, ctx: Params) {
     try {
       switch (resource) {
         case "stats": {
-          const counter = sql<number>`count(*)::int`;
-          const [projectRows, mediaRows, enquiryRows, chatRows] = await Promise.all([
-            db
-              .select({
-                total: counter,
-                published: sql<number>`count(*) filter (where published = true)::int`,
-                drafts: sql<number>`count(*) filter (where published = false)::int`,
-                featured: sql<number>`count(*) filter (where featured = true)::int`,
-                demo: sql<number>`count(*) filter (where demo_status <> 'none')::int`,
-              })
-              .from(projects),
-            db.select({ total: counter }).from(mediaFiles),
-            db
-              .select({
-                total: counter,
-                unread: sql<number>`count(*) filter (where status = 'new')::int`,
-              })
-              .from(enquiries),
-            db
-              .select({
-                total: counter,
-                unread: sql<number>`coalesce(sum(admin_unread), 0)::int`,
-              })
-              .from(chatConversations),
-          ]);
-          const [categoryRows, skillRows, serviceRows, softwareRows] = await Promise.all([
-            db.select({ total: counter }).from(categories),
-            db.select({ total: counter }).from(skills),
-            db.select({ total: counter }).from(services),
-            db.select({ total: counter }).from(softwareTools),
-          ]);
+          const result = await db.execute(sql`
+            SELECT
+              (SELECT json_build_object(
+                'total', count(*)::int,
+                'published', count(*) filter (where published = true)::int,
+                'drafts', count(*) filter (where published = false)::int,
+                'featured', count(*) filter (where featured = true)::int,
+                'demo', count(*) filter (where demo_status <> 'none')::int
+              ) FROM projects) as projects,
+              (SELECT count(*)::int FROM media_files) as media_files,
+              (SELECT json_build_object(
+                'total', count(*)::int,
+                'unread', count(*) filter (where status = 'new')::int
+              ) FROM enquiries) as enquiries,
+              (SELECT json_build_object(
+                'total', count(*)::int,
+                'unread', coalesce(sum(admin_unread), 0)::int
+              ) FROM chat_conversations) as chat,
+              (SELECT count(*)::int FROM categories) as categories,
+              (SELECT count(*)::int FROM skills) as skills,
+              (SELECT count(*)::int FROM services) as services,
+              (SELECT count(*)::int FROM software_tools) as software_tools
+          `);
+          const row = (result.rows?.[0] as Record<string, unknown>) ?? {};
           return ok({
-            projects: projectRows[0] ?? { total: 0, published: 0, drafts: 0, featured: 0, demo: 0 },
-            mediaFiles: mediaRows[0]?.total ?? 0,
-            enquiries: enquiryRows[0] ?? { total: 0, unread: 0 },
-            chat: chatRows[0] ?? { total: 0, unread: 0 },
-            categories: categoryRows[0]?.total ?? 0,
-            skills: skillRows[0]?.total ?? 0,
-            services: serviceRows[0]?.total ?? 0,
-            softwareTools: softwareRows[0]?.total ?? 0,
+            projects: row.projects ?? { total: 0, published: 0, drafts: 0, featured: 0, demo: 0 },
+            mediaFiles: Number(row.media_files ?? 0),
+            enquiries: row.enquiries ?? { total: 0, unread: 0 },
+            chat: row.chat ?? { total: 0, unread: 0 },
+            categories: Number(row.categories ?? 0),
+            skills: Number(row.skills ?? 0),
+            services: Number(row.services ?? 0),
+            softwareTools: Number(row.software_tools ?? 0),
           });
         }
 
@@ -603,7 +589,6 @@ export async function GET(_request: Request, ctx: Params) {
 export async function POST(request: Request, ctx: Params) {
   return guard(async () => {
     await requireAdmin();
-    await ensureDatabase();
     revalidatePublic();
     const parts = await seg(ctx);
     const [resource, second, third, fourth] = parts;
@@ -909,7 +894,6 @@ export async function POST(request: Request, ctx: Params) {
 export async function PATCH(request: Request, ctx: Params) {
   return guard(async () => {
     await requireAdmin();
-    await ensureDatabase();
     revalidatePublic();
     const parts = await seg(ctx);
     const [resource, second, third] = parts;
@@ -1183,7 +1167,6 @@ export const PUT = PATCH;
 export async function DELETE(_request: Request, ctx: Params) {
   return guard(async () => {
     await requireAdmin();
-    await ensureDatabase();
     revalidatePublic();
     const parts = await seg(ctx);
     const [resource, second] = parts;
