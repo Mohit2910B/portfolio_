@@ -35,13 +35,28 @@ export function serverError(message = "Something went wrong on the server") {
   return NextResponse.json<ApiError>({ error: message }, { status: 500 });
 }
 
+function extractErrorMessage(error: unknown): string {
+  if (!error) return "";
+  let msg = "";
+  if (error instanceof Error) {
+    msg = error.message;
+    if (error.cause) {
+      const causeMsg = error.cause instanceof Error ? error.cause.message : String(error.cause);
+      msg += " " + causeMsg;
+    }
+  } else {
+    msg = String(error);
+  }
+  return msg;
+}
+
 /** Wraps a route handler so API routes never leak HTML error pages. */
 export async function guard(fn: () => Promise<Response>): Promise<Response> {
   try {
     return await fn();
   } catch (error) {
     if (error instanceof AuthRequiredError) return error.response;
-    const message = error instanceof Error ? error.message : String(error);
+    const message = extractErrorMessage(error);
     console.error("[api]", message);
     if (/duplicate key/i.test(message)) {
       return conflict("That record already exists.");
@@ -51,7 +66,7 @@ export async function guard(fn: () => Promise<Response>): Promise<Response> {
     }
     if (/DatabaseNotConfiguredError|Production database is not configured/i.test(message)) {
       return serverError(
-        "Database is not configured. Please configure your remote PostgreSQL DATABASE_URL in Netlify environment variables.",
+        "Production database is not configured. Please add your remote PostgreSQL DATABASE_URL in Netlify environment variables.",
       );
     }
     if (/ECONNREFUSED|password authentication|ENOTFOUND|getaddrinfo/i.test(message)) {
