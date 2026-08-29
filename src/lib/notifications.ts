@@ -9,8 +9,8 @@ export type SendEmailResult = {
 
 export async function getNotificationSettings() {
   const defaultEmail =
-    process.env.NOTIFICATION_EMAIL ||
-    process.env.SEED_ADMIN_EMAIL ||
+    cleanEnvValue(process.env.NOTIFICATION_EMAIL) ||
+    cleanEnvValue(process.env.SEED_ADMIN_EMAIL) ||
     "mohitbabariyaa@gmail.com";
 
   try {
