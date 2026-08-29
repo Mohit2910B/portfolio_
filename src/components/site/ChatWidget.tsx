@@ -253,89 +253,72 @@ export default function ChatWidget() {
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 p-2 sm:p-4 md:p-6 backdrop-blur-md animate-fade-in">
-          {/* Side Close Button (Outside / Top-Right Floating) */}
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            aria-label="Close chat"
-            className="fixed top-4 right-4 sm:top-6 sm:right-6 z-[90] flex items-center gap-2 rounded-full border border-white/25 bg-black/70 px-4 py-2.5 text-xs font-bold text-white shadow-2xl backdrop-blur-lg hover:bg-white hover:text-black hover:scale-105 transition-all cursor-pointer"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" fill="none" aria-hidden="true">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-            <span className="hidden sm:inline">Close (Esc)</span>
-          </button>
-
-          {/* Main Full-Screen Chat Dialog Container */}
-          <div
-            className="relative flex h-[94vh] sm:h-[88vh] max-h-[860px] w-full max-w-4xl flex-col overflow-hidden rounded-[32px] border border-white/15 bg-[#0e1118]/95 shadow-[0_25px_80px_rgba(0,0,0,0.85)] backdrop-blur-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-white/10 px-5 py-4 bg-black/40">
-              <div className="flex items-center gap-3 min-w-0 pr-4">
-                <div className="relative">
-                  <span className="grid h-11 w-11 place-items-center rounded-2xl bg-white/10 border border-white/15 text-white font-bold text-sm shadow-sm">
-                    MB
-                  </span>
-                  <span
-                    className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-[#0e1118] ${
-                      adminOnline ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
-                    }`}
-                  />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="truncate text-sm font-bold uppercase tracking-[0.14em] text-white">
-                      {adminOnline ? "Mohit Babariya (Live)" : "Mohit Studio AI"}
-                    </p>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[0.55rem] font-bold uppercase tracking-wider ${
-                        adminOnline ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                      }`}
-                    >
-                      {adminOnline ? "Online" : "AI Mode"}
-                    </span>
-                  </div>
-                  <p className="mt-0.5 truncate text-[0.68rem] text-white/60">
-                    {adminOnline
-                      ? "Direct Live Chat with Mohit · Video Editing & Design Inquiry"
-                      : "Instant AI Assistant · Inquiries on Video Editing, Retainers & Motion Design"}
-                  </p>
-                </div>
+        <div className="fixed inset-0 z-[99] flex h-screen w-screen flex-col bg-[#0a0d14] text-white animate-fade-in">
+          {/* Full Screen Header */}
+          <div className="flex items-center justify-between border-b border-white/10 px-4 py-3.5 sm:px-8 sm:py-5 bg-black/60 backdrop-blur-xl shrink-0">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0 pr-4">
+              <div className="relative">
+                <span className="grid h-10 w-10 sm:h-12 sm:w-12 place-items-center rounded-2xl bg-white/10 border border-white/15 text-white font-bold text-sm sm:text-base shadow-sm">
+                  MB
+                </span>
+                <span
+                  className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-[#0a0d14] ${
+                    adminOnline ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
+                  }`}
+                />
               </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                {/* Clear Conversation Option */}
-                {hasIdentity && (
-                  <button
-                    type="button"
-                    disabled={clearing}
-                    onClick={() => void clearConversation()}
-                    title="Clear conversation on this screen (saved in admin records)"
-                    className="flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/80 hover:bg-white/15 hover:text-white transition-all cursor-pointer"
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <p className="truncate text-sm sm:text-base font-bold uppercase tracking-[0.14em] text-white">
+                    {adminOnline ? "Mohit Babariya (Live)" : "Mohit Studio AI"}
+                  </p>
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider ${
+                      adminOnline ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                    }`}
                   >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                    </svg>
-                    <span>Clear chat</span>
-                  </button>
-                )}
-
-                {/* Header Close Button */}
-                <button
-                  type="button"
-                  onClick={() => setOpen(false)}
-                  aria-label="Close chat"
-                  className="grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-white/5 hover:bg-white hover:text-black transition-all cursor-pointer"
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" fill="none" aria-hidden="true">
-                    <path d="M18 6L6 18M6 6l12 12" />
-                  </svg>
-                </button>
+                    {adminOnline ? "Online" : "AI Assistant"}
+                  </span>
+                </div>
+                <p className="mt-0.5 truncate text-xs text-white/60">
+                  {adminOnline
+                    ? "Direct Live Chat with Mohit · Video Editing & Creative Discussions"
+                    : "Instant AI Assistant · Inquiries on Video Editing, YouTube Pacing & Motion Graphics"}
+                </p>
               </div>
             </div>
+
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+              {/* Clear Conversation Option */}
+              {hasIdentity && (
+                <button
+                  type="button"
+                  disabled={clearing}
+                  onClick={() => void clearConversation()}
+                  title="Clear conversation on this screen (saved in admin records)"
+                  className="flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3.5 py-2 text-xs font-semibold text-white/80 hover:bg-white/15 hover:text-white transition-all cursor-pointer"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                  </svg>
+                  <span className="hidden sm:inline">Clear chat</span>
+                </button>
+              )}
+
+              {/* Side / Top-Right Close Button */}
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                aria-label="Close full-screen chat"
+                className="flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-xs font-bold text-white hover:bg-white hover:text-black transition-all cursor-pointer shadow-lg"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" fill="none" aria-hidden="true">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+                <span>Close (Esc)</span>
+              </button>
+            </div>
+          </div>
 
             {notice && (
               <div className="bg-emerald-950/90 border-b border-emerald-500/30 px-4 py-2 text-xs text-emerald-200 text-center animate-fade-in font-medium">
@@ -542,7 +525,6 @@ export default function ChatWidget() {
                 </form>
               </>
             )}
-          </div>
         </div>
       )}
     </>

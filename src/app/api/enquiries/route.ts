@@ -91,52 +91,7 @@ export async function POST(request: Request) {
       return badRequest("Please fix the highlighted fields.", errors);
     }
 
-    const jar = await cookies();
-    const verifiedValue = jar.get("enquiry_otp_verified")?.value || "";
-    const verifiedToken = jar.get("enquiry_otp_verified_token")?.value || "";
-    const payloadToken = typeof (payload as { verifiedToken?: unknown }).verifiedToken === "string"
-      ? String((payload as { verifiedToken?: unknown }).verifiedToken)
-      : "";
-
-    let isVerified = false;
-
-    // Check signed cryptographic session token
-    if (
-      (payloadToken && verifyVerifiedSession(payloadToken, values.email)) ||
-      verifyVerifiedSession(verifiedValue, values.email) ||
-      verifyVerifiedSession(verifiedToken, values.email)
-    ) {
-      isVerified = true;
-    }
-
-    // Also check database challenge record if numeric ID
-    const verifiedId = Number(verifiedValue);
-    if (!isVerified && Number.isInteger(verifiedId) && verifiedId > 0) {
-      try {
-        await ensureDatabase();
-        const verified = await db
-          .select({
-            id: emailOtpChallenges.id,
-            email: emailOtpChallenges.email,
-            verifiedAt: emailOtpChallenges.verifiedAt,
-          })
-          .from(emailOtpChallenges)
-          .where(eq(emailOtpChallenges.id, verifiedId))
-          .limit(1);
-        if (verified[0]?.verifiedAt && verified[0].email === values.email) {
-          isVerified = true;
-        }
-      } catch {
-        // DB check skipped
-      }
-    }
-
-    if (!isVerified) {
-      return badRequest("Please verify your email address with OTP first.", {
-        email: "Email OTP verification is required.",
-      });
-    }
-
+    // Direct 1-click submission enabled
     let insertedRecord = null;
     try {
       await ensureDatabase();
