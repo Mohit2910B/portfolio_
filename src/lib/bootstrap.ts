@@ -365,36 +365,43 @@ async function seedAdmin() {
 
   const { admins } = await import("@/db/schema");
 
-  if ((await count("admins")) > 0) {
-    // Sync email, name and password if updated in environment variables
-    const updateData: { email: string; name: string; passwordHash?: string } = {
-      email,
-      name,
-    };
-    if (password) {
-      updateData.passwordHash = await hashPassword(password);
+  try {
+    const existing = await db
+      .select()
+      .from(admins)
+      .where(eq(admins.username, username))
+      .limit(1);
+
+    if (existing[0]) {
+      const updateData: { email: string; name: string; passwordHash?: string } = {
+        email,
+        name,
+      };
+      if (password) {
+        updateData.passwordHash = await hashPassword(password);
+      }
+      await db
+        .update(admins)
+        .set(updateData)
+        .where(eq(admins.id, existing[0].id));
+      return;
     }
-    await db
-      .update(admins)
-      .set(updateData)
-      .where(eq(admins.username, username));
-    return;
-  }
 
-  if (!password) {
-    console.warn(
-      "[bootstrap] SEED_ADMIN_PASSWORD is not set. Skipping initial admin seeding.",
-    );
-    return;
+    if (password) {
+      await db
+        .insert(admins)
+        .values({
+          name,
+          email,
+          username,
+          passwordHash: await hashPassword(password),
+          role: "owner",
+        })
+        .onConflictDoNothing();
+    }
+  } catch (err) {
+    console.warn("[bootstrap] seedAdmin notice:", err);
   }
-
-  await db.insert(admins).values({
-    name,
-    email,
-    username,
-    passwordHash: await hashPassword(password),
-    role: "owner",
-  });
 }
 
 export const CATEGORY_SEED = [
@@ -670,180 +677,190 @@ export const PROJECT_SEED: SeedProject[] = [
 ];
 
 async function seedContent() {
-  if ((await count("categories")) === 0) {
-    await db.insert(categories).values(
-      CATEGORY_SEED.map(([name, description], index) => ({
-        name,
-        slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-        description,
-        sortOrder: index,
-        isActive: true,
-      })),
-    );
-  }
-
-  const categoryRows = await db.select().from(categories);
-  const categoryByName = new Map(categoryRows.map((c) => [c.name, c]));
-
-  if ((await count("projects")) === 0) {
-    await db.insert(projects).values(
-      PROJECT_SEED.map((project, index) => {
-        const category = categoryByName.get(project.category);
-        return {
-          title: project.title,
-          description: project.description,
-          categoryId: category?.id ?? null,
-          categoryLabel: project.category,
-          software: project.software,
-          tags: project.tags,
-          aspectRatio: project.aspectRatio,
-          displaySize: project.displaySize,
-          displayWidth: project.aspectRatio === "9:16" ? 540 : 1200,
-          displayHeight: project.aspectRatio === "9:16" ? 960 : 675,
-          year: project.year,
+  try {
+    if ((await count("categories")) === 0) {
+      await db.insert(categories).values(
+        CATEGORY_SEED.map(([name, description], index) => ({
+          name,
+          slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+          description,
           sortOrder: index,
-          featured: project.featured,
-          published: true,
-          demoStatus: project.demoStatus,
-          videoSource: "url",
-          videoUrl: project.videoUrl,
-          thumbnailUrl: project.thumbnailUrl,
-          width: project.width,
-          height: project.height,
-          durationSeconds: project.durationSeconds,
-        };
-      }),
-    );
-  }
+          isActive: true,
+        })),
+      ).onConflictDoNothing();
+    }
 
-  if ((await count("skills")) === 0) {
-    await db.insert(skills).values(
-      SKILL_SEED.map(([name, category, description, level], index) => ({
-        name,
-        category,
-        description,
-        level,
-        sortOrder: index,
-        isActive: true,
-      })),
-    );
-  }
+    const categoryRows = await db.select().from(categories);
+    const categoryByName = new Map(categoryRows.map((c) => [c.name, c]));
 
-  if ((await count("software_tools")) === 0) {
-    await db.insert(softwareTools).values(
-      SOFTWARE_TOOL_SEED.map(([name, category, icon, proficiency], index) => ({
-        name,
-        category,
-        icon,
-        proficiency,
-        sortOrder: index,
-        isActive: true,
-      })),
-    );
-  }
+    if ((await count("projects")) === 0) {
+      await db.insert(projects).values(
+        PROJECT_SEED.map((project, index) => {
+          const category = categoryByName.get(project.category);
+          return {
+            title: project.title,
+            description: project.description,
+            categoryId: category?.id ?? null,
+            categoryLabel: project.category,
+            software: project.software,
+            tags: project.tags,
+            aspectRatio: project.aspectRatio,
+            displaySize: project.displaySize,
+            displayWidth: project.aspectRatio === "9:16" ? 540 : 1200,
+            displayHeight: project.aspectRatio === "9:16" ? 960 : 675,
+            year: project.year,
+            sortOrder: index,
+            featured: project.featured,
+            published: true,
+            demoStatus: project.demoStatus,
+            videoSource: "url",
+            videoUrl: project.videoUrl,
+            thumbnailUrl: project.thumbnailUrl,
+            width: project.width,
+            height: project.height,
+            durationSeconds: project.durationSeconds,
+          };
+        }),
+      ).onConflictDoNothing();
+    }
 
-  if ((await count("services")) === 0) {
-    await db.insert(services).values(
-      SERVICE_SEED.map((service, index) => ({
-        ...service,
-        deliverables: service.deliverables,
-        sortOrder: index,
-        isActive: true,
-      })),
-    );
-  }
+    if ((await count("skills")) === 0) {
+      await db.insert(skills).values(
+        SKILL_SEED.map(([name, category, description, level], index) => ({
+          name,
+          category,
+          description,
+          level,
+          sortOrder: index,
+          isActive: true,
+        })),
+      ).onConflictDoNothing();
+    }
 
-  if ((await count("work_options")) === 0) {
-    await db.insert(workOptions).values(
-      WORK_OPTION_SEED.map((label, index) => ({
-        label,
-        value: label.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-        sortOrder: index,
-        isActive: true,
-      })),
-    );
-  }
+    if ((await count("software_tools")) === 0) {
+      await db.insert(softwareTools).values(
+        SOFTWARE_TOOL_SEED.map(([name, category, icon, proficiency], index) => ({
+          name,
+          category,
+          icon,
+          proficiency,
+          sortOrder: index,
+          isActive: true,
+        })),
+      ).onConflictDoNothing();
+    }
 
-  if ((await count("layout_sections")) === 0) {
-    await db.insert(layoutSections).values(
-      SECTION_SEED.map(([sectionKey, label], index) => ({
-        sectionKey,
-        label,
-        sortOrder: index,
-        isVisible: true,
-      })),
-    );
-  }
+    if ((await count("services")) === 0) {
+      await db.insert(services).values(
+        SERVICE_SEED.map((service, index) => ({
+          ...service,
+          deliverables: service.deliverables,
+          sortOrder: index,
+          isActive: true,
+        })),
+      ).onConflictDoNothing();
+    }
 
+    if ((await count("work_options")) === 0) {
+      await db.insert(workOptions).values(
+        WORK_OPTION_SEED.map((label, index) => ({
+          label,
+          value: label.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+          sortOrder: index,
+          isActive: true,
+        })),
+      ).onConflictDoNothing();
+    }
 
+    if ((await count("layout_sections")) === 0) {
+      await db.insert(layoutSections).values(
+        SECTION_SEED.map(([sectionKey, label], index) => ({
+          sectionKey,
+          label,
+          sortOrder: index,
+          isVisible: true,
+        })),
+      ).onConflictDoNothing();
+    }
 
-  if ((await count("homepage_settings")) === 0) {
-    await db.insert(homepageSettings).values({
-      id: 1,
-      ownerName: "Mohit Babariya",
-      heroName: "MOHIT BABARIYA",
-      heroTitle: "MAKE\nVISUALS\nMOVE.",
-      heroSubtitle: "VIDEO EDITOR · MOTION GRAPHICS · GRAPHIC DESIGN · AI VIDEO",
-      heroDescription:
-        "I edit films, reels and motion pieces that hold attention — clean cuts, considered pacing and a finish that feels intentional.",
-      availabilityLabel: "Available for freelance projects",
-      ctaPrimaryLabel: "WATCH REEL",
-      ctaSecondaryLabel: "START PROJECT",
-      reelUrl: "https://videos.pexels.com/video-files/39105109/16638114_3840_2160_30fps.mp4",
-      aboutIntro:
-        "I am Mohit Babariya, a video editor and motion designer working across editorial, social and brand content. My work sits between structure and feel — the timeline has to make sense, and it also has to move someone.",
-      aboutExperience:
-        "I work as an independent video editor, motion graphics artist and graphic designer, collaborating directly with brands, creators and studios on edits that need to ship fast without losing craft.",
-      aboutFocus:
-        "Short-form social editing, real-estate films, product videos, motion graphics systems and AI-assisted video workflows.",
-      aboutWorkflow:
-        "Brief and references → footage review and selects → assembly and pacing → motion graphics and grade → sound design and mix → delivery in every required ratio.",
-      aboutTools: "Premiere Pro, After Effects, DaVinci Resolve, Photoshop, Illustrator, AI video tools.",
-      aboutStrengths:
-        "Clean storytelling, fast turnarounds, consistent colour, precise typography and reliable communication.",
-      footerNote: "Video editor · motion graphics · graphic design · AI video",
-    });
-  }
+    if ((await count("homepage_settings")) === 0) {
+      await db.insert(homepageSettings).values({
+        id: 1,
+        ownerName: "Mohit Babariya",
+        heroName: "MOHIT BABARIYA",
+        heroTitle: "MAKE\nVISUALS\nMOVE.",
+        heroSubtitle: "VIDEO EDITOR · MOTION GRAPHICS · GRAPHIC DESIGN · AI VIDEO",
+        heroDescription:
+          "I edit films, reels and motion pieces that hold attention — clean cuts, considered pacing and a finish that feels intentional.",
+        availabilityLabel: "Available for freelance projects",
+        ctaPrimaryLabel: "WATCH REEL",
+        ctaSecondaryLabel: "START PROJECT",
+        reelUrl: "https://videos.pexels.com/video-files/39105109/16638114_3840_2160_30fps.mp4",
+        aboutIntro:
+          "I am Mohit Babariya, a video editor and motion designer working across editorial, social and brand content. My work sits between structure and feel — the timeline has to make sense, and it also has to move someone.",
+        aboutExperience:
+          "I work as an independent video editor, motion graphics artist and graphic designer, collaborating directly with brands, creators and studios on edits that need to ship fast without losing craft.",
+        aboutFocus:
+          "Short-form social editing, real-estate films, product videos, motion graphics systems and AI-assisted video workflows.",
+        aboutWorkflow:
+          "Brief and references → footage review and selects → assembly and pacing → motion graphics and grade → sound design and mix → delivery in every required ratio.",
+        aboutTools: "Premiere Pro, After Effects, DaVinci Resolve, Photoshop, Illustrator, AI video tools.",
+        aboutStrengths:
+          "Clean storytelling, fast turnarounds, consistent colour, precise typography and reliable communication.",
+        footerNote: "Video editor · motion graphics · graphic design · AI video",
+      }).onConflictDoNothing();
+    }
 
-  if ((await count("contact_settings")) === 0) {
-    await db.insert(contactSettings).values({
-      id: 1,
-      email: "hello@mohitbabariya.studio",
-      countryCode: "+91",
-      phone: "",
-      whatsapp: "",
-      location: "India · working worldwide",
-      instagram: "",
-      youtube: "",
-      linkedin: "",
-      responseTime: "Replies within 24 hours",
-    });
-  }
+    if ((await count("contact_settings")) === 0) {
+      await db.insert(contactSettings).values({
+        id: 1,
+        email: "hello@mohitbabariya.studio",
+        countryCode: "+91",
+        phone: "",
+        whatsapp: "",
+        location: "India · working worldwide",
+        instagram: "",
+        youtube: "",
+        linkedin: "",
+        responseTime: "Replies within 24 hours",
+      }).onConflictDoNothing();
+    }
 
-  if ((await count("theme_settings")) === 0) {
-    await db.insert(themeSettings).values({ id: 1 });
-  }
+    if ((await count("theme_settings")) === 0) {
+      await db.insert(themeSettings).values({ id: 1 }).onConflictDoNothing();
+    }
 
-  if ((await count("carousel_settings")) === 0) {
-    await db.insert(carouselSettings).values(
-      categoryRows.map((category, index) => ({
-        categoryId: category.id,
-        slots: index === 0 ? 7 : 5,
-        centerSize: "large",
-        sideSize: "small",
-        autoFill: true,
-        projectIds: "[]",
-        sortOrder: index,
-        isActive: true,
-      })),
-    );
+    if ((await count("carousel_settings")) === 0 && categoryRows.length > 0) {
+      await db.insert(carouselSettings).values(
+        categoryRows.map((category, index) => ({
+          categoryId: category.id,
+          slots: index === 0 ? 7 : 5,
+          centerSize: "large",
+          sideSize: "small",
+          autoFill: true,
+          projectIds: "[]",
+          sortOrder: index,
+          isActive: true,
+        })),
+      ).onConflictDoNothing();
+    }
+  } catch (err) {
+    console.warn("[bootstrap] seedContent notice:", err);
   }
 }
 
 async function seedNotificationSettings() {
-  const rows = await db.select().from(notificationSettings).limit(1);
-  if (rows.length === 0) {
-    await db.insert(notificationSettings).values({ id: 1, emailEnabled: false, notificationEmail: process.env.NOTIFICATION_EMAIL || process.env.SEED_ADMIN_EMAIL || "" });
+  try {
+    const rows = await db.select().from(notificationSettings).limit(1);
+    if (rows.length === 0) {
+      await db.insert(notificationSettings).values({
+        id: 1,
+        emailEnabled: false,
+        notificationEmail: process.env.NOTIFICATION_EMAIL || process.env.SEED_ADMIN_EMAIL || "",
+      }).onConflictDoNothing();
+    }
+  } catch (err) {
+    console.warn("[bootstrap] seedNotificationSettings notice:", err);
   }
 }
 
