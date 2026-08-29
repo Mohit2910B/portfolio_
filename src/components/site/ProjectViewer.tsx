@@ -77,127 +77,69 @@ export default function ProjectViewer({
           </button>
         </div>
 
-        {isVertical ? (
-          <div className="grid items-start gap-6 md:grid-cols-[340px_1fr] lg:grid-cols-[380px_1fr]">
-            <div className="mx-auto w-full max-w-[340px] sm:max-w-[380px]">
-              {project.videoUrl ? (
-                <VideoPlayer
-                  src={project.videoUrl}
-                  poster={project.thumbnailUrl}
-                  ratio={project.aspectRatio}
-                  onClose={onClose}
-                  onAspectRatioDetected={setDetectedVertical}
-                />
-              ) : (
-                <div className="grid aspect-[9/16] place-items-center rounded-2xl border border-white/15 bg-white/5 text-sm text-white/60">
-                  No video attached to this project yet.
-                </div>
-              )}
-            </div>
-
-            <div className="flex flex-col justify-between space-y-5">
-              <div>
-                {project.description && (
-                  <p className="text-sm leading-relaxed text-white/75">{project.description}</p>
-                )}
-                {tags.length > 0 && (
-                  <ul className="mt-4 flex flex-wrap gap-2">
-                    {tags.map((tag) => (
-                      <li
-                        key={tag}
-                        className="rounded-full border border-white/15 px-3 py-1 text-[0.6rem] uppercase tracking-[0.16em] text-white/60"
-                      >
-                        {tag}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {project.externalLink && (
-                  <a
-                    href={project.externalLink}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className="btn btn-accent btn-xs mt-5 inline-flex"
-                  >
-                    View live project
-                  </a>
-                )}
-              </div>
-
-              <dl className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-[0.65rem]">
-                <Meta label="Aspect ratio" value={project.aspectRatio} />
-                {project.width && project.height ? (
-                  <Meta label="Resolution" value={`${project.width}×${project.height}`} />
-                ) : null}
-                {project.durationSeconds ? (
-                  <Meta label="Duration" value={`${project.durationSeconds}s`} />
-                ) : null}
-                {project.software ? <Meta label="Software" value={project.software} /> : null}
-                {project.aiLabType ? <Meta label="AI lab" value={project.aiLabType} /> : null}
-                <Meta label="Status" value={project.demoStatus === "none" ? "Released" : project.demoStatus} />
-              </dl>
-            </div>
-          </div>
-        ) : (
-          <div>
+        {/* Video & Info Layout */}
+        <div className={isVertical ? "grid items-start gap-6 md:grid-cols-[340px_1fr] lg:grid-cols-[380px_1fr]" : ""}>
+          <div className={isVertical ? "mx-auto w-full max-w-[340px] sm:max-w-[380px]" : "w-full"}>
             {project.videoUrl ? (
               <VideoPlayer
                 src={project.videoUrl}
                 poster={project.thumbnailUrl}
                 ratio={project.aspectRatio}
                 onClose={onClose}
-                onAspectRatioDetected={setDetectedVertical}
+                onAspectRatioDetected={(isVert) => {
+                  setDetectedVertical((prev) => (prev === isVert ? prev : isVert));
+                }}
               />
             ) : (
               <div className="grid aspect-video place-items-center rounded-2xl border border-white/15 bg-white/5 text-sm text-white/60">
                 No video attached to this project yet.
               </div>
             )}
-
-            <div className="mt-5 grid gap-5 md:grid-cols-[1.4fr_1fr]">
-              <div>
-                {project.description && (
-                  <p className="text-sm leading-relaxed text-white/75">{project.description}</p>
-                )}
-                {tags.length > 0 && (
-                  <ul className="mt-4 flex flex-wrap gap-2">
-                    {tags.map((tag) => (
-                      <li
-                        key={tag}
-                        className="rounded-full border border-white/15 px-3 py-1 text-[0.6rem] uppercase tracking-[0.16em] text-white/60"
-                      >
-                        {tag}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {project.externalLink && (
-                  <a
-                    href={project.externalLink}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className="btn btn-accent btn-xs mt-5 inline-flex"
-                  >
-                    View live project
-                  </a>
-                )}
-              </div>
-
-              <dl className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-[0.65rem] md:grid-cols-1">
-                <Meta label="Aspect ratio" value={project.aspectRatio} />
-                {project.width && project.height ? (
-                  <Meta label="Resolution" value={`${project.width}×${project.height}`} />
-                ) : null}
-                {project.durationSeconds ? (
-                  <Meta label="Duration" value={`${project.durationSeconds}s`} />
-                ) : null}
-                {project.software ? <Meta label="Software" value={project.software} /> : null}
-                {project.aiLabType ? <Meta label="AI lab" value={project.aiLabType} /> : null}
-                <Meta label="Status" value={project.demoStatus === "none" ? "Released" : project.demoStatus} />
-              </dl>
-            </div>
           </div>
-        )}
+
+          <div className={isVertical ? "flex flex-col justify-between space-y-5" : "mt-5 grid gap-5 md:grid-cols-[1.4fr_1fr]"}>
+            <div>
+              {project.description && (
+                <p className="text-sm leading-relaxed text-white/75">{project.description}</p>
+              )}
+              {tags.length > 0 && (
+                <ul className="mt-4 flex flex-wrap gap-2">
+                  {tags.map((tag) => (
+                    <li
+                      key={tag}
+                      className="rounded-full border border-white/15 px-3 py-1 text-[0.6rem] uppercase tracking-[0.16em] text-white/60"
+                    >
+                      {tag}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {project.externalLink && (
+                <a
+                  href={project.externalLink}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="btn btn-accent btn-xs mt-5 inline-flex"
+                >
+                  View live project
+                </a>
+              )}
+            </div>
+
+            <dl className={`grid grid-cols-2 gap-x-4 gap-y-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-[0.65rem] ${isVertical ? "" : "md:grid-cols-1"}`}>
+              <Meta label="Aspect ratio" value={project.aspectRatio} />
+              {project.width && project.height ? (
+                <Meta label="Resolution" value={`${project.width}×${project.height}`} />
+              ) : null}
+              {project.durationSeconds ? (
+                <Meta label="Duration" value={`${project.durationSeconds}s`} />
+              ) : null}
+              {project.software ? <Meta label="Software" value={project.software} /> : null}
+              {project.aiLabType ? <Meta label="AI lab" value={project.aiLabType} /> : null}
+              <Meta label="Status" value={project.demoStatus === "none" ? "Released" : project.demoStatus} />
+            </dl>
+          </div>
+        </div>
       </div>
     </div>
   );
