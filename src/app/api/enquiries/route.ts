@@ -91,7 +91,46 @@ export async function POST(request: Request) {
       return badRequest("Please fix the highlighted fields.", errors);
     }
 
-    // Direct 1-click submission enabled
+    // Enforce Email OTP verification
+    const jar = await cookies();
+    const verifiedSession =
+      jar.get("enquiry_otp_verified_token")?.value ||
+      jar.get("enquiry_otp_verified")?.value;
+    const isSessionValid = Boolean(
+      verifiedSession && verifyVerifiedSession(verifiedSession, values.email),
+    );
+
+    let isDbValid = false;
+    if (!isSessionValid) {
+      try {
+        await ensureDatabase();
+        const verifiedChallenge = (
+          await db
+            .select()
+            .from(emailOtpChallenges)
+            .where(
+              and(
+                eq(emailOtpChallenges.email, values.email),
+                sql`${emailOtpChallenges.verifiedAt} IS NOT NULL`,
+                sql`${emailOtpChallenges.verifiedAt} > NOW() - INTERVAL '30 minutes'`,
+              ),
+            )
+            .orderBy(desc(emailOtpChallenges.verifiedAt))
+            .limit(1)
+        )[0];
+        if (verifiedChallenge) {
+          isDbValid = true;
+        }
+      } catch {}
+    }
+
+    if (!isSessionValid && !isDbValid) {
+      return badRequest(
+        "Please verify your email with the 6-digit OTP code before submitting.",
+        { otp: "Please verify your email with the 6-digit OTP code first." },
+      );
+    }
+
     let insertedRecord = null;
     try {
       await ensureDatabase();
