@@ -58,7 +58,11 @@ export async function POST(request: Request) {
 
     const result = await sendEnquiryOtpEmail(email, otp);
     if (!result.ok) {
-      console.warn(`[otp] Resend delivery note for ${email}: ${result.error}`);
+      console.warn(`[otp] Resend delivery error for ${email}: ${result.error}`);
+      return badRequest(
+        `Could not send verification email (${result.error}). Please verify your Resend API key.`,
+        { email: `Email delivery failed: ${result.error}` },
+      );
     }
 
     const jar = await cookies();
