@@ -58,8 +58,12 @@ export async function POST(request: Request) {
       const otpHash = createHash("sha256").update(code).digest("hex");
       await db.insert(adminOtpChallenges).values({ name, email, username, passwordHash, role: str(body.role, "admin") || "admin", otpHash, expiresAt: new Date(Date.now() + 10 * 60 * 1000) });
       const { sendOtpEmail } = await import("@/lib/notifications");
-      const sent = await sendOtpEmail(email, code, "Admin registration");
-      if (!sent) return badRequest("OTP email could not be sent. Configure RESEND_API_KEY and EMAIL_FROM first.");
+      const result = await sendOtpEmail(email, code, "Admin registration");
+      if (!result.ok) {
+        return badRequest(
+          result.error ? `OTP email error: ${result.error}` : "OTP email could not be sent. Check RESEND_API_KEY and EMAIL_FROM.",
+        );
+      }
       return ok({ requiresOtp: true, message: "OTP sent to the admin email address." });
     }
 

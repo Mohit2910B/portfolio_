@@ -283,6 +283,7 @@ const DDL_STATEMENTS = [
     attempts      INTEGER NOT NULL DEFAULT 0,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
   )`,
+  `CREATE INDEX IF NOT EXISTS admin_otp_challenges_email_idx ON admin_otp_challenges (email)`,
 
   `CREATE TABLE IF NOT EXISTS email_otp_challenges (
     id          SERIAL PRIMARY KEY,
@@ -294,6 +295,7 @@ const DDL_STATEMENTS = [
     verified_at TIMESTAMPTZ,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
   )`,
+  `CREATE INDEX IF NOT EXISTS email_otp_challenges_email_idx ON email_otp_challenges (email)`,
 
   `CREATE TABLE IF NOT EXISTS mobile_otp_challenges (
     id          SERIAL PRIMARY KEY,
@@ -305,6 +307,7 @@ const DDL_STATEMENTS = [
     verified_at TIMESTAMPTZ,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
   )`,
+  `CREATE INDEX IF NOT EXISTS mobile_otp_challenges_phone_idx ON mobile_otp_challenges (phone)`,
 ];
 
 async function ensureTables(): Promise<void> {
