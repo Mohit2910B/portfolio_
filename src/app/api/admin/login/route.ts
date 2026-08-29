@@ -16,6 +16,19 @@ import {
 
 export const dynamic = "force-dynamic";
 
+function cleanEnvValue(value?: string): string {
+  if (!value) return "";
+  let v = value.trim();
+  if (
+    (v.startsWith('"') && v.endsWith('"')) ||
+    (v.startsWith("'") && v.endsWith("'")) ||
+    (v.startsWith("`") && v.endsWith("`"))
+  ) {
+    v = v.slice(1, -1).trim();
+  }
+  return v;
+}
+
 /** Admin login with email OR username. */
 export async function POST(request: Request) {
   return guard(async () => {
@@ -25,8 +38,8 @@ export async function POST(request: Request) {
     }
 
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
-    const identity = str(body.identity ?? body.email ?? body.username).toLowerCase();
-    const password = typeof body.password === "string" ? body.password : "";
+    const identity = str(body.identity ?? body.email ?? body.username).toLowerCase().trim();
+    const password = typeof body.password === "string" ? body.password.trim() : "";
 
     if (!identity || !password) {
       return badRequest("Enter your email/username and password.", {
@@ -66,10 +79,10 @@ export async function POST(request: Request) {
     }
 
     // 2. Check Seed/Master Environment Admin Credentials
-    const seedUser = (process.env.SEED_ADMIN_USERNAME || "mohit").toLowerCase();
-    const seedEmail = (process.env.SEED_ADMIN_EMAIL || "mohitbabariyaa@gmail.com").toLowerCase();
-    const seedPassword = process.env.SEED_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD;
-    const seedName = process.env.SEED_ADMIN_NAME || "MOHIT BABARIYA";
+    const seedUser = cleanEnvValue(process.env.SEED_ADMIN_USERNAME || "mohit").toLowerCase();
+    const seedEmail = cleanEnvValue(process.env.SEED_ADMIN_EMAIL || "mohitbabariyaa@gmail.com").toLowerCase();
+    const seedPassword = cleanEnvValue(process.env.SEED_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD);
+    const seedName = cleanEnvValue(process.env.SEED_ADMIN_NAME) || "MOHIT BABARIYA";
 
     if (
       seedPassword &&

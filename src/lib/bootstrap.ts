@@ -370,13 +370,18 @@ async function seedAdmin() {
   const { admins } = await import("@/db/schema");
 
   if ((await count("admins")) > 0) {
-    // If admin exists with old email, update to new email
-    if (email) {
-      await db
-        .update(admins)
-        .set({ email, name })
-        .where(eq(admins.username, username));
+    // Sync email, name and password if updated in environment variables
+    const updateData: { email: string; name: string; passwordHash?: string } = {
+      email,
+      name,
+    };
+    if (password) {
+      updateData.passwordHash = await hashPassword(password);
     }
+    await db
+      .update(admins)
+      .set(updateData)
+      .where(eq(admins.username, username));
     return;
   }
 
