@@ -277,20 +277,63 @@ export function Uploader({
   const [dragOver, setDragOver] = useState(false);
 
   const upload = useCallback(
-    (file: File) => {
+    async (file: File) => {
+      setStatus("uploading");
+      setProgress(0);
+      setMessage("");
+
+      // 1. First attempt direct Vercel Blob upload (supports files up to 300MB)
+      try {
+        const { upload: vercelBlobUpload } = await import("@vercel/blob/client");
+        const blob = await vercelBlobUpload(file.name, file, {
+          access: "public",
+          handleUploadUrl: "/api/admin/blob/upload",
+          onUploadProgress: (item) => {
+            setProgress(Math.round(item.percentage));
+          },
+        });
+
+        if (blob && blob.url) {
+          setProgress(100);
+          setMessage("Registering media…");
+          const regRes = await fetch("/api/admin/blob/upload", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              registerOnly: true,
+              url: blob.url,
+              filename: file.name,
+              size: file.size,
+              kind,
+              projectId,
+            }),
+          });
+          const regData = (await regRes.json().catch(() => ({}))) as UploadResult;
+          setStatus("done");
+          setMessage("Upload complete");
+          onUploaded(regData.url ? regData : { url: blob.url, kind, media: { id: Date.now(), filename: file.name, size: file.size } });
+          window.setTimeout(() => {
+            setStatus("idle");
+            setProgress(null);
+          }, 1400);
+          return;
+        }
+      } catch (blobErr) {
+        console.warn("[uploader] Vercel Blob upload attempt:", blobErr);
+      }
+
+      // 2. Fallback to standard server-side upload for files <= 4.5MB
       if (file.size > 4.5 * 1024 * 1024) {
         setStatus("error");
         setMessage(
           kind === "video"
-            ? "Direct upload limit is 4.5MB. For portfolio videos, please paste the video URL (e.g. YouTube, Vimeo, BunnyCDN, Pexels) in the Video URL field below, or compress the video to under 4.5MB."
+            ? "Direct upload over 4.5MB requires Vercel Blob Storage. Please connect Blob in Vercel Storage or paste the Video URL (YouTube, Vimeo, CDN) below."
             : "Image exceeds 4.5MB. Please compress the image to under 4.5MB."
         );
+        setProgress(null);
         return;
       }
 
-      setStatus("uploading");
-      setProgress(0);
-      setMessage("");
       const form = new FormData();
       form.append("file", file);
       form.append("kind", kind);
