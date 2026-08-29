@@ -253,91 +253,94 @@ export default function ChatWidget() {
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-[99] flex h-screen w-screen flex-col bg-[#0a0d14] text-white animate-fade-in">
-          {/* Full Screen Header */}
-          <div className="flex items-center justify-between border-b border-white/10 px-4 py-3.5 sm:px-8 sm:py-5 bg-black/60 backdrop-blur-xl shrink-0">
-            <div className="flex items-center gap-3 sm:gap-4 min-w-0 pr-4">
-              <div className="relative">
-                <span className="grid h-10 w-10 sm:h-12 sm:w-12 place-items-center rounded-2xl bg-white/10 border border-white/15 text-white font-bold text-sm sm:text-base shadow-sm">
-                  MB
-                </span>
-                <span
-                  className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-[#0a0d14] ${
-                    adminOnline ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
-                  }`}
-                />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <p className="truncate text-sm sm:text-base font-bold uppercase tracking-[0.14em] text-white">
-                    {adminOnline ? "Mohit Babariya (Live)" : "Mohit Studio AI"}
-                  </p>
-                  <span
-                    className={`rounded-full px-2.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider ${
-                      adminOnline ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                    }`}
-                  >
-                    {adminOnline ? "Online" : "AI Assistant"}
+        <div className="fixed inset-0 z-[999] flex h-screen h-[100dvh] w-screen w-[100dvw] flex-col bg-[#07090e] text-white animate-fade-in overflow-hidden">
+          {/* Full Screen Top Navigation / Header */}
+          <div className="border-b border-white/10 bg-[#0c1018]/90 backdrop-blur-2xl px-4 py-3 sm:px-8 sm:py-4 shrink-0 shadow-md">
+            <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
+              <div className="flex items-center gap-3 sm:gap-4 min-w-0 pr-2">
+                <div className="relative shrink-0">
+                  <span className="grid h-10 w-10 sm:h-12 sm:w-12 place-items-center rounded-2xl bg-white/10 border border-white/15 text-white font-bold text-sm sm:text-base shadow-sm">
+                    MB
                   </span>
+                  <span
+                    className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-[#07090e] ${
+                      adminOnline ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
+                    }`}
+                  />
                 </div>
-                <p className="mt-0.5 truncate text-xs text-white/60">
-                  {adminOnline
-                    ? "Direct Live Chat with Mohit · Video Editing & Creative Discussions"
-                    : "Instant AI Assistant · Inquiries on Video Editing, YouTube Pacing & Motion Graphics"}
-                </p>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                    <p className="truncate text-sm sm:text-base font-bold uppercase tracking-[0.14em] text-white">
+                      {adminOnline ? "Mohit Babariya (Live)" : "Mohit Studio Assistant"}
+                    </p>
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider ${
+                        adminOnline ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                      }`}
+                    >
+                      {adminOnline ? "Online Now" : "AI Assistant"}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 truncate text-[0.68rem] sm:text-xs text-white/60">
+                    {adminOnline
+                      ? "Direct Live Chat with Mohit · Video Editing & Design Inquiries"
+                      : "Instant Assistant · Ask anything about projects, ideas & services"}
+                  </p>
+                </div>
               </div>
-            </div>
 
-            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-              {/* Clear Conversation Option */}
-              {hasIdentity && (
+              <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                {/* Clear Conversation Option */}
+                {hasIdentity && (
+                  <button
+                    type="button"
+                    disabled={clearing}
+                    onClick={() => void clearConversation()}
+                    title="Clear conversation on this screen"
+                    className="flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs font-semibold text-white/80 hover:bg-white/15 hover:text-white transition-all cursor-pointer"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                    </svg>
+                    <span className="hidden sm:inline">Clear</span>
+                  </button>
+                )}
+
+                {/* Prominent Close Button */}
                 <button
                   type="button"
-                  disabled={clearing}
-                  onClick={() => void clearConversation()}
-                  title="Clear conversation on this screen (saved in admin records)"
-                  className="flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3.5 py-2 text-xs font-semibold text-white/80 hover:bg-white/15 hover:text-white transition-all cursor-pointer"
+                  onClick={() => setOpen(false)}
+                  aria-label="Close full-screen chat"
+                  className="flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs font-bold text-white hover:bg-white hover:text-black transition-all cursor-pointer shadow-lg active:scale-95"
                 >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                  <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" fill="none" aria-hidden="true">
+                    <path d="M18 6L6 18M6 6l12 12" />
                   </svg>
-                  <span className="hidden sm:inline">Clear chat</span>
+                  <span>Close (Esc)</span>
                 </button>
-              )}
-
-              {/* Side / Top-Right Close Button */}
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                aria-label="Close full-screen chat"
-                className="flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-xs font-bold text-white hover:bg-white hover:text-black transition-all cursor-pointer shadow-lg"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" fill="none" aria-hidden="true">
-                  <path d="M18 6L6 18M6 6l12 12" />
-                </svg>
-                <span>Close (Esc)</span>
-              </button>
+              </div>
             </div>
           </div>
 
-            {notice && (
-              <div className="bg-emerald-950/90 border-b border-emerald-500/30 px-4 py-2 text-xs text-emerald-200 text-center animate-fade-in font-medium">
-                {notice}
-              </div>
-            )}
+          {notice && (
+            <div className="bg-emerald-950/90 border-b border-emerald-500/30 px-4 py-2 text-xs text-emerald-200 text-center animate-fade-in font-medium">
+              {notice}
+            </div>
+          )}
 
-            {/* Body: Form if first time / editing; Direct Chat otherwise */}
-            {!hasIdentity || editingProfile ? (
-              <form onSubmit={(e) => void startChat(e)} className="flex-1 overflow-y-auto p-6 sm:p-8 flex flex-col justify-center max-w-xl mx-auto w-full space-y-4" noValidate>
-                <div className="rounded-2xl border border-white/12 bg-white/[0.04] p-4 text-center">
-                  <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-[var(--accent)]/15 text-[var(--accent)] mb-2.5">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          {/* Body: Form if first time / editing; Direct Chat otherwise */}
+          {!hasIdentity || editingProfile ? (
+            <div className="flex-1 overflow-y-auto p-4 sm:p-8 flex items-center justify-center">
+              <form onSubmit={(e) => void startChat(e)} className="w-full max-w-xl space-y-4 rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8 shadow-2xl backdrop-blur-xl" noValidate>
+                <div className="text-center pb-2">
+                  <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-[var(--accent)]/15 text-[var(--accent)] mb-3">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
                     </svg>
                   </span>
-                  <h3 className="text-base font-bold text-white">Start Conversation with Mohit</h3>
+                  <h3 className="text-lg sm:text-xl font-bold text-white">Start Conversation with Mohit</h3>
                   <p className="mt-1 text-xs text-white/60">
-                    Enter your details once. You will stay automatically logged in on this device.
+                    Enter your contact details to begin live messaging. You will stay remembered on this device.
                   </p>
                 </div>
 
@@ -416,8 +419,8 @@ export default function ChatWidget() {
                 {error && <p className="text-xs text-[#ff8098] font-medium text-center">{error}</p>}
 
                 <div className="flex items-center gap-3 pt-2">
-                  <button type="submit" className="btn btn-accent flex-1 shadow-lg" disabled={loading}>
-                    {loading ? "Connecting…" : "Start Live Conversation"}
+                  <button type="submit" className="btn btn-accent flex-1 shadow-lg py-3 text-sm" disabled={loading}>
+                    {loading ? "Connecting…" : "Start Conversation"}
                   </button>
                   {savedProfile && editingProfile && (
                     <button
@@ -430,13 +433,15 @@ export default function ChatWidget() {
                   )}
                 </div>
               </form>
-            ) : (
-              <>
-                {/* Messages Container (Full Height & Spacious) */}
-                <div ref={listRef} className="flex-1 space-y-4 overflow-y-auto p-5 sm:p-7">
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              {/* Messages Container (Full Width / Max 5XL on PC) */}
+              <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-8 sm:py-6" ref={listRef}>
+                <div className="mx-auto max-w-5xl space-y-4">
                   {/* Greeting banner for remembered user */}
                   <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-center flex items-center justify-between gap-4">
-                    <p className="text-xs font-medium text-white/80">
+                    <p className="text-xs font-medium text-white/80 truncate">
                       Chatting as <span className="font-bold text-white">{savedProfile?.name || conversation?.name}</span> ({savedProfile?.email || conversation?.email})
                     </p>
                     <button
@@ -449,13 +454,13 @@ export default function ChatWidget() {
                   </div>
 
                   {messages.length === 0 && (
-                    <div className="py-14 text-center text-white/50 space-y-2">
-                      <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-white/5 text-white/60 mb-3 border border-white/10">
+                    <div className="py-16 text-center text-white/50 space-y-2">
+                      <span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-white/5 text-white/60 mb-3 border border-white/10 text-2xl">
                         💬
                       </span>
-                      <p className="text-sm font-bold text-white/90">Start your creative project discussion</p>
+                      <p className="text-base font-bold text-white/90">Start your conversation with Mohit</p>
                       <p className="text-xs text-white/55 max-w-md mx-auto leading-relaxed">
-                        Ask Mohit about video editing briefs, motion graphics quotes, YouTube pacing, turnaround times, or custom retainer rates.
+                        Send any message, questions, project details, turnaround inquiries, or creative ideas.
                       </p>
                     </div>
                   )}
@@ -469,7 +474,7 @@ export default function ChatWidget() {
                         className={`flex ${mine ? "justify-end" : "justify-start"}`}
                       >
                         <div
-                          className={`max-w-[78%] rounded-3xl px-5 py-3.5 text-sm leading-relaxed shadow-lg ${
+                          className={`max-w-[85%] sm:max-w-[75%] rounded-3xl px-4 py-3 sm:px-5 sm:py-3.5 text-sm leading-relaxed shadow-lg ${
                             mine
                               ? "bg-[var(--accent)] text-white shadow-[0_4px_20px_var(--accent)]"
                               : isAssistant
@@ -481,7 +486,7 @@ export default function ChatWidget() {
                         >
                           {!mine && message.senderType !== "system" && (
                             <div className="text-[0.62rem] font-bold uppercase tracking-wider text-white/60 mb-1 flex items-center gap-1.5">
-                              {isAssistant ? "🤖 Mohit Studio AI Assistant" : "👤 Mohit Babariya"}
+                              {isAssistant ? "🤖 Mohit Studio Assistant" : "👤 Mohit Babariya"}
                             </div>
                           )}
                           <p className="whitespace-pre-wrap">{message.message}</p>
@@ -496,17 +501,19 @@ export default function ChatWidget() {
                     );
                   })}
                 </div>
+              </div>
 
-                {error && <p className="px-6 pb-2 text-xs text-[#ff8098] font-medium">{error}</p>}
+              {error && <p className="px-6 pb-2 text-xs text-[#ff8098] font-medium text-center">{error}</p>}
 
-                {/* Chat Input Bar */}
-                <form onSubmit={send} className="flex items-center gap-3 border-t border-white/10 p-4 sm:p-5 bg-black/40">
+              {/* Full Width Chat Input Bar at Bottom */}
+              <div className="border-t border-white/10 bg-[#0c1018]/95 px-4 py-3 sm:px-8 sm:py-4 shrink-0 shadow-xl">
+                <form onSubmit={send} className="mx-auto flex max-w-5xl items-center gap-3">
                   <label className="sr-only" htmlFor="chat-message">
                     Message
                   </label>
                   <input
                     id="chat-message"
-                    className="field py-3 text-sm flex-1 bg-white/5 border-white/15 focus:border-[var(--accent)]"
+                    className="field py-3 text-sm sm:text-base flex-1 bg-white/5 border-white/15 focus:border-[var(--accent)] rounded-2xl"
                     placeholder="Type your message or project question…"
                     value={draft}
                     maxLength={2000}
@@ -515,16 +522,17 @@ export default function ChatWidget() {
                   />
                   <button
                     type="submit"
-                    className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[var(--accent)] text-white hover:brightness-110 active:scale-95 transition-all shadow-lg cursor-pointer"
+                    className="grid h-11 w-11 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-2xl bg-[var(--accent)] text-white hover:brightness-110 active:scale-95 transition-all shadow-lg cursor-pointer"
                     aria-label="Send message"
                   >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff" aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff" aria-hidden="true">
                       <path d="M3 20l18-8L3 4v6l12 2-12 2z" />
                     </svg>
                   </button>
                 </form>
-              </>
-            )}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </>
