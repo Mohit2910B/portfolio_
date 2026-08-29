@@ -15,9 +15,9 @@ import {
   str,
 } from "@/lib/http";
 import { sendAdminNotification } from "@/lib/notifications";
+import { verifyVerifiedSession } from "@/lib/otp";
 import { validatePhone } from "@/lib/phone";
 import { emailOtpChallenges } from "@/db/schema";
-
 
 export const dynamic = "force-dynamic";
 
@@ -75,7 +75,6 @@ export function validateEnquiry(payload: Payload) {
 /** Public: submit an enquiry. */
 export async function POST(request: Request) {
   return guard(async () => {
-    await ensureDatabase();
     if (!rateLimit(`enquiry:${clientIp(request)}`, 8, 10 * 60 * 1000)) {
       return badRequest("Too many submissions. Please try again in a few minutes.");
     }
@@ -91,20 +90,67 @@ export async function POST(request: Request) {
     if (Object.keys(errors).length > 0) {
       return badRequest("Please fix the highlighted fields.", errors);
     }
+
     const jar = await cookies();
-    const verifiedId = Number(jar.get("enquiry_otp_verified")?.value);
-    if (!Number.isInteger(verifiedId)) return badRequest("Please verify your email address with OTP first.", { email: "Email OTP verification is required." });
-    const verified = await db
-      .select({ id: emailOtpChallenges.id, email: emailOtpChallenges.email, verifiedAt: emailOtpChallenges.verifiedAt })
-      .from(emailOtpChallenges)
-      .where(eq(emailOtpChallenges.id, verifiedId))
-      .limit(1);
-    if (!verified[0]?.verifiedAt || verified[0].email !== values.email) {
-      return badRequest("Please verify your email address with OTP first.", { email: "Email OTP verification is required." });
+    const verifiedValue = jar.get("enquiry_otp_verified")?.value || "";
+    const verifiedToken = jar.get("enquiry_otp_verified_token")?.value || "";
+
+    let isVerified = false;
+
+    // Check signed cryptographic session token
+    if (
+      verifyVerifiedSession(verifiedValue, values.email) ||
+      verifyVerifiedSession(verifiedToken, values.email)
+    ) {
+      isVerified = true;
     }
-    const inserted = await db.insert(enquiries).values(values).returning();
-    void sendAdminNotification("New project enquiry", `<h2>New project enquiry</h2><p><b>${values.name}</b> submitted an enquiry.</p><p>Email: ${values.email}</p><p>Phone: ${values.countryCode} ${values.phoneNumber}</p><p>Work: ${values.selectedWork}</p><p>${values.description}</p>`);
-    return created({ enquiry: inserted[0], message: "Enquiry received. I will reply shortly." });
+
+    // Also check database challenge record if numeric ID
+    const verifiedId = Number(verifiedValue);
+    if (!isVerified && Number.isInteger(verifiedId) && verifiedId > 0) {
+      try {
+        await ensureDatabase();
+        const verified = await db
+          .select({
+            id: emailOtpChallenges.id,
+            email: emailOtpChallenges.email,
+            verifiedAt: emailOtpChallenges.verifiedAt,
+          })
+          .from(emailOtpChallenges)
+          .where(eq(emailOtpChallenges.id, verifiedId))
+          .limit(1);
+        if (verified[0]?.verifiedAt && verified[0].email === values.email) {
+          isVerified = true;
+        }
+      } catch {
+        // DB check skipped
+      }
+    }
+
+    if (!isVerified) {
+      return badRequest("Please verify your email address with OTP first.", {
+        email: "Email OTP verification is required.",
+      });
+    }
+
+    let insertedRecord = null;
+    try {
+      await ensureDatabase();
+      const inserted = await db.insert(enquiries).values(values).returning();
+      insertedRecord = inserted[0];
+    } catch (err) {
+      console.warn("[enquiries] Database save failed, sending email notification:", err);
+    }
+
+    void sendAdminNotification(
+      "New project enquiry",
+      `<h2>New project enquiry</h2><p><b>${values.name}</b> submitted an enquiry.</p><p>Email: ${values.email}</p><p>Phone: ${values.countryCode} ${values.phoneNumber}</p><p>Work: ${values.selectedWork}</p><p>${values.description}</p>`,
+    );
+
+    return created({
+      enquiry: insertedRecord || { id: Date.now(), ...values },
+      message: "Enquiry received. I will reply shortly.",
+    });
   });
 }
 
