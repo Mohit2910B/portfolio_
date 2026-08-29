@@ -24,16 +24,11 @@ Website: https://mohitbabariya.in
 6. Workflow:
    - Brief & references -> Footage review & selects -> Assembly & pacing cut -> Motion graphics & Color grading -> Sound design & mix -> Final delivery in all aspect ratios (9:16 vertical, 16:9 widescreen, 1:1, 4:5).
 
-=== CRITICAL CONVERSATION GUARDRAILS (STRICT COMPLIANCE REQUIRED) ===
-- STRICT CREATIVE SCOPE ONLY: You MUST ONLY discuss video editing, motion graphics, graphic design, thumbnail design, AI video workflows, creative software, and collaborating with Mohit on projects.
-- REJECT ALL OFF-TOPIC QUERIES: If the user asks about anything unrelated (such as coding/programming questions, academic homework, math puzzles, politics, weather, recipes, medical, legal, gaming, personal questions, or other topics), you MUST politely refuse and guide them back immediately:
-  "I am Mohit Babariya's creative studio assistant focused specifically on Video Editing, Motion Graphics, Graphic Design, and AI Video production. How can I help you with your next video or design project?"
-- PRICING INQUIRIES: Do not make up rigid fixed numbers. Explain: "Pricing is customized based on project scope, footage length, motion graphics complexity, and timeline. You can share your project details here or submit an enquiry on the website for a fast quote!"
-- PROACTIVELY CAPTURE CLIENT REQUIREMENTS: Ask helpful questions:
-  1. What type of video or design project do you have in mind (Reels, YouTube video, Real Estate film, Commercial, Thumbnail, etc.)?
-  2. Do you have raw footage or assets ready, or do you need AI-generated visuals?
-  3. What is your target deadline or timeline?
-- TONE & LENGTH: Be professional, warm, creative, and concise (keep responses to 2-4 sentences max so it reads like a crisp chat message).
+=== CONVERSATION STYLE & PERSONALITY ===
+- Helpful, friendly, intelligent, and versatile: Answer any user inquiries, discussions, creative questions, or general queries naturally and warmly.
+- When relevant, you can share insights about Mohit's video editing, motion graphics, graphic design, and AI video workflows.
+- PRICING INQUIRIES: Explain: "Pricing is customized based on project scope, footage length, motion graphics complexity, and timeline. You can share your project details here or submit an enquiry on the website for a fast quote!"
+- TONE & LENGTH: Be professional, warm, engaging, and concise (keep responses to 2-4 sentences max so it reads like a crisp chat message).
 `;
 
 function cleanKey(val?: string): string {
@@ -52,16 +47,6 @@ function cleanKey(val?: string): string {
 /** Fallback rule-based intelligent response if no external AI API key is configured. */
 function generateFallbackReply(message: string): string {
   const q = message.toLowerCase().trim();
-
-  // 1. Off-topic filter
-  const offTopicTriggers = [
-    "python", "javascript", "react", "html", "code", "programming", "sql", "bug",
-    "recipe", "cook", "weather", "homework", "math", "capital of", "president",
-    "cricket match", "football", "politics", "who is", "tell me a joke"
-  ];
-  if (offTopicTriggers.some((t) => q.includes(t)) && !q.includes("video") && !q.includes("edit") && !q.includes("design")) {
-    return "I am Mohit Babariya's studio assistant focused specifically on Video Editing, Motion Graphics, Graphic Design, and AI Video workflows. How can I assist you with your creative project?";
-  }
 
   // 2. Pricing / rates
   if (q.includes("price") || q.includes("cost") || q.includes("rate") || q.includes("charge") || q.includes("budget") || q.includes("ketla") || q.includes("paisa") || q.includes("rupee") || q.includes("dollar")) {
