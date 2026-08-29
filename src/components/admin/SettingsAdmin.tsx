@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { THEME_PRESETS, ThemePresetKey, getThemePreset } from "@/lib/theme-presets";
 import {
   Button,
   Card,
@@ -287,12 +286,29 @@ function ContactForm({
 }
 
 type ThemeSettings = {
-  preset?: string;
   accent: string;
   glassOpacity: number;
   glassBlur: number;
   grain: boolean;
 };
+
+const DEFAULT_THEME: ThemeSettings = {
+  accent: "#e0147f",
+  glassOpacity: 45,
+  glassBlur: 20,
+  grain: true,
+};
+
+const COLOR_SWATCHES = [
+  { name: "Signature Magenta", value: "#e0147f" },
+  { name: "Electric Blue", value: "#2563eb" },
+  { name: "Emerald Green", value: "#10b981" },
+  { name: "Imperial Gold", value: "#eab308" },
+  { name: "Sunset Crimson", value: "#ef4444" },
+  { name: "Royal Purple", value: "#8b5cf6" },
+  { name: "Cyber Cyan", value: "#06b6d4" },
+  { name: "Titanium Silver", value: "#94a3b8" },
+];
 
 export function ThemeAdmin({ onChanged }: { onChanged: () => void }) {
   const { settings, error, notice, saving, save } = useSettings<ThemeSettings>("theme");
@@ -301,7 +317,7 @@ export function ThemeAdmin({ onChanged }: { onChanged: () => void }) {
     <div>
       <SectionTitle
         title="Theme Studio"
-        subtitle="Choose from 10 handcrafted visual aesthetic themes (Neomorphism, Apple Glass, Cyberpunk, Luxury Gold, and more) with real-time website preview."
+        subtitle="Customize your website's primary accent colour, glassmorphism transparency, and film grain texture."
       />
       {error && <Notice tone="error">{error}</Notice>}
       {notice && (
@@ -331,232 +347,167 @@ function ThemeForm({
   onSave: (draft: ThemeSettings) => void;
 }) {
   const [draft, setDraft] = useState<ThemeSettings>({
-    preset: initial.preset || "glass-luxe",
-    accent: initial.accent || "#e0147f",
-    glassOpacity: initial.glassOpacity ?? 45,
-    glassBlur: initial.glassBlur ?? 20,
-    grain: initial.grain ?? true,
+    accent: initial.accent || DEFAULT_THEME.accent,
+    glassOpacity: initial.glassOpacity ?? DEFAULT_THEME.glassOpacity,
+    glassBlur: initial.glassBlur ?? DEFAULT_THEME.glassBlur,
+    grain: initial.grain ?? DEFAULT_THEME.grain,
   });
+  const [resetNotice, setResetNotice] = useState("");
 
-  const selectedPreset = getThemePreset(draft.preset);
-
-  const applyPreset = (key: ThemePresetKey) => {
-    const preset = getThemePreset(key);
-    setDraft({
-      ...draft,
-      preset: key,
-      accent: preset.accent,
-      glassOpacity: Math.round(preset.glassAlpha * 100),
-      glassBlur: preset.glassBlur,
-      grain: preset.grain,
-    });
+  const handleReset = () => {
+    setDraft({ ...DEFAULT_THEME });
+    setResetNotice("Restored to default theme settings. Click 'Save settings' to apply.");
+    window.setTimeout(() => setResetNotice(""), 4000);
   };
 
   return (
     <div className="space-y-6 mt-4">
-      {/* 1. Theme Presets Gallery */}
-      <div>
-        <div className="mb-3 flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-bold text-ink">Visual Aesthetic Themes (10 Presets)</h3>
-            <p className="text-xs text-ink/55">
-              Click any theme below to apply its complete design system, colors, glassmorphism, and depth.
-            </p>
-          </div>
-          <span className="rounded-full bg-ink/5 px-3 py-1 text-[0.65rem] font-bold text-ink/70">
-            Active: {selectedPreset.name}
+      {resetNotice && (
+        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-50 p-4 text-xs font-medium text-emerald-800 animate-fade-in">
+          {resetNotice}
+        </div>
+      )}
+
+      {/* 1. Live Visual Preview Box */}
+      <Card className="p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-ink/60">
+            Live Website Theme Preview
+          </h4>
+          <span className="text-[0.62rem] font-mono text-ink/50">
+            Accent: {draft.accent.toUpperCase()} · Glass: {draft.glassOpacity}%
           </span>
         </div>
 
-        <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          {THEME_PRESETS.map((preset) => {
-            const isSelected = (draft.preset || "glass-luxe") === preset.key;
-            return (
-              <button
-                key={preset.key}
-                type="button"
-                onClick={() => applyPreset(preset.key)}
-                className={`group relative flex flex-col text-left rounded-2xl p-3.5 transition-all duration-300 ${
-                  isSelected
-                    ? "ring-2 ring-[var(--accent)] shadow-xl scale-[1.02]"
-                    : "border border-ink/10 bg-white/70 hover:border-ink/25 hover:shadow-md hover:scale-[1.01]"
-                }`}
-              >
-                {/* Theme Miniature Preview Box */}
-                <div
-                  className="relative h-24 w-full rounded-xl overflow-hidden p-2.5 flex flex-col justify-between border"
-                  style={{
-                    background: preset.previewBg,
-                    borderColor: preset.previewBorder,
-                  }}
-                >
-                  {/* Header bar */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className="h-2 w-2 rounded-full"
-                        style={{ backgroundColor: preset.accent }}
-                      />
-                      <span
-                        className="text-[0.55rem] font-bold uppercase tracking-wider"
-                        style={{ color: preset.ink }}
-                      >
-                        {preset.badge}
-                      </span>
-                    </div>
-                    {isSelected && (
-                      <span className="grid h-4 w-4 place-items-center rounded-full bg-white text-black text-[0.6rem] font-bold shadow">
-                        ✓
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Sample miniature card */}
-                  <div
-                    className="rounded-lg p-2 text-[0.55rem] border backdrop-blur-md"
-                    style={{
-                      background: preset.previewCardBg,
-                      borderColor: preset.previewBorder,
-                      color: preset.ink,
-                      boxShadow: preset.boxShadow || "none",
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold truncate">Sample Card</span>
-                      <span
-                        className="h-1.5 w-1.5 rounded-full"
-                        style={{ backgroundColor: preset.accent }}
-                      />
-                    </div>
-                    <div
-                      className="mt-1 h-1 w-2/3 rounded-full opacity-60"
-                      style={{ backgroundColor: preset.accent }}
-                    />
-                  </div>
-                </div>
-
-                {/* Theme Info */}
-                <div className="mt-2.5 flex-1 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs font-bold text-ink">{preset.name}</p>
-                      <span className="text-[0.55rem] px-1.5 py-0.5 rounded bg-ink/5 text-ink/60 font-medium">
-                        {preset.category}
-                      </span>
-                    </div>
-                    <p className="mt-0.5 text-[0.62rem] text-ink/50 line-clamp-2 leading-relaxed">
-                      {preset.tagline}
-                    </p>
-                  </div>
-
-                  {/* Accent Swatch */}
-                  <div className="mt-2 flex items-center justify-between pt-2 border-t border-ink/5">
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className="h-3 w-3 rounded-full border border-black/10 shadow-sm"
-                        style={{ backgroundColor: preset.accent }}
-                      />
-                      <span className="text-[0.6rem] font-mono text-ink/60 uppercase">
-                        {preset.accent}
-                      </span>
-                    </div>
-                    <span className="text-[0.6rem] text-ink/40">
-                      {preset.glassBlur > 0 ? `${preset.glassBlur}px blur` : "Solid Depth"}
-                    </span>
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 2. Live Interactive Website Mini-Preview */}
-      <Card className="p-5">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-ink/60 mb-3">
-          Live Website Theme Preview
-        </h4>
-        <div
-          className="rounded-2xl p-5 border transition-all duration-300"
-          style={{
-            background: selectedPreset.previewBg,
-            borderColor: selectedPreset.previewBorder,
-            color: selectedPreset.ink,
-          }}
-        >
+        <div className="rounded-2xl border border-black/10 bg-[#0b0b0c] p-5 text-white shadow-xl transition-all duration-300">
           <div className="flex items-center justify-between pb-3 border-b border-white/10">
-            <p className="text-xs font-bold uppercase tracking-widest">
+            <p className="text-xs font-bold uppercase tracking-widest text-white">
               MOHIT BABARIYA <span style={{ color: draft.accent }}>·</span> CREATIVE PORTFOLIO
             </p>
-            <div className="flex items-center gap-2">
-              <span
-                className="rounded-full px-2.5 py-1 text-[0.6rem] font-semibold text-white shadow-sm"
-                style={{ backgroundColor: draft.accent }}
-              >
-                Selected Theme: {selectedPreset.name}
-              </span>
-            </div>
+            <span
+              className="rounded-full px-3 py-1 text-[0.6rem] font-bold text-white shadow-sm"
+              style={{ backgroundColor: draft.accent }}
+            >
+              Start Project
+            </span>
           </div>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             <div
-              className="rounded-xl p-3 border backdrop-blur-md"
+              className="rounded-xl p-3 border transition-all"
               style={{
-                background: selectedPreset.previewCardBg,
-                borderColor: selectedPreset.previewBorder,
-                boxShadow: selectedPreset.boxShadow || "none",
+                backgroundColor: `rgba(255, 255, 255, ${draft.glassOpacity / 100})`,
+                backdropFilter: `blur(${draft.glassBlur}px)`,
+                borderColor: "rgba(255, 255, 255, 0.15)",
               }}
             >
-              <p className="text-[0.65rem] font-bold uppercase tracking-wider text-white/50">Service</p>
-              <p className="mt-1 text-xs font-bold text-white">Cinematic Video Editing</p>
-              <p className="mt-1 text-[0.65rem] text-white/60">High retention pacing & color grading</p>
+              <div className="flex items-center justify-between">
+                <span className="text-[0.62rem] font-bold uppercase tracking-wider text-white/50">01</span>
+                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: draft.accent }} />
+              </div>
+              <p className="mt-2 text-xs font-bold text-white">Video Editing</p>
+              <p className="mt-1 text-[0.65rem] text-white/70">Cinematic pacing & high-retention cuts</p>
             </div>
 
             <div
-              className="rounded-xl p-3 border backdrop-blur-md"
+              className="rounded-xl p-3 border transition-all"
               style={{
-                background: selectedPreset.previewCardBg,
-                borderColor: selectedPreset.previewBorder,
-                boxShadow: selectedPreset.boxShadow || "none",
+                backgroundColor: `rgba(255, 255, 255, ${draft.glassOpacity / 100})`,
+                backdropFilter: `blur(${draft.glassBlur}px)`,
+                borderColor: "rgba(255, 255, 255, 0.15)",
               }}
             >
-              <p className="text-[0.65rem] font-bold uppercase tracking-wider text-white/50">Motion</p>
-              <p className="mt-1 text-xs font-bold text-white">Motion Graphics & VFX</p>
-              <p className="mt-1 text-[0.65rem] text-white/60">Dynamic captions, 3D titles & kinetic type</p>
+              <div className="flex items-center justify-between">
+                <span className="text-[0.62rem] font-bold uppercase tracking-wider text-white/50">02</span>
+                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: draft.accent }} />
+              </div>
+              <p className="mt-2 text-xs font-bold text-white">Motion Graphics</p>
+              <p className="mt-1 text-[0.65rem] text-white/70">Dynamic 3D titles & kinetic typography</p>
             </div>
 
             <div
-              className="rounded-xl p-3 border backdrop-blur-md"
+              className="rounded-xl p-3 border transition-all"
               style={{
-                background: selectedPreset.previewCardBg,
-                borderColor: selectedPreset.previewBorder,
-                boxShadow: selectedPreset.boxShadow || "none",
+                backgroundColor: `rgba(255, 255, 255, ${draft.glassOpacity / 100})`,
+                backdropFilter: `blur(${draft.glassBlur}px)`,
+                borderColor: "rgba(255, 255, 255, 0.15)",
               }}
             >
-              <p className="text-[0.65rem] font-bold uppercase tracking-wider text-white/50">Design</p>
-              <p className="mt-1 text-xs font-bold text-white">High CTR Thumbnails</p>
-              <p className="mt-1 text-[0.65rem] text-white/60">Thumbnails that double your click rates</p>
+              <div className="flex items-center justify-between">
+                <span className="text-[0.62rem] font-bold uppercase tracking-wider text-white/50">03</span>
+                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: draft.accent }} />
+              </div>
+              <p className="mt-2 text-xs font-bold text-white">Graphic Design</p>
+              <p className="mt-1 text-[0.65rem] text-white/70">High-CTR thumbnails and key art</p>
             </div>
           </div>
         </div>
       </Card>
 
-      {/* 3. Fine Tuning Parameters */}
-      <Card className="grid gap-5 p-6 sm:grid-cols-2">
-        <Field label="Custom Accent Colour" hint="Fine-tune highlight & button accent.">
-          <div className="flex items-center gap-3">
-            <input
-              type="color"
-              value={draft.accent}
-              onChange={(event) => setDraft({ ...draft, accent: event.target.value })}
-              className="h-11 w-16 cursor-pointer rounded-xl border border-ink/12 bg-transparent"
-              aria-label="Accent colour"
-            />
-            <TextInput value={draft.accent} onChange={(value) => setDraft({ ...draft, accent: value })} />
-          </div>
-        </Field>
+      {/* 2. Color Swatches & Accent Customization */}
+      <Card className="p-6 space-y-5">
+        <div>
+          <h4 className="text-xs font-bold text-ink">Primary Accent Colour</h4>
+          <p className="text-xs text-ink/50 mt-0.5">
+            Select a curated preset color swatch or pick any custom hex code.
+          </p>
 
-        <Field label={`Glass Opacity — ${draft.glassOpacity}%`}>
+          <div className="mt-3 flex flex-wrap gap-2.5">
+            {COLOR_SWATCHES.map((swatch) => {
+              const active = draft.accent.toLowerCase() === swatch.value.toLowerCase();
+              return (
+                <button
+                  key={swatch.value}
+                  type="button"
+                  onClick={() => setDraft({ ...draft, accent: swatch.value })}
+                  className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
+                    active
+                      ? "ring-2 ring-ink ring-offset-2 bg-ink text-white"
+                      : "border border-ink/15 bg-white text-ink/80 hover:bg-ink/5"
+                  }`}
+                >
+                  <span
+                    className="h-3 w-3 rounded-full border border-black/10"
+                    style={{ backgroundColor: swatch.value }}
+                  />
+                  <span>{swatch.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="pt-3 border-t border-ink/8 grid gap-4 sm:grid-cols-2">
+          <Field label="Custom Hex Code">
+            <div className="flex items-center gap-3">
+              <input
+                type="color"
+                value={draft.accent}
+                onChange={(event) => setDraft({ ...draft, accent: event.target.value })}
+                className="h-10 w-14 cursor-pointer rounded-xl border border-ink/15 bg-transparent"
+                aria-label="Custom accent color picker"
+              />
+              <TextInput
+                value={draft.accent}
+                onChange={(value) => setDraft({ ...draft, accent: value })}
+                placeholder="#e0147f"
+              />
+            </div>
+          </Field>
+
+          <div className="flex items-center">
+            <Toggle
+              checked={draft.grain}
+              onChange={(value) => setDraft({ ...draft, grain: value })}
+              label="Film Grain Texture Overlay"
+            />
+          </div>
+        </div>
+      </Card>
+
+      {/* 3. Glassmorphism Sliders */}
+      <Card className="grid gap-5 p-6 sm:grid-cols-2">
+        <Field label={`Glass Opacity — ${draft.glassOpacity}%`} hint="Controls transparency of frosted cards.">
           <input
             type="range"
             min={0}
@@ -567,7 +518,7 @@ function ThemeForm({
           />
         </Field>
 
-        <Field label={`Glass Blur Filter — ${draft.glassBlur}px`}>
+        <Field label={`Glass Blur Filter — ${draft.glassBlur}px`} hint="Controls blur strength behind cards.">
           <input
             type="range"
             min={0}
@@ -577,17 +528,28 @@ function ThemeForm({
             className="w-full accent-[var(--accent)]"
           />
         </Field>
-
-        <div className="flex items-end">
-          <Toggle
-            checked={draft.grain}
-            onChange={(value) => setDraft({ ...draft, grain: value })}
-            label="Film Grain Cinematic Texture"
-          />
-        </div>
       </Card>
 
-      <SaveRow saving={saving} onClick={() => onSave(draft)} />
+      {/* 4. Action Row with Reset to Default */}
+      <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
+        <button
+          type="button"
+          onClick={handleReset}
+          className="flex items-center gap-2 rounded-full border border-ink/20 px-4 py-2.5 text-xs font-semibold text-ink/75 hover:bg-ink/5 hover:text-ink transition-colors"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8" />
+            <path d="M3 3v5h5" />
+          </svg>
+          <span>Reset to Default</span>
+        </button>
+
+        <div className="flex items-center gap-3">
+          <Button variant="accent" onClick={() => onSave(draft)} disabled={saving}>
+            {saving ? "Saving…" : "Save theme settings"}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
