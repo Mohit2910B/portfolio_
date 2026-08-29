@@ -5,7 +5,7 @@ import ContactSection from "@/components/site/ContactSection";
 import ChatWidget from "@/components/site/ChatWidget";
 import SoftwareTools from "@/components/site/SoftwareTools";
 import { About, Footer, Marquee, Services } from "@/components/site/Sections";
-import { getSiteData } from "@/lib/data";
+import { getSiteData, HOME_FALLBACK } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
@@ -13,11 +13,20 @@ const DEFAULT_ORDER = ["hero", "about", "tools", "services", "work", "contact"];
 
 export default async function HomePage() {
   const data = await getSiteData();
-  const visible = data.sections
-    .filter((s) => s.isVisible && s.sectionKey !== "capabilities")
+  const visible = (data?.sections || [])
+    .filter((s) => s.isVisible && (s.sectionKey as string) !== "capabilities")
     .map((s) => s.sectionKey);
   const order = visible.length > 0 ? visible : DEFAULT_ORDER;
-  const { theme, homepage } = data;
+  const theme = data?.theme || {
+    id: 1,
+    accent: "#e0147f",
+    glassOpacity: 45,
+    glassBlur: 20,
+    grain: true,
+    updatedAt: new Date(),
+  };
+  const homepage = data?.homepage || HOME_FALLBACK;
+
 
   const themeStyle = {
     "--accent": theme.accent || "#e0147f",

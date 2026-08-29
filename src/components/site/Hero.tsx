@@ -9,11 +9,12 @@ import type { SiteData } from "@/lib/data";
 export default function Hero({ data }: { data: SiteData }) {
   const { homepage } = data;
   const [reelOpen, setReelOpen] = useState(false);
-  const lines = homepage.heroTitle.split("\n").filter(Boolean);
-  const roles = homepage.heroSubtitle
+  const lines = (homepage?.heroTitle || "MAKE\nVISUALS\nMOVE.").split("\n").filter(Boolean);
+  const roles = (homepage?.heroSubtitle || "VIDEO EDITOR · MOTION GRAPHICS · GRAPHIC DESIGN · AI VIDEO")
     .split("·")
     .map((r) => r.trim())
     .filter(Boolean);
+
 
   const scrollToContact = () =>
     document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" });

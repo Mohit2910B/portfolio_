@@ -73,8 +73,8 @@ export default function WorkCarousel({ data }: { data: SiteData }) {
 
   const measured = useMemo(() => {
     const boxes = items.map((project) => {
-      const { baseW, maxH } = sizeOf(project.displaySize);
-      const [rw, rh] = project.aspectRatio.split(":").map(Number);
+      const { baseW, maxH } = sizeOf(project.displaySize || "medium");
+      const [rw, rh] = (project.aspectRatio || "16:9").split(":").map(Number);
       const ratio = rw && rh ? rw / rh : 16 / 9;
       const width = Math.round(Math.min(baseW, maxH * ratio));
       return { width, height: Math.round(width / ratio) };

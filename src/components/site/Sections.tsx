@@ -42,9 +42,12 @@ export function SectionHeading({
   );
 }
 
-export function Marquee({ text }: { text: string }) {
-  const items = text.split("·").map((t) => t.trim()).filter(Boolean);
-  const phrase = items.length > 0 ? items : [text];
+export function Marquee({ text }: { text?: string }) {
+  const items = (text || "VIDEO EDITOR · MOTION GRAPHICS · GRAPHIC DESIGN · AI VIDEO")
+    .split("·")
+    .map((t) => t.trim())
+    .filter(Boolean);
+  const phrase = items.length > 0 ? items : [text || ""];
   const row = [...phrase, ...phrase, ...phrase, ...phrase];
   return (
     <div className="dark-section relative overflow-hidden border-y border-white/10 py-5">
@@ -82,7 +85,7 @@ function AboutBlock({ label, value }: { label: string; value: string }) {
 
 export function About({ data }: { data: SiteData }) {
   const { homepage } = data;
-  const paragraphs = homepage.aboutIntro
+  const paragraphs = (homepage?.aboutIntro || "")
     .split("\n")
     .map((p) => p.trim())
     .filter(Boolean);
@@ -116,7 +119,6 @@ export function About({ data }: { data: SiteData }) {
           <AboutBlock label="Workflow" value={homepage.aboutWorkflow} />
           <AboutBlock label="Tools" value={homepage.aboutTools} />
           <AboutBlock label="Strengths" value={homepage.aboutStrengths} />
-
         </div>
       </div>
     </section>
@@ -155,7 +157,7 @@ export function Services({ data }: { data: SiteData }) {
                 )}
 
                 <ul className="mt-6 flex flex-wrap gap-2">
-                  {service.deliverables
+                  {(service.deliverables || "")
                     .split("|")
                     .map((d) => d.trim())
                     .filter(Boolean)
@@ -176,6 +178,7 @@ export function Services({ data }: { data: SiteData }) {
     </section>
   );
 }
+
 
 function ServiceIcon({ name }: { name: string }) {
   const common = { width: 14, height: 14, viewBox: "0 0 24 24", fill: "none", stroke: "#fff", strokeWidth: 1.6 } as const;

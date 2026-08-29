@@ -27,7 +27,7 @@ export default function ProjectViewer({
 
   if (!project) return null;
 
-  const tags = project.tags
+  const tags = (project.tags || "")
     .split(",")
     .map((t) => t.trim())
     .filter(Boolean);

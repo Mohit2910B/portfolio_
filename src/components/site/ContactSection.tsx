@@ -115,7 +115,7 @@ export default function ContactSection({ data }: { data: SiteData }) {
     if (form.name.trim().length < 2) next.name = "Please enter your full name.";
     if (!EMAIL_RE.test(form.email.trim())) next.email = "Enter a valid email address.";
     const digits = form.phoneNumber.replace(/[^0-9]/g, "");
-    const countryCode = form.countryCode.split(" ")[0] || "+91";
+    const countryCode = (form.countryCode || "+91").split(" ")[0] || "+91";
     const PHONE_LENGTHS: Record<string, { min: number; max: number }> = {
       "+91": { min: 10, max: 10 }, "+1": { min: 10, max: 10 }, "+44": { min: 9, max: 10 },
       "+971": { min: 9, max: 9 }, "+61": { min: 9, max: 9 }, "+65": { min: 8, max: 8 },
@@ -141,7 +141,7 @@ export default function ContactSection({ data }: { data: SiteData }) {
     event.preventDefault();
     setMessage("");
     if (!validate()) { setMessage("Please fix the highlighted fields."); return; }
-    const countryCode = form.countryCode.split(" ")[0] || "+91";
+    const countryCode = (form.countryCode || "+91").split(" ")[0] || "+91";
     if (!otpSent) {
       setOtpBusy(true);
       try {

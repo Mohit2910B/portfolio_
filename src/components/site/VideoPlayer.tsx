@@ -31,7 +31,7 @@ export default function VideoPlayer({
   const [attempt, setAttempt] = useState(0);
 
   const pad = (() => {
-    const [w, h] = ratio.split(":").map(Number);
+    const [w, h] = (ratio || "16:9").split(":").map(Number);
     return w && h ? (h / w) * 100 : 56.25;
   })();
 
