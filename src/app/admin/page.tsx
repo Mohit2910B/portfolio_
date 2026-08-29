@@ -10,8 +10,29 @@ export const metadata = {
 };
 
 export default async function AdminPage() {
-  await ensureDatabase();
-  const admin = await getCurrentAdmin();
-  if (!admin) redirect("/admin/login");
+  try {
+    await ensureDatabase();
+  } catch (error) {
+    console.warn(
+      "[admin] Database bootstrap warning during admin page render:",
+      error instanceof Error ? error.message : error,
+    );
+  }
+
+  let admin = null;
+  try {
+    admin = await getCurrentAdmin();
+  } catch (error) {
+    console.warn(
+      "[admin] Error fetching current admin session:",
+      error instanceof Error ? error.message : error,
+    );
+  }
+
+  if (!admin) {
+    redirect("/admin/login");
+  }
+
   return <AdminShell admin={admin} />;
 }
+
