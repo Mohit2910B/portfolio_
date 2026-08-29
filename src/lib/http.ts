@@ -66,11 +66,11 @@ export async function guard(fn: () => Promise<Response>): Promise<Response> {
     }
     if (/DatabaseNotConfiguredError|Production database is not configured/i.test(message)) {
       return serverError(
-        "Production database is not configured. Please add your remote PostgreSQL DATABASE_URL in Netlify environment variables.",
+        "Production database is not configured. Please add your remote PostgreSQL DATABASE_URL in environment variables.",
       );
     }
     if (/ECONNREFUSED|password authentication|ENOTFOUND|getaddrinfo/i.test(message)) {
-      return serverError("Database connection failed. Please check DATABASE_URL credentials in Netlify.");
+      return serverError("Database connection failed. Please check your production database configuration.");
     }
     return serverError("Unable to complete request right now. Please try again.");
   }

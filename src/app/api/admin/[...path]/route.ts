@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { asc, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
@@ -26,9 +27,10 @@ import {
   SOFTWARE_TOOL_SEED,
   WORK_OPTION_SEED,
 } from "@/lib/bootstrap";
+import { HOME_FALLBACK, CONTACT_FALLBACK } from "@/lib/data";
 import { requireAdmin } from "@/lib/auth";
 import { badRequest, created, guard, notFound, num, ok, str, bool } from "@/lib/http";
-import { deleteStoredFile } from "@/lib/storage";
+import { deleteStoredFile, safeStoredName } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
@@ -247,13 +249,30 @@ export async function GET(_request: Request, ctx: Params) {
         case "categories": {
           const rows = await db
             .select({
-              category: categories,
-              projectCount: sql<number>`(select count(*)::int from ${projects} where ${projects.categoryId} = ${categories.id})`,
+              id: categories.id,
+              name: categories.name,
+              slug: categories.slug,
+              description: categories.description,
+              sortOrder: categories.sortOrder,
+              isActive: categories.isActive,
+              createdAt: categories.createdAt,
+              updatedAt: categories.updatedAt,
+              projectCount: sql<number>`(select count(*)::int from projects where projects.category_id = ${categories.id})`,
             })
             .from(categories)
             .orderBy(asc(categories.sortOrder), asc(categories.id));
           return ok({
-            categories: rows.map((r) => ({ ...r.category, projectCount: r.projectCount })),
+            categories: rows.map((r) => ({
+              id: r.id,
+              name: r.name,
+              slug: r.slug,
+              description: r.description,
+              sortOrder: r.sortOrder,
+              isActive: r.isActive,
+              createdAt: r.createdAt,
+              updatedAt: r.updatedAt,
+              projectCount: Number(r.projectCount ?? 0),
+            })),
           });
         }
 
@@ -302,20 +321,54 @@ export async function GET(_request: Request, ctx: Params) {
 
       case "settings": {
         if (second === "homepage") {
-          const rows = await db.select().from(homepageSettings).limit(1);
-          return ok({ settings: rows[0] ?? null });
+          let rows = await db.select().from(homepageSettings).limit(1);
+          if (!rows[0]) {
+            try {
+              const inserted = await db.insert(homepageSettings).values({ id: 1, ...HOME_FALLBACK }).returning();
+              rows = inserted;
+            } catch {}
+          }
+          return ok({ settings: rows[0] ?? { id: 1, ...HOME_FALLBACK } });
         }
         if (second === "contact") {
-          const rows = await db.select().from(contactSettings).limit(1);
-          return ok({ settings: rows[0] ?? null });
+          let rows = await db.select().from(contactSettings).limit(1);
+          if (!rows[0]) {
+            try {
+              const inserted = await db.insert(contactSettings).values({ id: 1, ...CONTACT_FALLBACK }).returning();
+              rows = inserted;
+            } catch {}
+          }
+          return ok({ settings: rows[0] ?? { id: 1, ...CONTACT_FALLBACK } });
         }
         if (second === "theme") {
-          const rows = await db.select().from(themeSettings).limit(1);
-          return ok({ settings: rows[0] ?? null });
+          let rows = await db.select().from(themeSettings).limit(1);
+          if (!rows[0]) {
+            try {
+              const inserted = await db
+                .insert(themeSettings)
+                .values({ id: 1, accent: "#e0147f", glassOpacity: 45, glassBlur: 20, grain: true })
+                .returning();
+              rows = inserted;
+            } catch {}
+          }
+          return ok({
+            settings: rows[0] ?? { id: 1, accent: "#e0147f", glassOpacity: 45, glassBlur: 20, grain: true },
+          });
         }
         if (second === "notifications") {
-          const rows = await db.select().from(notificationSettings).limit(1);
-          return ok({ settings: rows[0] ?? null });
+          let rows = await db.select().from(notificationSettings).limit(1);
+          if (!rows[0]) {
+            try {
+              const inserted = await db
+                .insert(notificationSettings)
+                .values({ id: 1, emailEnabled: false, notificationEmail: "mohitbabariyaa@gmail.com" })
+                .returning();
+              rows = inserted;
+            } catch {}
+          }
+          return ok({
+            settings: rows[0] ?? { id: 1, emailEnabled: false, notificationEmail: "mohitbabariyaa@gmail.com" },
+          });
         }
         throw notFound("Unknown settings resource.");
       }
@@ -544,6 +597,9 @@ export async function POST(request: Request, ctx: Params) {
   return guard(async () => {
     await requireAdmin();
     await ensureDatabase();
+    try {
+      revalidatePath("/");
+    } catch {}
     const parts = await seg(ctx);
     const [resource, second, third, fourth] = parts;
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
@@ -702,6 +758,28 @@ export async function POST(request: Request, ctx: Params) {
         return created({ workOption: inserted[0] });
       }
 
+      case "media": {
+        const url = str(body.url);
+        const originalName = str(body.originalName) || str(body.name) || "Media asset";
+        const kind = str(body.kind, "image") === "video" ? "video" : "image";
+        if (!url) return badRequest("Media URL is required.", { url: "Required" });
+        const filename = safeStoredName(originalName, kind === "video" ? "video/mp4" : "image/jpeg");
+        const inserted = await db
+          .insert(mediaFiles)
+          .values({
+            filename,
+            originalName,
+            mimeType: kind === "video" ? "video/mp4" : "image/jpeg",
+            kind,
+            size: num(body.size) ?? 0,
+            url,
+            width: num(body.width),
+            height: num(body.height),
+          })
+          .returning();
+        return created({ media: inserted[0], url, kind });
+      }
+
       case "carousel": {
         if (second === "reorder") {
           const id = Number(body.id);
@@ -827,6 +905,9 @@ export async function PATCH(request: Request, ctx: Params) {
   return guard(async () => {
     await requireAdmin();
     await ensureDatabase();
+    try {
+      revalidatePath("/");
+    } catch {}
     const parts = await seg(ctx);
     const [resource, second, third] = parts;
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
@@ -1100,6 +1181,9 @@ export async function DELETE(_request: Request, ctx: Params) {
   return guard(async () => {
     await requireAdmin();
     await ensureDatabase();
+    try {
+      revalidatePath("/");
+    } catch {}
     const parts = await seg(ctx);
     const [resource, second] = parts;
     const id = Number(second);

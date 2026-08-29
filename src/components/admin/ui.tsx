@@ -278,6 +278,16 @@ export function Uploader({
 
   const upload = useCallback(
     (file: File) => {
+      if (file.size > 4.5 * 1024 * 1024) {
+        setStatus("error");
+        setMessage(
+          kind === "video"
+            ? "Direct upload limit is 4.5MB. For portfolio videos, please paste the video URL (e.g. YouTube, Vimeo, BunnyCDN, Pexels) in the Video URL field below, or compress the video to under 4.5MB."
+            : "Image exceeds 4.5MB. Please compress the image to under 4.5MB."
+        );
+        return;
+      }
+
       setStatus("uploading");
       setProgress(0);
       setMessage("");

@@ -840,6 +840,9 @@ export function MediaAdmin({ onChanged }: { onChanged: () => void }) {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [kindFilter, setKindFilter] = useState("");
+  const [urlInput, setUrlInput] = useState("");
+  const [urlName, setUrlName] = useState("");
+  const [urlKind, setUrlKind] = useState<"video" | "image">("video");
 
   const load = useCallback(async () => {
     try {
@@ -888,10 +891,10 @@ export function MediaAdmin({ onChanged }: { onChanged: () => void }) {
         </div>
       )}
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-2">
+      <div className="mt-5 grid gap-4 lg:grid-cols-3">
         <Card className="p-5">
           <p className="mb-3 text-[0.58rem] font-semibold uppercase tracking-[0.2em] text-ink/45">
-            Upload video
+            Upload video (under 4.5MB)
           </p>
           <Uploader
             kind="video"
@@ -914,6 +917,63 @@ export function MediaAdmin({ onChanged }: { onChanged: () => void }) {
               onChanged();
             }}
           />
+        </Card>
+        <Card className="p-5 flex flex-col justify-between">
+          <div>
+            <p className="mb-3 text-[0.58rem] font-semibold uppercase tracking-[0.2em] text-ink/45">
+              Add direct media URL
+            </p>
+            <Field label="Media URL">
+              <TextInput
+                value={urlInput}
+                onChange={setUrlInput}
+                placeholder="https://..."
+              />
+            </Field>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <Field label="Name">
+                <TextInput value={urlName} onChange={setUrlName} placeholder="Asset name" />
+              </Field>
+              <Field label="Kind">
+                <Select
+                  value={urlKind}
+                  onChange={(val) => setUrlKind(val as "video" | "image")}
+                  options={[
+                    { value: "video", label: "Video" },
+                    { value: "image", label: "Image" },
+                  ]}
+                />
+              </Field>
+            </div>
+          </div>
+          <div className="mt-3 flex justify-end">
+            <Button
+              variant="dark"
+              disabled={!urlInput.trim()}
+              onClick={async () => {
+                try {
+                  await api("/api/admin/media", {
+                    method: "POST",
+                    body: JSON.stringify({
+                      url: urlInput.trim(),
+                      originalName: urlName.trim() || "Web Media Asset",
+                      kind: urlKind,
+                    }),
+                  });
+                  setUrlInput("");
+                  setUrlName("");
+                  setNotice("Media URL added to library.");
+                  window.setTimeout(() => setNotice(""), 3000);
+                  await load();
+                  onChanged();
+                } catch (caught) {
+                  setError(caught instanceof Error ? caught.message : "Failed to add media URL.");
+                }
+              }}
+            >
+              Add URL
+            </Button>
+          </div>
         </Card>
       </div>
 

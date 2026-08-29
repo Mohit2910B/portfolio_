@@ -787,25 +787,25 @@ async function seedContent() {
       ownerName: "Mohit Babariya",
       heroName: "MOHIT BABARIYA",
       heroTitle: "MAKE\nVISUALS\nMOVE.",
-      heroSubtitle: "VIDEO EDITOR Â· MOTION GRAPHICS Â· GRAPHIC DESIGN Â· AI VIDEO",
+      heroSubtitle: "VIDEO EDITOR · MOTION GRAPHICS · GRAPHIC DESIGN · AI VIDEO",
       heroDescription:
-        "I edit films, reels and motion pieces that hold attention â€” clean cuts, considered pacing and a finish that feels intentional.",
+        "I edit films, reels and motion pieces that hold attention — clean cuts, considered pacing and a finish that feels intentional.",
       availabilityLabel: "Available for freelance projects",
       ctaPrimaryLabel: "WATCH REEL",
       ctaSecondaryLabel: "START PROJECT",
       reelUrl: "https://videos.pexels.com/video-files/39105109/16638114_3840_2160_30fps.mp4",
       aboutIntro:
-        "I am Mohit Babariya, a video editor and motion designer working across editorial, social and brand content. My work sits between structure and feel â€” the timeline has to make sense, and it also has to move someone.",
+        "I am Mohit Babariya, a video editor and motion designer working across editorial, social and brand content. My work sits between structure and feel — the timeline has to make sense, and it also has to move someone.",
       aboutExperience:
         "I work as an independent video editor, motion graphics artist and graphic designer, collaborating directly with brands, creators and studios on edits that need to ship fast without losing craft.",
       aboutFocus:
         "Short-form social editing, real-estate films, product videos, motion graphics systems and AI-assisted video workflows.",
       aboutWorkflow:
-        "Brief and references â†’ footage review and selects â†’ assembly and pacing â†’ motion graphics and grade â†’ sound design and mix â†’ delivery in every required ratio.",
+        "Brief and references → footage review and selects → assembly and pacing → motion graphics and grade → sound design and mix → delivery in every required ratio.",
       aboutTools: "Premiere Pro, After Effects, DaVinci Resolve, Photoshop, Illustrator, AI video tools.",
       aboutStrengths:
         "Clean storytelling, fast turnarounds, consistent colour, precise typography and reliable communication.",
-      footerNote: "Video editor Â· motion graphics Â· graphic design Â· AI video",
+      footerNote: "Video editor · motion graphics · graphic design · AI video",
     });
   }
 
@@ -816,7 +816,7 @@ async function seedContent() {
       countryCode: "+91",
       phone: "",
       whatsapp: "",
-      location: "India Â· working worldwide",
+      location: "India · working worldwide",
       instagram: "",
       youtube: "",
       linkedin: "",
