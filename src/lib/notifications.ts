@@ -27,12 +27,25 @@ export async function getNotificationSettings() {
   }
 }
 
+function cleanEnvValue(value?: string): string {
+  if (!value) return "";
+  let v = value.trim();
+  if (
+    (v.startsWith('"') && v.endsWith('"')) ||
+    (v.startsWith("'") && v.endsWith("'")) ||
+    (v.startsWith("`") && v.endsWith("`"))
+  ) {
+    v = v.slice(1, -1).trim();
+  }
+  return v;
+}
+
 export async function sendEmail(
   to: string,
   subject: string,
   html: string,
 ): Promise<SendEmailResult> {
-  const key = process.env.RESEND_API_KEY?.trim();
+  const key = cleanEnvValue(process.env.RESEND_API_KEY);
   if (!key) {
     console.error(
       "[notifications] sendEmail failed: RESEND_API_KEY is not configured in environment variables.",
@@ -46,7 +59,7 @@ export async function sendEmail(
     return { ok: false, error: "Recipient email is required" };
   }
 
-  const rawFrom = process.env.EMAIL_FROM?.trim();
+  const rawFrom = cleanEnvValue(process.env.EMAIL_FROM);
   const from = rawFrom || "Portfolio <onboarding@resend.dev>";
 
   try {

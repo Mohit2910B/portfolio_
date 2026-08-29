@@ -62,6 +62,15 @@ export async function POST(request: Request) {
       if (!process.env.RESEND_API_KEY) {
         return badRequest("Email service is not configured (missing RESEND_API_KEY in environment variables).");
       }
+      if (
+        err.toLowerCase().includes("api key is invalid") ||
+        err.toLowerCase().includes("invalid api key") ||
+        err.toLowerCase().includes("unauthorized")
+      ) {
+        return badRequest(
+          "Invalid RESEND_API_KEY: Please verify your RESEND_API_KEY in Netlify Site settings -> Environment variables matches your active key from resend.com/api-keys.",
+        );
+      }
       if (err.toLowerCase().includes("testing emails") || err.toLowerCase().includes("only send testing")) {
         return badRequest(
           "Resend test restriction: When using onboarding@resend.dev, emails can only be sent to your registered Resend account email (mohitbabariyaa@gmail.com). To send to other addresses, please verify your custom domain in Resend.",
