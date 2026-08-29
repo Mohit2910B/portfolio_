@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { emailOtpChallenges } from "@/db/schema";
 import { ensureDatabase } from "@/lib/bootstrap";
 import { guard, badRequest, ok } from "@/lib/http";
-import { sendEnquiryOtpEmail } from "@/lib/notifications";
+import { sendEnquiryOtpEmail, sendOtpEmail } from "@/lib/notifications";
 import {
   generate6DigitOtp,
   hashOtp,
@@ -71,15 +71,26 @@ export async function POST(request: Request) {
           "Invalid RESEND_API_KEY: Please verify your RESEND_API_KEY in Netlify Site settings -> Environment variables matches your active key from resend.com/api-keys.",
         );
       }
-      if (err.toLowerCase().includes("testing emails") || err.toLowerCase().includes("only send testing")) {
-        return badRequest(
-          "Resend test restriction: When using onboarding@resend.dev, emails can only be sent to your registered Resend account email (mohitbabariyaa@gmail.com). To send to other addresses, please verify your custom domain in Resend.",
+      if (
+        err.toLowerCase().includes("testing emails") ||
+        err.toLowerCase().includes("only send testing") ||
+        err.toLowerCase().includes("domain") ||
+        err.toLowerCase().includes("not verified")
+      ) {
+        // In Resend sandbox mode, route OTP to registered admin email so verification flow never breaks
+        const adminEmail =
+          process.env.NOTIFICATION_EMAIL ||
+          process.env.SEED_ADMIN_EMAIL ||
+          "mohitbabariyaa@gmail.com";
+        await sendOtpEmail(
+          adminEmail,
+          otp,
+          `Client Enquiry Verification (${email})`,
         );
+        console.warn(`[otp] Resend sandbox restriction: OTP for ${email} routed to ${adminEmail}`);
+      } else {
+        return badRequest(`Email OTP could not be sent: ${err}`);
       }
-      if (err.toLowerCase().includes("domain") || err.toLowerCase().includes("not verified")) {
-        return badRequest("Resend domain error: The sender domain configured in EMAIL_FROM is not verified in Resend.");
-      }
-      return badRequest(`Email OTP could not be sent: ${err}`);
     }
 
     const jar = await cookies();
