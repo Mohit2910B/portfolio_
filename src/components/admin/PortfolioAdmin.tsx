@@ -355,12 +355,24 @@ export function PortfolioAdmin({ onChanged }: { onChanged: () => void }) {
       const context = canvas.getContext("2d");
       if (!context) throw new Error("Canvas is not available in this browser.");
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
       const blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob((result) => resolve(result), "image/jpeg", 0.90),
+        canvas.toBlob((result) => resolve(result), "image/jpeg", 0.85),
       );
-      if (!blob) throw new Error("This video is protected by cross-origin rules, so a frame cannot be grabbed.");
-      const uploaded = await uploadBlob(blob, "image", `thumb-${Date.now()}.jpg`);
-      patch("thumbnailUrl", uploaded.url);
+      if (blob) {
+        try {
+          const uploaded = await uploadBlob(blob, "image", `thumb-${Date.now()}.jpg`);
+          if (uploaded && uploaded.url && !uploaded.url.startsWith("/api/files/")) {
+            patch("thumbnailUrl", uploaded.url);
+          } else {
+            patch("thumbnailUrl", dataUrl);
+          }
+        } catch {
+          patch("thumbnailUrl", dataUrl);
+        }
+      } else {
+        patch("thumbnailUrl", dataUrl);
+      }
       setNotice("Thumbnail frame grabbed from the video!");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not grab a frame.");
