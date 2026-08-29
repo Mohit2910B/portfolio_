@@ -166,88 +166,94 @@ async function taxonomyPatch(table: TaxonomyTable, body: Record<string, unknown>
 export async function GET(_request: Request, ctx: Params) {
   return guard(async () => {
     await requireAdmin();
-    await ensureDatabase();
+    try {
+      await ensureDatabase();
+    } catch {
+      // DB unconfigured fallback
+    }
+
     const parts = await seg(ctx);
     const [resource, second, third] = parts;
 
-    switch (resource) {
-      case "stats": {
-        const counter = sql<number>`count(*)::int`;
-        const [projectRows, mediaRows, enquiryRows, chatRows] = await Promise.all([
-          db
-            .select({
-              total: counter,
-              published: sql<number>`count(*) filter (where published = true)::int`,
-              drafts: sql<number>`count(*) filter (where published = false)::int`,
-              featured: sql<number>`count(*) filter (where featured = true)::int`,
-              demo: sql<number>`count(*) filter (where demo_status <> 'none')::int`,
-            })
-            .from(projects),
-          db.select({ total: counter }).from(mediaFiles),
-          db
-            .select({
-              total: counter,
-              unread: sql<number>`count(*) filter (where status = 'new')::int`,
-            })
-            .from(enquiries),
-          db
-            .select({
-              total: counter,
-              unread: sql<number>`coalesce(sum(admin_unread), 0)::int`,
-            })
-            .from(chatConversations),
-        ]);
-        const [categoryRows, skillRows, serviceRows, softwareRows] = await Promise.all([
-          db.select({ total: counter }).from(categories),
-          db.select({ total: counter }).from(skills),
-          db.select({ total: counter }).from(services),
-          db.select({ total: counter }).from(softwareTools),
-        ]);
-        return ok({
-          projects: projectRows[0],
-          mediaFiles: mediaRows[0]?.total ?? 0,
-          enquiries: enquiryRows[0],
-          chat: chatRows[0],
-          categories: categoryRows[0]?.total ?? 0,
-          skills: skillRows[0]?.total ?? 0,
-          services: serviceRows[0]?.total ?? 0,
-          softwareTools: softwareRows[0]?.total ?? 0,
-        });
-      }
-
-      case "projects": {
-        if (second && third !== "duplicate") {
-          const id = Number(second);
-          const row = await db.select().from(projects).where(eq(projects.id, id)).limit(1);
-          return ok({ project: await one(row) });
+    try {
+      switch (resource) {
+        case "stats": {
+          const counter = sql<number>`count(*)::int`;
+          const [projectRows, mediaRows, enquiryRows, chatRows] = await Promise.all([
+            db
+              .select({
+                total: counter,
+                published: sql<number>`count(*) filter (where published = true)::int`,
+                drafts: sql<number>`count(*) filter (where published = false)::int`,
+                featured: sql<number>`count(*) filter (where featured = true)::int`,
+                demo: sql<number>`count(*) filter (where demo_status <> 'none')::int`,
+              })
+              .from(projects),
+            db.select({ total: counter }).from(mediaFiles),
+            db
+              .select({
+                total: counter,
+                unread: sql<number>`count(*) filter (where status = 'new')::int`,
+              })
+              .from(enquiries),
+            db
+              .select({
+                total: counter,
+                unread: sql<number>`coalesce(sum(admin_unread), 0)::int`,
+              })
+              .from(chatConversations),
+          ]);
+          const [categoryRows, skillRows, serviceRows, softwareRows] = await Promise.all([
+            db.select({ total: counter }).from(categories),
+            db.select({ total: counter }).from(skills),
+            db.select({ total: counter }).from(services),
+            db.select({ total: counter }).from(softwareTools),
+          ]);
+          return ok({
+            projects: projectRows[0] ?? { total: 0, published: 0, drafts: 0, featured: 0, demo: 0 },
+            mediaFiles: mediaRows[0]?.total ?? 0,
+            enquiries: enquiryRows[0] ?? { total: 0, unread: 0 },
+            chat: chatRows[0] ?? { total: 0, unread: 0 },
+            categories: categoryRows[0]?.total ?? 0,
+            skills: skillRows[0]?.total ?? 0,
+            services: serviceRows[0]?.total ?? 0,
+            softwareTools: softwareRows[0]?.total ?? 0,
+          });
         }
-        const rows = await db
-          .select({ project: projects, categoryName: categories.name })
-          .from(projects)
-          .leftJoin(categories, eq(categories.id, projects.categoryId))
-          .orderBy(asc(projects.sortOrder), desc(projects.id));
-        return ok({
-          projects: rows.map((r) => ({ ...r.project, categoryName: r.categoryName ?? "" })),
-        });
-      }
 
-      case "categories": {
-        const rows = await db
-          .select({
-            category: categories,
-            projectCount: sql<number>`(select count(*)::int from ${projects} where ${projects.categoryId} = ${categories.id})`,
-          })
-          .from(categories)
-          .orderBy(asc(categories.sortOrder), asc(categories.id));
-        return ok({
-          categories: rows.map((r) => ({ ...r.category, projectCount: r.projectCount })),
-        });
-      }
+        case "projects": {
+          if (second && third !== "duplicate") {
+            const id = Number(second);
+            const row = await db.select().from(projects).where(eq(projects.id, id)).limit(1);
+            return ok({ project: await one(row) });
+          }
+          const rows = await db
+            .select({ project: projects, categoryName: categories.name })
+            .from(projects)
+            .leftJoin(categories, eq(categories.id, projects.categoryId))
+            .orderBy(asc(projects.sortOrder), desc(projects.id));
+          return ok({
+            projects: rows.map((r) => ({ ...r.project, categoryName: r.categoryName ?? "" })),
+          });
+        }
 
-      case "skills":
-        return ok({
-          skills: await db.select().from(skills).orderBy(asc(skills.sortOrder), asc(skills.id)),
-        });
+        case "categories": {
+          const rows = await db
+            .select({
+              category: categories,
+              projectCount: sql<number>`(select count(*)::int from ${projects} where ${projects.categoryId} = ${categories.id})`,
+            })
+            .from(categories)
+            .orderBy(asc(categories.sortOrder), asc(categories.id));
+          return ok({
+            categories: rows.map((r) => ({ ...r.category, projectCount: r.projectCount })),
+          });
+        }
+
+        case "skills":
+          return ok({
+            skills: await db.select().from(skills).orderBy(asc(skills.sortOrder), asc(skills.id)),
+          });
 
       case "software-tools":
         return ok({
@@ -413,10 +419,54 @@ export async function GET(_request: Request, ctx: Params) {
         });
       }
 
-      default:
-        return notFound(
-          `Unknown admin endpoint: /api/admin/${parts.filter(Boolean).join("/")}`,
-        );
+        default:
+          return notFound(
+            `Unknown admin endpoint: /api/admin/${parts.filter(Boolean).join("/")}`,
+          );
+      }
+    } catch (err) {
+      console.warn(`[admin] GET /api/admin/${parts.join("/")} DB unconfigured fallback:`, err);
+      switch (resource) {
+        case "stats":
+          return ok({
+            projects: { total: 0, published: 0, drafts: 0, featured: 0, demo: 0 },
+            mediaFiles: 0,
+            enquiries: { total: 0, unread: 0 },
+            chat: { total: 0, unread: 0 },
+            categories: 0,
+            skills: 0,
+            services: 0,
+            softwareTools: 0,
+          });
+        case "projects":
+          return ok({ projects: [] });
+        case "categories":
+          return ok({ categories: [] });
+        case "skills":
+          return ok({ skills: [] });
+        case "software-tools":
+          return ok({ softwareTools: [] });
+        case "services":
+          return ok({ services: [] });
+        case "work-options":
+          return ok({ workOptions: [] });
+        case "media":
+          return ok({ media: [] });
+        case "carousel":
+          return ok({ carousel: [] });
+        case "settings":
+          return ok({ settings: null });
+        case "layout":
+          return ok({ sections: [] });
+        case "enquiries":
+          return ok({ enquiries: [], unread: 0 });
+        case "chat":
+          return ok({ conversations: [] });
+        case "backup":
+          return ok({ generatedAt: new Date().toISOString(), version: 1, data: {} });
+        default:
+          return ok({});
+      }
     }
   });
 }
