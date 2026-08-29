@@ -1,6 +1,6 @@
 -- ==========================================================
 -- MOHIT BABARIYA - PORTFOLIO DATABASE BACKUP
--- Export Date: 2026-08-29T16:32:02.192Z
+-- Export Date: 2026-08-29T16:33:23.818Z
 -- Database Engine: PostgreSQL / Neon / Vercel Postgres
 -- ==========================================================
 

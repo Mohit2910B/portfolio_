@@ -299,85 +299,6 @@ const DEFAULT_THEME: ThemeSettings = {
   grain: true,
 };
 
-const COLOR_SWATCHES = [
-  { name: "Signature Magenta", value: "#e0147f" },
-  { name: "Electric Blue", value: "#2563eb" },
-  { name: "Emerald Green", value: "#10b981" },
-  { name: "Imperial Gold", value: "#eab308" },
-  { name: "Sunset Crimson", value: "#ef4444" },
-  { name: "Royal Purple", value: "#8b5cf6" },
-  { name: "Cyber Cyan", value: "#06b6d4" },
-  { name: "Titanium Silver", value: "#64748b" },
-];
-
-const THEME_STYLES = [
-  {
-    id: "vision-pro",
-    name: "Vision Pro / Apple Clay",
-    badge: "Reference 1 & 4",
-    tagline: "Porcelain 3D clay, soft dual-shadow depth & crystal highlights",
-    accent: "#e0147f",
-    opacity: 45,
-    blur: 28,
-    grain: false,
-    gradient: "linear-gradient(135deg, #ffffff 0%, #f0f2f5 100%)",
-    border: "rgba(0, 0, 0, 0.12)",
-    textColor: "#0b0b0c",
-  },
-  {
-    id: "neo-tactile",
-    name: "Neo-Tactile 3D",
-    badge: "Reference 2 & 3",
-    tagline: "Embossed tactile cards, inset grooves & electric blue glow",
-    accent: "#2563eb",
-    opacity: 55,
-    blur: 20,
-    grain: false,
-    gradient: "linear-gradient(135deg, #161b22 0%, #0d1117 100%)",
-    border: "rgba(37, 99, 235, 0.35)",
-    textColor: "#ffffff",
-  },
-  {
-    id: "glassmorphism",
-    name: "Minimal Glassmorphism",
-    badge: "Reference 4",
-    tagline: "Frosted translucent crystal glass & clean prismatic borders",
-    accent: "#8b5cf6",
-    opacity: 35,
-    blur: 24,
-    grain: true,
-    gradient: "linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%)",
-    border: "rgba(139, 92, 246, 0.35)",
-    textColor: "#0b0b0c",
-  },
-  {
-    id: "luxury-matte",
-    name: "Luxury Matte Dark",
-    badge: "Reference 5",
-    tagline: "Deep luxury matte dashboard aesthetic & neon cyan glow",
-    accent: "#00f2fe",
-    opacity: 20,
-    blur: 24,
-    grain: true,
-    gradient: "linear-gradient(135deg, #12141a 0%, #06070a 100%)",
-    border: "rgba(0, 242, 254, 0.35)",
-    textColor: "#ffffff",
-  },
-  {
-    id: "editorial",
-    name: "Signature Editorial",
-    badge: "Default",
-    tagline: "Classic high-contrast monochrome with hot magenta accent",
-    accent: "#e0147f",
-    opacity: 45,
-    blur: 20,
-    grain: true,
-    gradient: "linear-gradient(135deg, #0b0b0c 0%, #1a1618 100%)",
-    border: "rgba(224, 20, 127, 0.35)",
-    textColor: "#ffffff",
-  },
-];
-
 export function ThemeAdmin({ onChanged }: { onChanged: () => void }) {
   const { settings, error, notice, saving, save } = useSettings<ThemeSettings>("theme");
   if (!settings) return <SettingsLoader title="Theme Studio" error={error} />;
@@ -385,7 +306,7 @@ export function ThemeAdmin({ onChanged }: { onChanged: () => void }) {
     <div>
       <SectionTitle
         title="Theme Studio"
-        subtitle="Choose your website's UI Design Theme (Vision Pro, Neo-Tactile 3D, Minimal Glassmorphism, Luxury Dark Matte) or customise colors and glass treatments."
+        subtitle="Customise your website's glassmorphism transparency and blur strength."
       />
       {error && <Notice tone="error">{error}</Notice>}
       {notice && (
@@ -420,297 +341,40 @@ function ThemeForm({
     glassBlur: initial.glassBlur ?? DEFAULT_THEME.glassBlur,
     grain: initial.grain ?? DEFAULT_THEME.grain,
   });
-  const [selectedThemeId, setSelectedThemeId] = useState<string>("editorial");
-  const [resetNotice, setResetNotice] = useState("");
-
-  const applyThemeStyle = (style: (typeof THEME_STYLES)[0]) => {
-    setSelectedThemeId(style.id);
-    setDraft({
-      accent: style.accent,
-      glassOpacity: style.opacity,
-      glassBlur: style.blur,
-      grain: style.grain,
-    });
-  };
-
-  const handleReset = () => {
-    setSelectedThemeId("editorial");
-    setDraft({ ...DEFAULT_THEME });
-    setResetNotice("Restored to default settings. Click 'Save changes' below to apply.");
-    window.setTimeout(() => setResetNotice(""), 3500);
-  };
 
   return (
-    <div className="space-y-6 mt-4">
-      {resetNotice && (
-        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-50 p-4 text-xs font-semibold text-emerald-800 animate-fade-in">
-          {resetNotice}
-        </div>
-      )}
-
-      {/* 1. UI Design Themes Selector (Reference Styles) */}
-      <Card className="p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-bold text-ink">UI Design Themes (Reference Presets)</h3>
-            <p className="text-xs text-ink/55 mt-0.5">
-              Click any theme card below to instantly configure your portfolio's UI style, colors, and depth.
-            </p>
-          </div>
-        </div>
-
-        <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          {THEME_STYLES.map((style) => {
-            const isSelected = selectedThemeId === style.id;
-            return (
-              <button
-                key={style.id}
-                type="button"
-                onClick={() => applyThemeStyle(style)}
-                className={`group relative flex flex-col text-left rounded-2xl p-4 transition-all duration-300 cursor-pointer ${
-                  isSelected
-                    ? "ring-2 ring-[var(--accent)] shadow-xl scale-[1.02] border-transparent bg-ink/5"
-                    : "border border-ink/10 bg-white/70 hover:border-ink/25 hover:shadow-md hover:scale-[1.01]"
-                }`}
-              >
-                {/* Mini Preview Box */}
-                <div
-                  className="relative h-20 w-full rounded-xl overflow-hidden p-2.5 flex flex-col justify-between border shadow-sm"
-                  style={{
-                    background: style.gradient,
-                    borderColor: style.border,
-                  }}
-                >
-                  <div className="flex items-center justify-between">
-                    <span
-                      className="text-[0.55rem] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded backdrop-blur-md"
-                      style={{
-                        backgroundColor: "rgba(0,0,0,0.4)",
-                        color: "#ffffff",
-                      }}
-                    >
-                      {style.badge}
-                    </span>
-                    {isSelected && (
-                      <span className="grid h-4 w-4 place-items-center rounded-full bg-[var(--accent)] text-white text-[0.6rem] font-bold shadow">
-                        ✓
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span
-                      className="h-2.5 w-2.5 rounded-full shadow-sm"
-                      style={{ backgroundColor: style.accent }}
-                    />
-                    <span className="h-1.5 w-10 rounded-full bg-white/40" />
-                  </div>
-                </div>
-
-                {/* Theme Details */}
-                <div className="mt-3 flex-1 flex flex-col justify-between">
-                  <div>
-                    <h4 className="text-xs font-bold text-ink">{style.name}</h4>
-                    <p className="mt-1 text-[0.62rem] text-ink/55 leading-relaxed">
-                      {style.tagline}
-                    </p>
-                  </div>
-                  <div className="mt-2.5 pt-2 border-t border-ink/8 flex items-center justify-between text-[0.6rem] font-mono text-ink/50">
-                    <span className="flex items-center gap-1">
-                      <span
-                        className="h-2 w-2 rounded-full inline-block"
-                        style={{ backgroundColor: style.accent }}
-                      />
-                      {style.accent}
-                    </span>
-                    <span>{style.opacity}% Glass</span>
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </Card>
-
-      {/* 1. Color Swatches & Accent Customization */}
-      <Card className="p-6 space-y-5">
-        <div>
-          <h3 className="text-sm font-bold text-ink">Primary Accent Colour</h3>
-          <p className="text-xs text-ink/55 mt-0.5">
-            Choose a signature colour swatch or select any custom colour.
-          </p>
-
-          <div className="mt-4 flex flex-wrap gap-2.5">
-            {COLOR_SWATCHES.map((swatch) => {
-              const active = draft.accent.toLowerCase() === swatch.value.toLowerCase();
-              return (
-                <button
-                  key={swatch.value}
-                  type="button"
-                  onClick={() => setDraft({ ...draft, accent: swatch.value })}
-                  className={`flex items-center gap-2.5 rounded-full px-4 py-2 text-xs font-bold transition-all ${
-                    active
-                      ? "bg-ink text-white ring-2 ring-ink ring-offset-2 shadow-md scale-105"
-                      : "border border-ink/15 bg-white text-ink/80 hover:bg-ink/5 hover:border-ink/30"
-                  }`}
-                >
-                  <span
-                    className="h-3.5 w-3.5 rounded-full border border-black/15 shadow-sm"
-                    style={{ backgroundColor: swatch.value }}
-                  />
-                  <span>{swatch.name}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="pt-4 border-t border-ink/8 grid gap-5 sm:grid-cols-2">
-          <Field label="Custom Accent Hex">
-            <div className="flex items-center gap-3">
-              <input
-                type="color"
-                value={draft.accent}
-                onChange={(event) => setDraft({ ...draft, accent: event.target.value })}
-                className="h-11 w-16 cursor-pointer rounded-xl border border-ink/15 bg-transparent p-1"
-                aria-label="Custom accent colour"
-              />
-              <TextInput
-                value={draft.accent}
-                onChange={(value) => setDraft({ ...draft, accent: value })}
-                placeholder="#e0147f"
-              />
-            </div>
-          </Field>
-
-          <div className="flex items-center pt-2 sm:pt-6">
-            <Toggle
-              checked={draft.grain}
-              onChange={(value) => setDraft({ ...draft, grain: value })}
-              label="Film Grain Cinematic Texture"
-            />
-          </div>
-        </div>
-      </Card>
-
-      {/* 2. Glassmorphism Sliders */}
+    <div className="mt-5 space-y-6">
       <Card className="grid gap-6 p-6 sm:grid-cols-2">
-        <Field label={`Glass Opacity — ${draft.glassOpacity}%`} hint="Transparency of frosted glass cards (0% - 100%).">
+        <Field
+          label={`Glass Opacity — ${draft.glassOpacity}%`}
+          hint="Controls the background opacity of glass panels across the site (0% - 100%)."
+        >
           <input
             type="range"
             min={0}
             max={100}
             value={draft.glassOpacity}
             onChange={(event) => setDraft({ ...draft, glassOpacity: Number(event.target.value) })}
-            className="w-full accent-[var(--accent)] cursor-pointer"
+            className="w-full accent-ink cursor-pointer"
           />
         </Field>
 
-        <Field label={`Glass Blur Filter — ${draft.glassBlur}px`} hint="Strength of background blur behind glass (0px - 40px).">
+        <Field
+          label={`Glass Blur Filter — ${draft.glassBlur}px`}
+          hint="Controls the backdrop blur filter behind glass panels (0px - 40px)."
+        >
           <input
             type="range"
             min={0}
             max={40}
             value={draft.glassBlur}
             onChange={(event) => setDraft({ ...draft, glassBlur: Number(event.target.value) })}
-            className="w-full accent-[var(--accent)] cursor-pointer"
+            className="w-full accent-ink cursor-pointer"
           />
         </Field>
       </Card>
 
-      {/* 3. Live Preview Card */}
-      <Card className="p-6">
-        <div className="flex items-center justify-between mb-3">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-ink/60">
-            Live Preview (Website Visual Treatment)
-          </h4>
-          <span className="mono text-[0.65rem] font-bold text-ink/50">
-            Accent: {draft.accent.toUpperCase()}
-          </span>
-        </div>
-
-        <div className="rounded-2xl border border-white/10 bg-[#0b0b0c] p-5 text-white shadow-xl">
-          <div className="flex items-center justify-between pb-3 border-b border-white/10">
-            <p className="text-xs font-bold uppercase tracking-widest text-white">
-              MOHIT BABARIYA <span style={{ color: draft.accent }}>·</span> CREATIVE PORTFOLIO
-            </p>
-            <span
-              className="rounded-full px-3.5 py-1 text-[0.62rem] font-bold text-white shadow-sm"
-              style={{ backgroundColor: draft.accent }}
-            >
-              Start Project
-            </span>
-          </div>
-
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <div
-              className="rounded-xl p-3.5 border transition-all"
-              style={{
-                backgroundColor: `rgba(255, 255, 255, ${Math.max(draft.glassOpacity, 8) / 100})`,
-                backdropFilter: `blur(${draft.glassBlur}px)`,
-                borderColor: "rgba(255, 255, 255, 0.16)",
-              }}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-[0.6rem] font-bold uppercase tracking-wider text-white/50">01</span>
-                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: draft.accent }} />
-              </div>
-              <p className="mt-2 text-xs font-bold text-white">Video Editing</p>
-              <p className="mt-1 text-[0.65rem] text-white/70">Cinematic pacing & high-retention cuts</p>
-            </div>
-
-            <div
-              className="rounded-xl p-3.5 border transition-all"
-              style={{
-                backgroundColor: `rgba(255, 255, 255, ${Math.max(draft.glassOpacity, 8) / 100})`,
-                backdropFilter: `blur(${draft.glassBlur}px)`,
-                borderColor: "rgba(255, 255, 255, 0.16)",
-              }}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-[0.6rem] font-bold uppercase tracking-wider text-white/50">02</span>
-                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: draft.accent }} />
-              </div>
-              <p className="mt-2 text-xs font-bold text-white">Motion Graphics</p>
-              <p className="mt-1 text-[0.65rem] text-white/70">Dynamic 3D titles & kinetic typography</p>
-            </div>
-
-            <div
-              className="rounded-xl p-3.5 border transition-all"
-              style={{
-                backgroundColor: `rgba(255, 255, 255, ${Math.max(draft.glassOpacity, 8) / 100})`,
-                backdropFilter: `blur(${draft.glassBlur}px)`,
-                borderColor: "rgba(255, 255, 255, 0.16)",
-              }}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-[0.6rem] font-bold uppercase tracking-wider text-white/50">03</span>
-                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: draft.accent }} />
-              </div>
-              <p className="mt-2 text-xs font-bold text-white">Graphic Design</p>
-              <p className="mt-1 text-[0.65rem] text-white/70">High-CTR thumbnails and key art</p>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      {/* 4. Action Row with Reset & Save Buttons */}
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-4 pt-2">
-        <button
-          type="button"
-          onClick={handleReset}
-          className="flex items-center gap-2 rounded-full border border-ink/20 bg-white px-5 py-2.5 text-xs font-bold text-ink hover:bg-ink/5 hover:border-ink/40 transition-colors shadow-sm cursor-pointer"
-        >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-            <path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8" />
-            <path d="M3 3v5h5" />
-          </svg>
-          <span>Reset to Default</span>
-        </button>
-
-        <Button variant="dark" disabled={saving} onClick={() => onSave(draft)}>
-          {saving ? "Saving…" : "Save changes"}
-        </Button>
-      </div>
+      <SaveRow saving={saving} onClick={() => onSave(draft)} />
     </div>
   );
 }
