@@ -94,7 +94,7 @@ export default function ChatWidget() {
   useEffect(() => {
     if (!open || !conversation) return;
     void loadMessages();
-    const timer = window.setInterval(loadMessages, 4000);
+    const timer = window.setInterval(loadMessages, 1200);
     return () => window.clearInterval(timer);
   }, [open, conversation, loadMessages]);
 
@@ -192,6 +192,18 @@ export default function ChatWidget() {
     }
 
     setDraft("");
+    // ⚡ Optimistic UI: Immediately show the user's message bubble with 0 latency
+    const tempMessage: Message = {
+      id: Date.now(),
+      conversationId: activeConvo.id,
+      senderType: "customer",
+      message: text,
+      isRead: true,
+      createdAt: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, tempMessage]);
+    scrollToEnd();
+
     try {
       const response = await fetch("/api/chat/messages", {
         method: "POST",
@@ -205,7 +217,9 @@ export default function ChatWidget() {
         return;
       }
       setError("");
-      await loadMessages();
+      // Fast fetch to catch quick AI response
+      window.setTimeout(() => void loadMessages(), 600);
+      window.setTimeout(() => void loadMessages(), 1400);
     } catch {
       setError("Network error. Message not sent.");
       setDraft(text);
