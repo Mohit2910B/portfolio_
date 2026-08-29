@@ -354,13 +354,13 @@ export async function GET(_request: Request, ctx: Params) {
             try {
               const inserted = await db
                 .insert(notificationSettings)
-                .values({ id: 1, emailEnabled: false, notificationEmail: "mohitbabariyaa@gmail.com" })
+                .values({ id: 1, emailEnabled: true, notificationEmail: "mohitbabariyaa@gmail.com" })
                 .returning();
               rows = inserted;
             } catch {}
           }
           return ok({
-            settings: rows[0] ?? { id: 1, emailEnabled: false, notificationEmail: "mohitbabariyaa@gmail.com" },
+            settings: rows[0] ?? { id: 1, emailEnabled: true, notificationEmail: "mohitbabariyaa@gmail.com" },
           });
         }
         throw notFound("Unknown settings resource.");

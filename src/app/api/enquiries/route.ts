@@ -142,10 +142,60 @@ export async function POST(request: Request) {
       console.warn("[enquiries] Database save failed, sending email notification:", err);
     }
 
-    void sendAdminNotification(
-      "New project enquiry",
-      `<h2>New project enquiry</h2><p><b>${values.name}</b> submitted an enquiry.</p><p>Email: ${values.email}</p><p>Phone: ${values.countryCode} ${values.phoneNumber}</p><p>Work: ${values.selectedWork}</p><p>${values.description}</p>`,
-    );
+    const workList = (() => {
+      try {
+        const parsed = JSON.parse(values.selectedWork || "[]");
+        return Array.isArray(parsed) && parsed.length > 0 ? parsed.join(", ") : values.selectedWork;
+      } catch {
+        return values.selectedWork;
+      }
+    })();
+
+    const emailSubject = `🔔 New Project Enquiry: ${values.name}${values.company ? ` (${values.company})` : ""}`;
+
+    const emailHtml = `
+      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;padding:28px 24px;border-radius:16px;background:#ffffff;border:1px solid #e5e5e5;color:#111111;">
+        <div style="margin-bottom:20px;border-bottom:1px solid #f0f0f0;padding-bottom:16px;">
+          <span style="font-size:11px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#e0147f;">NEW CLIENT ENQUIRY</span>
+          <h1 style="margin:8px 0 0;font-size:22px;font-weight:700;color:#0b0b0c;">${values.name}</h1>
+          ${values.company ? `<p style="margin:4px 0 0;font-size:13px;color:#666666;">${values.company}</p>` : ""}
+        </div>
+
+        <div style="background:#f9f8f6;border:1px solid #eae7e1;border-radius:12px;padding:18px 20px;margin-bottom:20px;">
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <tr>
+              <td style="padding:6px 0;color:#888888;width:110px;font-weight:600;">Email:</td>
+              <td style="padding:6px 0;"><a href="mailto:${values.email}" style="color:#e0147f;text-decoration:none;font-weight:600;">${values.email}</a></td>
+            </tr>
+            <tr>
+              <td style="padding:6px 0;color:#888888;font-weight:600;">Phone:</td>
+              <td style="padding:6px 0;"><a href="tel:${values.countryCode}${values.phoneNumber}" style="color:#111111;text-decoration:none;font-weight:600;">${values.countryCode} ${values.phoneNumber}</a></td>
+            </tr>
+            <tr>
+              <td style="padding:6px 0;color:#888888;font-weight:600;">Services:</td>
+              <td style="padding:6px 0;color:#111111;font-weight:600;">${workList}</td>
+            </tr>
+            ${values.deadline ? `<tr><td style="padding:6px 0;color:#888888;font-weight:600;">Deadline:</td><td style="padding:6px 0;color:#111111;">${values.deadline}</td></tr>` : ""}
+            ${values.referenceUrl ? `<tr><td style="padding:6px 0;color:#888888;font-weight:600;">Reference:</td><td style="padding:6px 0;"><a href="${values.referenceUrl}" target="_blank" style="color:#e0147f;">${values.referenceUrl}</a></td></tr>` : ""}
+          </table>
+        </div>
+
+        <div style="margin-bottom:24px;">
+          <h3 style="margin:0 0 8px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#888888;">Project Details:</h3>
+          <div style="background:#ffffff;border:1px solid #e5e5e5;border-radius:10px;padding:16px;font-size:14px;line-height:1.6;color:#222222;white-space:pre-wrap;">${values.description}</div>
+        </div>
+
+        <div style="text-align:center;padding-top:12px;border-top:1px solid #f0f0f0;">
+          <a href="https://mohitbabariya.in/admin?section=enquiries" style="display:inline-block;background:#0b0b0c;color:#ffffff;text-decoration:none;padding:11px 24px;border-radius:999px;font-size:12px;font-weight:600;letter-spacing:0.05em;">Open in Admin Panel</a>
+        </div>
+      </div>
+    `;
+
+    try {
+      await sendAdminNotification(emailSubject, emailHtml);
+    } catch (notifyErr) {
+      console.error("[enquiries] Error dispatching admin notification email:", notifyErr);
+    }
 
     return created({
       enquiry: insertedRecord || { id: Date.now(), ...values },

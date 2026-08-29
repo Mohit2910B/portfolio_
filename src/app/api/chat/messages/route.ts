@@ -55,7 +55,25 @@ export async function POST(request: Request) {
       })
       .where(eq(chatConversations.id, conversation.id));
 
-    void sendAdminNotification("New customer chat message", `<h2>New chat message</h2><p><b>${conversation.name}</b> (${conversation.email})</p><p>${message}</p>`);
+    const chatSubject = `💬 Live Chat Message from ${conversation.name || "Website Visitor"}`;
+    const chatHtml = `
+      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;border-radius:14px;background:#ffffff;border:1px solid #e5e5e5;color:#111111;">
+        <span style="font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#e0147f;">NEW LIVE CHAT MESSAGE</span>
+        <h2 style="margin:8px 0 4px;font-size:18px;color:#0b0b0c;">${conversation.name || "Website Visitor"}</h2>
+        ${conversation.email ? `<p style="margin:0 0 16px;font-size:13px;color:#666666;">${conversation.email}</p>` : ""}
+        <div style="background:#f7f5f2;border-radius:10px;padding:16px;font-size:14px;line-height:1.5;color:#111111;margin-bottom:18px;">${message}</div>
+        <div style="text-align:center;">
+          <a href="https://mohitbabariya.in/admin?section=chat" style="display:inline-block;background:#0b0b0c;color:#ffffff;text-decoration:none;padding:10px 22px;border-radius:999px;font-size:12px;font-weight:600;">Reply in Live Chat</a>
+        </div>
+      </div>
+    `;
+
+    try {
+      await sendAdminNotification(chatSubject, chatHtml);
+    } catch (notifyErr) {
+      console.warn("[chat] Error dispatching admin chat notification email:", notifyErr);
+    }
+
     void runChatAssistant(conversation.id, message);
     return ok({ message: inserted[0] });
   });

@@ -15,13 +15,19 @@ export async function getNotificationSettings() {
 
   try {
     const rows = await db.select().from(notificationSettings).limit(1);
-    return (
-      rows[0] ?? {
-        id: 1,
-        emailEnabled: true,
-        notificationEmail: defaultEmail,
-      }
-    );
+    const row = rows[0];
+    if (row) {
+      return {
+        id: row.id,
+        emailEnabled: row.emailEnabled !== false,
+        notificationEmail: row.notificationEmail?.trim().toLowerCase() || defaultEmail,
+      };
+    }
+    return {
+      id: 1,
+      emailEnabled: true,
+      notificationEmail: defaultEmail,
+    };
   } catch (error) {
     console.error("[notifications] Failed to fetch notification settings:", error);
     return {
