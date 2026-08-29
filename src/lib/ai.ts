@@ -262,28 +262,37 @@ export async function runChatAssistant(conversationId: number, latest: string) {
     // 1. Try Gemini API (gemini-3.6-flash / gemini-3.5-flash)
     if (geminiKey) {
       const models = ["gemini-3.6-flash", "gemini-3.5-flash"];
+      const conversationContents = [
+        ...history.map((m) => ({
+          role: m.senderType === "customer" ? "user" : "model",
+          parts: [{ text: m.message }],
+        })),
+        {
+          role: "user",
+          parts: [{ text: latest }],
+        },
+      ];
+
       for (const model of models) {
         if (generatedReply) break;
         try {
           const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
-          const contents = [
-            {
-              role: "user",
-              parts: [
-                {
-                  text: `${SYSTEM_PROMPT}\n\nHere is the ongoing conversation history:\n${history
-                    .map((m) => `${m.senderType === "customer" ? "Client" : "Assistant"}: ${m.message}`)
-                    .join("\n")}\n\nClient latest message: ${latest}\n\nInstructions: Respond naturally and helpfully to whatever the client is asking (in their language, e.g. English, Gujarati, Hindi). Keep response crisp, warm, and engaging in 2-3 sentences:`,
-                },
-              ],
-            },
-          ];
           const res = await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              contents,
-              generationConfig: { maxOutputTokens: 350, temperature: 0.75 },
+              systemInstruction: {
+                parts: [
+                  {
+                    text: `${SYSTEM_PROMPT}\n\nAlways reply directly, warmly, and helpfully to the user in their language (e.g. Gujarati, Hindi, or English). Keep your answer conversational, polite, and concise (2-4 sentences max). Never output scratchpad, internal checks, or meta-notes.`,
+                  },
+                ],
+              },
+              contents: conversationContents,
+              generationConfig: {
+                maxOutputTokens: 1000,
+                temperature: 0.7,
+              },
             }),
           });
           if (res.ok) {
