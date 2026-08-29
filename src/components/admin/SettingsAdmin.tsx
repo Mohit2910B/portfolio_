@@ -310,6 +310,74 @@ const COLOR_SWATCHES = [
   { name: "Titanium Silver", value: "#64748b" },
 ];
 
+const THEME_STYLES = [
+  {
+    id: "vision-pro",
+    name: "Vision Pro / Apple Clay",
+    badge: "Reference 1 & 4",
+    tagline: "Porcelain 3D clay, soft dual-shadow depth & crystal highlights",
+    accent: "#e0147f",
+    opacity: 45,
+    blur: 28,
+    grain: false,
+    gradient: "linear-gradient(135deg, #ffffff 0%, #f0f2f5 100%)",
+    border: "rgba(0, 0, 0, 0.12)",
+    textColor: "#0b0b0c",
+  },
+  {
+    id: "neo-tactile",
+    name: "Neo-Tactile 3D",
+    badge: "Reference 2 & 3",
+    tagline: "Embossed tactile cards, inset grooves & electric blue glow",
+    accent: "#2563eb",
+    opacity: 55,
+    blur: 20,
+    grain: false,
+    gradient: "linear-gradient(135deg, #161b22 0%, #0d1117 100%)",
+    border: "rgba(37, 99, 235, 0.35)",
+    textColor: "#ffffff",
+  },
+  {
+    id: "glassmorphism",
+    name: "Minimal Glassmorphism",
+    badge: "Reference 4",
+    tagline: "Frosted translucent crystal glass & clean prismatic borders",
+    accent: "#8b5cf6",
+    opacity: 35,
+    blur: 24,
+    grain: true,
+    gradient: "linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%)",
+    border: "rgba(139, 92, 246, 0.35)",
+    textColor: "#0b0b0c",
+  },
+  {
+    id: "luxury-matte",
+    name: "Luxury Matte Dark",
+    badge: "Reference 5",
+    tagline: "Deep luxury matte dashboard aesthetic & neon cyan glow",
+    accent: "#00f2fe",
+    opacity: 20,
+    blur: 24,
+    grain: true,
+    gradient: "linear-gradient(135deg, #12141a 0%, #06070a 100%)",
+    border: "rgba(0, 242, 254, 0.35)",
+    textColor: "#ffffff",
+  },
+  {
+    id: "editorial",
+    name: "Signature Editorial",
+    badge: "Default",
+    tagline: "Classic high-contrast monochrome with hot magenta accent",
+    accent: "#e0147f",
+    opacity: 45,
+    blur: 20,
+    grain: true,
+    gradient: "linear-gradient(135deg, #0b0b0c 0%, #1a1618 100%)",
+    border: "rgba(224, 20, 127, 0.35)",
+    textColor: "#ffffff",
+  },
+];
+
 export function ThemeAdmin({ onChanged }: { onChanged: () => void }) {
   const { settings, error, notice, saving, save } = useSettings<ThemeSettings>("theme");
   if (!settings) return <SettingsLoader title="Theme Studio" error={error} />;
@@ -317,7 +385,7 @@ export function ThemeAdmin({ onChanged }: { onChanged: () => void }) {
     <div>
       <SectionTitle
         title="Theme Studio"
-        subtitle="Customise your website's primary accent colour, glassmorphism transparency, and film grain texture."
+        subtitle="Choose your website's UI Design Theme (Vision Pro, Neo-Tactile 3D, Minimal Glassmorphism, Luxury Dark Matte) or customise colors and glass treatments."
       />
       {error && <Notice tone="error">{error}</Notice>}
       {notice && (
@@ -352,9 +420,21 @@ function ThemeForm({
     glassBlur: initial.glassBlur ?? DEFAULT_THEME.glassBlur,
     grain: initial.grain ?? DEFAULT_THEME.grain,
   });
+  const [selectedThemeId, setSelectedThemeId] = useState<string>("editorial");
   const [resetNotice, setResetNotice] = useState("");
 
+  const applyThemeStyle = (style: (typeof THEME_STYLES)[0]) => {
+    setSelectedThemeId(style.id);
+    setDraft({
+      accent: style.accent,
+      glassOpacity: style.opacity,
+      glassBlur: style.blur,
+      grain: style.grain,
+    });
+  };
+
   const handleReset = () => {
+    setSelectedThemeId("editorial");
     setDraft({ ...DEFAULT_THEME });
     setResetNotice("Restored to default settings. Click 'Save changes' below to apply.");
     window.setTimeout(() => setResetNotice(""), 3500);
@@ -363,10 +443,93 @@ function ThemeForm({
   return (
     <div className="space-y-6 mt-4">
       {resetNotice && (
-        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-50 p-4 text-xs font-semibold text-emerald-800">
+        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-50 p-4 text-xs font-semibold text-emerald-800 animate-fade-in">
           {resetNotice}
         </div>
       )}
+
+      {/* 1. UI Design Themes Selector (Reference Styles) */}
+      <Card className="p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-ink">UI Design Themes (Reference Presets)</h3>
+            <p className="text-xs text-ink/55 mt-0.5">
+              Click any theme card below to instantly configure your portfolio's UI style, colors, and depth.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          {THEME_STYLES.map((style) => {
+            const isSelected = selectedThemeId === style.id;
+            return (
+              <button
+                key={style.id}
+                type="button"
+                onClick={() => applyThemeStyle(style)}
+                className={`group relative flex flex-col text-left rounded-2xl p-4 transition-all duration-300 cursor-pointer ${
+                  isSelected
+                    ? "ring-2 ring-[var(--accent)] shadow-xl scale-[1.02] border-transparent bg-ink/5"
+                    : "border border-ink/10 bg-white/70 hover:border-ink/25 hover:shadow-md hover:scale-[1.01]"
+                }`}
+              >
+                {/* Mini Preview Box */}
+                <div
+                  className="relative h-20 w-full rounded-xl overflow-hidden p-2.5 flex flex-col justify-between border shadow-sm"
+                  style={{
+                    background: style.gradient,
+                    borderColor: style.border,
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <span
+                      className="text-[0.55rem] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded backdrop-blur-md"
+                      style={{
+                        backgroundColor: "rgba(0,0,0,0.4)",
+                        color: "#ffffff",
+                      }}
+                    >
+                      {style.badge}
+                    </span>
+                    {isSelected && (
+                      <span className="grid h-4 w-4 place-items-center rounded-full bg-[var(--accent)] text-white text-[0.6rem] font-bold shadow">
+                        ✓
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className="h-2.5 w-2.5 rounded-full shadow-sm"
+                      style={{ backgroundColor: style.accent }}
+                    />
+                    <span className="h-1.5 w-10 rounded-full bg-white/40" />
+                  </div>
+                </div>
+
+                {/* Theme Details */}
+                <div className="mt-3 flex-1 flex flex-col justify-between">
+                  <div>
+                    <h4 className="text-xs font-bold text-ink">{style.name}</h4>
+                    <p className="mt-1 text-[0.62rem] text-ink/55 leading-relaxed">
+                      {style.tagline}
+                    </p>
+                  </div>
+                  <div className="mt-2.5 pt-2 border-t border-ink/8 flex items-center justify-between text-[0.6rem] font-mono text-ink/50">
+                    <span className="flex items-center gap-1">
+                      <span
+                        className="h-2 w-2 rounded-full inline-block"
+                        style={{ backgroundColor: style.accent }}
+                      />
+                      {style.accent}
+                    </span>
+                    <span>{style.opacity}% Glass</span>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </Card>
 
       {/* 1. Color Swatches & Accent Customization */}
       <Card className="p-6 space-y-5">
