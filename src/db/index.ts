@@ -101,15 +101,16 @@ export type DbResolution =
 export function getDatabaseResolution(): DbResolution {
   const isCloud = isCloudDeployment();
 
-  const rawUrl =
-    cleanEnvValue(process.env.DATABASE_URL) ||
-    cleanEnvValue(process.env.POSTGRES_URL) ||
-    cleanEnvValue(process.env.POSTGRES_PRISMA_URL) ||
-    cleanEnvValue(process.env.POSTGRES_URL_NON_POOLING) ||
-    cleanEnvValue(process.env.NEON_URL) ||
-    cleanEnvValue(process.env.STORAGE_URL) ||
-    cleanEnvValue(process.env.DATABASE_URI) ||
-    cleanEnvValue(process.env.DB_URL);
+  const candidateUrls = [
+    cleanEnvValue(process.env.POSTGRES_URL),
+    cleanEnvValue(process.env.POSTGRES_PRISMA_URL),
+    cleanEnvValue(process.env.DATABASE_URL),
+    cleanEnvValue(process.env.POSTGRES_URL_NON_POOLING),
+    cleanEnvValue(process.env.NEON_URL),
+    cleanEnvValue(process.env.STORAGE_URL),
+    cleanEnvValue(process.env.DATABASE_URI),
+    cleanEnvValue(process.env.DB_URL),
+  ].filter(Boolean);
 
   const dbHost = cleanEnvValue(process.env.DB_HOST);
   const dbPort = process.env.DB_PORT ? Number(cleanEnvValue(process.env.DB_PORT)) : 5432;
@@ -118,35 +119,34 @@ export function getDatabaseResolution(): DbResolution {
   const dbName = cleanEnvValue(process.env.DB_NAME);
   const dbSslEnv = cleanEnvValue(process.env.DB_SSL).toLowerCase();
 
-  let urlHostname: string | null = null;
-  let urlIsLocal = false;
-
-  if (rawUrl) {
-    urlHostname = extractHostname(rawUrl);
-    if (urlHostname) {
-      urlIsLocal = isInvalidOrPlaceholderHost(urlHostname);
+  // 1. Search for first valid remote URL
+  let validRemoteUrl: string | null = null;
+  for (const u of candidateUrls) {
+    const h = extractHostname(u);
+    if (h && !isInvalidOrPlaceholderHost(h)) {
+      validRemoteUrl = u;
+      break;
     }
   }
 
-  const hostIsProvided = Boolean(dbHost);
-  const hostIsLocal = dbHost ? isInvalidOrPlaceholderHost(dbHost) : false;
-
-  // 1. Remote DATABASE_URL
-  if (rawUrl && !urlIsLocal) {
-    const sslDisabled = rawUrl.includes("sslmode=disable") || dbSslEnv === "false";
+  if (validRemoteUrl) {
+    const sslDisabled = validRemoteUrl.includes("sslmode=disable") || dbSslEnv === "false";
     const sslEnabled =
       dbSslEnv === "true" ||
-      rawUrl.includes("sslmode=require") ||
-      rawUrl.includes("sslmode=prefer") ||
-      rawUrl.includes("sslmode=verify") ||
+      validRemoteUrl.includes("sslmode=require") ||
+      validRemoteUrl.includes("sslmode=prefer") ||
+      validRemoteUrl.includes("sslmode=verify") ||
       !sslDisabled;
 
     return {
       type: "remote-url",
-      connectionString: rawUrl,
+      connectionString: validRemoteUrl,
       ssl: sslEnabled && !sslDisabled,
     };
   }
+
+  const hostIsProvided = Boolean(dbHost);
+  const hostIsLocal = dbHost ? isInvalidOrPlaceholderHost(dbHost) : false;
 
   // 2. Remote discrete DB_HOST
   if (hostIsProvided && !hostIsLocal) {
@@ -170,8 +170,9 @@ export function getDatabaseResolution(): DbResolution {
   }
 
   // 4. Local development only:
-  if (rawUrl) {
-    return { type: "local-url", connectionString: rawUrl };
+  const firstCandidate = candidateUrls[0];
+  if (firstCandidate) {
+    return { type: "local-url", connectionString: firstCandidate };
   }
 
   if (hostIsProvided || dbUser || dbName) {
