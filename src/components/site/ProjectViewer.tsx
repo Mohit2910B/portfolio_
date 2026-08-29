@@ -11,8 +11,14 @@ export default function ProjectViewer({
   project: PublicProject | null;
   onClose: () => void;
 }) {
+  const [detectedVertical, setDetectedVertical] = useState<boolean | null>(null);
+
   useEffect(() => {
-    if (!project) return;
+    if (!project) {
+      setDetectedVertical(null);
+      return;
+    }
+    setDetectedVertical(null);
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
     };
@@ -27,7 +33,6 @@ export default function ProjectViewer({
 
   if (!project) return null;
 
-  const [detectedVertical, setDetectedVertical] = useState<boolean | null>(null);
   const isVertical =
     detectedVertical !== null
       ? detectedVertical
