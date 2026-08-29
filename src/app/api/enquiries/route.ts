@@ -94,11 +94,15 @@ export async function POST(request: Request) {
     const jar = await cookies();
     const verifiedValue = jar.get("enquiry_otp_verified")?.value || "";
     const verifiedToken = jar.get("enquiry_otp_verified_token")?.value || "";
+    const payloadToken = typeof (payload as { verifiedToken?: unknown }).verifiedToken === "string"
+      ? String((payload as { verifiedToken?: unknown }).verifiedToken)
+      : "";
 
     let isVerified = false;
 
     // Check signed cryptographic session token
     if (
+      (payloadToken && verifyVerifiedSession(payloadToken, values.email)) ||
       verifyVerifiedSession(verifiedValue, values.email) ||
       verifyVerifiedSession(verifiedToken, values.email)
     ) {

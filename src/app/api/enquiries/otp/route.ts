@@ -205,7 +205,7 @@ export async function PUT(request: Request) {
       maxAge: 60 * 30,
     });
 
-    return ok({ verified: true, message: "Email verified successfully." });
+    return ok({ verified: true, verifiedToken, message: "Email verified successfully." });
   });
 }
 

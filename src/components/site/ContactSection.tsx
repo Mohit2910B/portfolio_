@@ -137,11 +137,15 @@ export default function ContactSection({ data }: { data: SiteData }) {
     return Object.keys(next).length === 0;
   };
 
+  const [verifiedToken, setVerifiedToken] = useState("");
+
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setMessage("");
     if (!validate()) { setMessage("Please fix the highlighted fields."); return; }
     const countryCode = (form.countryCode || "+91").split(" ")[0] || "+91";
+    let token = verifiedToken;
+
     if (!otpSent) {
       setOtpBusy(true);
       try {
@@ -157,17 +161,21 @@ export default function ContactSection({ data }: { data: SiteData }) {
       setOtpBusy(true);
       try {
         const response = await fetch("/api/enquiries/otp", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: form.email, otp }) });
-        const payload = await response.json() as { error?: string };
+        const payload = await response.json() as { error?: string; verifiedToken?: string };
         if (!response.ok) { setMessage(payload.error ?? "OTP verification failed."); return; }
+        if (payload.verifiedToken) {
+          token = payload.verifiedToken;
+          setVerifiedToken(payload.verifiedToken);
+        }
         setOtpVerified(true); setMessage("Email verified. Sending your enquiry…");
       } catch { setMessage("Network error. OTP verification failed."); return; } finally { setOtpBusy(false); }
     }
     setStatus("sending");
     try {
-      const response = await fetch("/api/enquiries", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...form, countryCode }) });
+      const response = await fetch("/api/enquiries", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...form, countryCode, verifiedToken: token }) });
       const payload = await response.json() as { error?: string; details?: Record<string, string>; message?: string };
       if (!response.ok) { setErrors(payload.details ?? {}); setMessage(payload.error ?? "Submission failed. Please try again."); setStatus("idle"); return; }
-      setStatus("sent"); setMessage(payload.message ?? "Enquiry received."); setForm(EMPTY); setOtp(""); setOtpSent(false); setOtpVerified(false);
+      setStatus("sent"); setMessage(payload.message ?? "Enquiry received."); setForm(EMPTY); setOtp(""); setOtpSent(false); setOtpVerified(false); setVerifiedToken("");
     } catch { setStatus("idle"); setMessage("Network error. Please check your connection and try again."); }
     finally { setStatus((current) => current === "sending" ? "idle" : current); }
   };

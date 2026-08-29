@@ -92,7 +92,7 @@ export async function sendEmail(
   }
 
   try {
-    const response = await fetch("https://api.resend.com/emails", {
+    let response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${key}`,
@@ -106,12 +106,37 @@ export async function sendEmail(
       }),
     });
 
-    const text = await response.text();
+    let text = await response.text();
     let data: Record<string, unknown> | null = null;
     try {
       data = JSON.parse(text);
     } catch {
       data = null;
+    }
+
+    // If custom domain is not verified yet in Resend, automatically fallback to onboarding@resend.dev
+    if (!response.ok && (text.includes("domain") || text.includes("not verified") || response.status === 403)) {
+      console.warn(`[notifications] Retrying with onboarding@resend.dev fallback for ${recipient}...`);
+      const fallbackFrom = "Mohit Babariya <onboarding@resend.dev>";
+      response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: fallbackFrom,
+          to: [recipient],
+          subject,
+          html,
+        }),
+      });
+      text = await response.text();
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = null;
+      }
     }
 
     if (!response.ok) {

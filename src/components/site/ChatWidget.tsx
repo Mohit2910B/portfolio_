@@ -100,6 +100,15 @@ export default function ChatWidget() {
 
   useEffect(() => {
     if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
     void fetch("/api/chat/messages", { cache: "no-store" })
       .then((r) => r.json())
       .then((payload: { conversation: Conversation | null; messages?: Message[]; adminOnline?: boolean }) => {
@@ -244,258 +253,296 @@ export default function ChatWidget() {
       </button>
 
       {open && (
-        <div className="glass-matte-dark fade-in fixed bottom-24 right-4 z-[71] flex h-[70vh] max-h-[580px] w-[calc(100vw-2rem)] max-w-sm flex-col overflow-hidden rounded-[28px] sm:right-8 shadow-2xl backdrop-blur-2xl">
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-white/10 px-4 py-3.5 bg-black/30">
-            <div className="flex-1 min-w-0 pr-2">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`h-2 w-2 shrink-0 rounded-full ${
-                    adminOnline ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
-                  }`}
-                />
-                <p className="truncate text-[0.68rem] font-bold uppercase tracking-[0.16em] text-white">
-                  {adminOnline ? "Mohit Babariya (Live)" : "Mohit Studio AI"}
-                </p>
-              </div>
-              <p className="mt-0.5 truncate text-[0.58rem] text-white/60">
-                {adminOnline
-                  ? "Direct Live Chat · Online now"
-                  : "AI Assistant · Instant replies on video editing & design"}
-              </p>
-            </div>
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 p-2 sm:p-4 md:p-6 backdrop-blur-md animate-fade-in">
+          {/* Side Close Button (Outside / Top-Right Floating) */}
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label="Close chat"
+            className="fixed top-4 right-4 sm:top-6 sm:right-6 z-[90] flex items-center gap-2 rounded-full border border-white/25 bg-black/70 px-4 py-2.5 text-xs font-bold text-white shadow-2xl backdrop-blur-lg hover:bg-white hover:text-black hover:scale-105 transition-all cursor-pointer"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" fill="none" aria-hidden="true">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+            <span className="hidden sm:inline">Close (Esc)</span>
+          </button>
 
-            <div className="flex items-center gap-1.5 shrink-0">
-              {/* Clear Conversation Option */}
-              {hasIdentity && (
-                <button
-                  type="button"
-                  disabled={clearing}
-                  onClick={() => void clearConversation()}
-                  title="Clear conversation on this screen (saved in admin records)"
-                  className="flex items-center gap-1 rounded-full border border-white/15 px-2.5 py-1 text-[0.58rem] font-medium text-white/70 hover:bg-white/10 hover:text-white transition-all"
-                >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                  </svg>
-                  <span>Clear</span>
-                </button>
-              )}
-
-              {/* Close Button */}
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                aria-label="Close chat"
-                className="grid h-7 w-7 place-items-center rounded-full border border-white/20 hover:bg-white/10 transition-colors"
-              >
-                <svg width="11" height="11" viewBox="0 0 24 24" stroke="#fff" strokeWidth="2.2" fill="none" aria-hidden="true">
-                  <path d="M6 6l12 12M18 6L6 18" />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          {notice && (
-            <div className="bg-emerald-950/80 border-b border-emerald-500/30 px-4 py-2 text-[0.62rem] text-emerald-200 text-center animate-fade-in">
-              {notice}
-            </div>
-          )}
-
-          {/* Body: Form if first time / editing; Direct Chat otherwise */}
-          {!hasIdentity || editingProfile ? (
-            <form onSubmit={(e) => void startChat(e)} className="grid gap-3.5 overflow-y-auto p-5" noValidate>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-[0.68rem] text-white/70">
-                <p className="font-semibold text-white">Enter your details once</p>
-                <p className="mt-0.5 text-[0.6rem] text-white/50">
-                  You will remain automatically logged in on this device.
-                </p>
-              </div>
-
-              <div>
-                <label className="label" htmlFor="chat-name">
-                  Full Name *
-                </label>
-                <input
-                  id="chat-name"
-                  className={`field ${fieldErrors.name ? "field-error" : ""}`}
-                  value={details.name}
-                  placeholder="e.g. Alex Sharma"
-                  onChange={(e) => setDetails((d) => ({ ...d, name: e.target.value }))}
-                  required
-                />
-                {fieldErrors.name && <p className="mt-1 text-[0.65rem] text-[#ff8098]">{fieldErrors.name}</p>}
-              </div>
-
-              <div>
-                <label className="label" htmlFor="chat-email">
-                  Email *
-                </label>
-                <input
-                  id="chat-email"
-                  type="email"
-                  className={`field ${fieldErrors.email ? "field-error" : ""}`}
-                  value={details.email}
-                  placeholder="alex@company.com"
-                  onChange={(e) => setDetails((d) => ({ ...d, email: e.target.value }))}
-                  required
-                />
-                {fieldErrors.email && (
-                  <p className="mt-1 text-[0.65rem] text-[#ff8098]">{fieldErrors.email}</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-[100px_1fr] gap-2.5">
-                <div>
-                  <label className="label" htmlFor="chat-code">
-                    Code *
-                  </label>
-                  <select
-                    id="chat-code"
-                    className="field"
-                    value={details.countryCode}
-                    onChange={(e) => setDetails((d) => ({ ...d, countryCode: e.target.value }))}
-                  >
-                    {COUNTRY_CODES.map((code) => (
-                      <option key={code} value={code}>
-                        {code}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="label" htmlFor="chat-phone">
-                    Mobile *
-                  </label>
-                  <input
-                    id="chat-phone"
-                    inputMode="numeric"
-                    className={`field ${fieldErrors.phone ? "field-error" : ""}`}
-                    value={details.phone}
-                    placeholder="98765 43210"
-                    onChange={(e) =>
-                      setDetails((d) => ({ ...d, phone: e.target.value.replace(/[^0-9\s-]/g, "") }))
-                    }
-                    required
+          {/* Main Full-Screen Chat Dialog Container */}
+          <div
+            className="relative flex h-[94vh] sm:h-[88vh] max-h-[860px] w-full max-w-4xl flex-col overflow-hidden rounded-[32px] border border-white/15 bg-[#0e1118]/95 shadow-[0_25px_80px_rgba(0,0,0,0.85)] backdrop-blur-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-white/10 px-5 py-4 bg-black/40">
+              <div className="flex items-center gap-3 min-w-0 pr-4">
+                <div className="relative">
+                  <span className="grid h-11 w-11 place-items-center rounded-2xl bg-white/10 border border-white/15 text-white font-bold text-sm shadow-sm">
+                    MB
+                  </span>
+                  <span
+                    className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-[#0e1118] ${
+                      adminOnline ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
+                    }`}
                   />
-                  {fieldErrors.phone && (
-                    <p className="mt-1 text-[0.65rem] text-[#ff8098]">{fieldErrors.phone}</p>
-                  )}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-sm font-bold uppercase tracking-[0.14em] text-white">
+                      {adminOnline ? "Mohit Babariya (Live)" : "Mohit Studio AI"}
+                    </p>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[0.55rem] font-bold uppercase tracking-wider ${
+                        adminOnline ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                      }`}
+                    >
+                      {adminOnline ? "Online" : "AI Mode"}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 truncate text-[0.68rem] text-white/60">
+                    {adminOnline
+                      ? "Direct Live Chat with Mohit · Video Editing & Design Inquiry"
+                      : "Instant AI Assistant · Inquiries on Video Editing, Retainers & Motion Design"}
+                  </p>
                 </div>
               </div>
 
-              {error && <p className="text-[0.68rem] text-[#ff8098]">{error}</p>}
-
-              <div className="flex items-center gap-2 pt-1">
-                <button type="submit" className="btn btn-accent btn-xs flex-1" disabled={loading}>
-                  {loading ? "Starting…" : "Start Conversation"}
-                </button>
-                {savedProfile && editingProfile && (
+              <div className="flex items-center gap-2 shrink-0">
+                {/* Clear Conversation Option */}
+                {hasIdentity && (
                   <button
                     type="button"
-                    onClick={() => setEditingProfile(false)}
-                    className="btn btn-ghost btn-xs text-white/70"
+                    disabled={clearing}
+                    onClick={() => void clearConversation()}
+                    title="Clear conversation on this screen (saved in admin records)"
+                    className="flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/80 hover:bg-white/15 hover:text-white transition-all cursor-pointer"
                   >
-                    Cancel
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                    </svg>
+                    <span>Clear chat</span>
                   </button>
                 )}
+
+                {/* Header Close Button */}
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  aria-label="Close chat"
+                  className="grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-white/5 hover:bg-white hover:text-black transition-all cursor-pointer"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" fill="none" aria-hidden="true">
+                    <path d="M18 6L6 18M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
-            </form>
-          ) : (
-            <>
-              {/* Messages Container */}
-              <div ref={listRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-3.5">
-                {/* Greeting banner for remembered user */}
-                <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-2.5 text-center">
-                  <p className="text-[0.68rem] font-medium text-white/90">
-                    Welcome, <span className="font-bold text-white">{savedProfile?.name || conversation?.name}</span>!
+            </div>
+
+            {notice && (
+              <div className="bg-emerald-950/90 border-b border-emerald-500/30 px-4 py-2 text-xs text-emerald-200 text-center animate-fade-in font-medium">
+                {notice}
+              </div>
+            )}
+
+            {/* Body: Form if first time / editing; Direct Chat otherwise */}
+            {!hasIdentity || editingProfile ? (
+              <form onSubmit={(e) => void startChat(e)} className="flex-1 overflow-y-auto p-6 sm:p-8 flex flex-col justify-center max-w-xl mx-auto w-full space-y-4" noValidate>
+                <div className="rounded-2xl border border-white/12 bg-white/[0.04] p-4 text-center">
+                  <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-[var(--accent)]/15 text-[var(--accent)] mb-2.5">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                    </svg>
+                  </span>
+                  <h3 className="text-base font-bold text-white">Start Conversation with Mohit</h3>
+                  <p className="mt-1 text-xs text-white/60">
+                    Enter your details once. You will stay automatically logged in on this device.
                   </p>
-                  <p className="mt-0.5 text-[0.58rem] text-white/50">
-                    Your details are remembered on this device.{" "}
+                </div>
+
+                <div>
+                  <label className="label" htmlFor="chat-name">
+                    Full Name *
+                  </label>
+                  <input
+                    id="chat-name"
+                    className={`field py-3 text-sm ${fieldErrors.name ? "field-error" : ""}`}
+                    value={details.name}
+                    placeholder="e.g. Alex Sharma"
+                    onChange={(e) => setDetails((d) => ({ ...d, name: e.target.value }))}
+                    required
+                  />
+                  {fieldErrors.name && <p className="mt-1 text-xs text-[#ff8098]">{fieldErrors.name}</p>}
+                </div>
+
+                <div>
+                  <label className="label" htmlFor="chat-email">
+                    Email Address *
+                  </label>
+                  <input
+                    id="chat-email"
+                    type="email"
+                    className={`field py-3 text-sm ${fieldErrors.email ? "field-error" : ""}`}
+                    value={details.email}
+                    placeholder="alex@company.com"
+                    onChange={(e) => setDetails((d) => ({ ...d, email: e.target.value }))}
+                    required
+                  />
+                  {fieldErrors.email && (
+                    <p className="mt-1 text-xs text-[#ff8098]">{fieldErrors.email}</p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-[120px_1fr] gap-3">
+                  <div>
+                    <label className="label" htmlFor="chat-code">
+                      Country
+                    </label>
+                    <select
+                      id="chat-code"
+                      className="field py-3 text-sm"
+                      value={details.countryCode}
+                      onChange={(e) => setDetails((d) => ({ ...d, countryCode: e.target.value }))}
+                    >
+                      {COUNTRY_CODES.map((code) => (
+                        <option key={code} value={code}>
+                          {code}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label" htmlFor="chat-phone">
+                      Mobile Number *
+                    </label>
+                    <input
+                      id="chat-phone"
+                      inputMode="numeric"
+                      className={`field py-3 text-sm ${fieldErrors.phone ? "field-error" : ""}`}
+                      value={details.phone}
+                      placeholder="98765 43210"
+                      onChange={(e) =>
+                        setDetails((d) => ({ ...d, phone: e.target.value.replace(/[^0-9\s-]/g, "") }))
+                      }
+                      required
+                    />
+                    {fieldErrors.phone && (
+                      <p className="mt-1 text-xs text-[#ff8098]">{fieldErrors.phone}</p>
+                    )}
+                  </div>
+                </div>
+
+                {error && <p className="text-xs text-[#ff8098] font-medium text-center">{error}</p>}
+
+                <div className="flex items-center gap-3 pt-2">
+                  <button type="submit" className="btn btn-accent flex-1 shadow-lg" disabled={loading}>
+                    {loading ? "Connecting…" : "Start Live Conversation"}
+                  </button>
+                  {savedProfile && editingProfile && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingProfile(false)}
+                      className="btn btn-ghost text-white/70"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              </form>
+            ) : (
+              <>
+                {/* Messages Container (Full Height & Spacious) */}
+                <div ref={listRef} className="flex-1 space-y-4 overflow-y-auto p-5 sm:p-7">
+                  {/* Greeting banner for remembered user */}
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-center flex items-center justify-between gap-4">
+                    <p className="text-xs font-medium text-white/80">
+                      Chatting as <span className="font-bold text-white">{savedProfile?.name || conversation?.name}</span> ({savedProfile?.email || conversation?.email})
+                    </p>
                     <button
                       type="button"
                       onClick={() => setEditingProfile(true)}
-                      className="text-[var(--accent)] underline hover:opacity-80 ml-1"
+                      className="text-xs text-[var(--accent)] underline hover:opacity-80 shrink-0 font-semibold cursor-pointer"
                     >
                       Edit profile
                     </button>
-                  </p>
+                  </div>
+
+                  {messages.length === 0 && (
+                    <div className="py-14 text-center text-white/50 space-y-2">
+                      <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-white/5 text-white/60 mb-3 border border-white/10">
+                        💬
+                      </span>
+                      <p className="text-sm font-bold text-white/90">Start your creative project discussion</p>
+                      <p className="text-xs text-white/55 max-w-md mx-auto leading-relaxed">
+                        Ask Mohit about video editing briefs, motion graphics quotes, YouTube pacing, turnaround times, or custom retainer rates.
+                      </p>
+                    </div>
+                  )}
+
+                  {messages.map((message) => {
+                    const mine = message.senderType === "customer";
+                    const isAssistant = message.senderType === "assistant";
+                    return (
+                      <div
+                        key={message.id}
+                        className={`flex ${mine ? "justify-end" : "justify-start"}`}
+                      >
+                        <div
+                          className={`max-w-[78%] rounded-3xl px-5 py-3.5 text-sm leading-relaxed shadow-lg ${
+                            mine
+                              ? "bg-[var(--accent)] text-white shadow-[0_4px_20px_var(--accent)]"
+                              : isAssistant
+                                ? "border border-amber-400/35 bg-amber-500/15 text-white/95 backdrop-blur-md"
+                                : message.senderType === "system"
+                                  ? "border border-white/10 bg-white/5 text-white/50 text-xs"
+                                  : "border border-white/15 bg-white/10 text-white/90 backdrop-blur-md"
+                          }`}
+                        >
+                          {!mine && message.senderType !== "system" && (
+                            <div className="text-[0.62rem] font-bold uppercase tracking-wider text-white/60 mb-1 flex items-center gap-1.5">
+                              {isAssistant ? "🤖 Mohit Studio AI Assistant" : "👤 Mohit Babariya"}
+                            </div>
+                          )}
+                          <p className="whitespace-pre-wrap">{message.message}</p>
+                          <span className="mono mt-1.5 block text-[0.6rem] opacity-60">
+                            {new Date(message.createdAt).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
 
-                {messages.length === 0 && (
-                  <div className="py-6 text-center text-[0.72rem] text-white/45 space-y-1">
-                    <p className="font-medium text-white/70">Start your creative project discussion</p>
-                    <p className="text-[0.62rem] text-white/40">
-                      Ask about video editing, motion graphics, thumbnails, reels, or turnaround times.
-                    </p>
-                  </div>
-                )}
+                {error && <p className="px-6 pb-2 text-xs text-[#ff8098] font-medium">{error}</p>}
 
-                {messages.map((message) => {
-                  const mine = message.senderType === "customer";
-                  const isAssistant = message.senderType === "assistant";
-                  return (
-                    <div
-                      key={message.id}
-                      className={`flex ${mine ? "justify-end" : "justify-start"}`}
-                    >
-                      <div
-                        className={`max-w-[84%] rounded-2xl px-3.5 py-2.5 text-[0.78rem] leading-relaxed shadow-md ${
-                          mine
-                            ? "bg-[var(--accent)] text-white"
-                            : isAssistant
-                              ? "border border-amber-400/30 bg-amber-500/15 text-white/95"
-                              : message.senderType === "system"
-                                ? "border border-white/10 bg-white/5 text-white/50 text-[0.68rem]"
-                                : "border border-white/12 bg-white/10 text-white/90"
-                        }`}
-                      >
-                        {!mine && message.senderType !== "system" && (
-                          <div className="text-[0.58rem] font-bold uppercase tracking-wider text-white/50 mb-1 flex items-center gap-1">
-                            {isAssistant ? "🤖 Mohit Studio AI" : "👤 Mohit Babariya"}
-                          </div>
-                        )}
-                        {message.message}
-                        <span className="mono mt-1 block text-[0.55rem] opacity-60">
-                          {new Date(message.createdAt).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {error && <p className="px-4 pb-1 text-[0.68rem] text-[#ff8098]">{error}</p>}
-
-              {/* Chat Input */}
-              <form onSubmit={send} className="flex items-center gap-2 border-t border-white/10 p-3 bg-black/20">
-                <label className="sr-only" htmlFor="chat-message">
-                  Message
-                </label>
-                <input
-                  id="chat-message"
-                  className="field py-2 text-[0.8rem]"
-                  placeholder="Type a message…"
-                  value={draft}
-                  maxLength={2000}
-                  onChange={(e) => setDraft(e.target.value)}
-                  autoComplete="off"
-                />
-                <button
-                  type="submit"
-                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--accent)] text-white hover:opacity-90 transition-opacity"
-                  aria-label="Send message"
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="#fff" aria-hidden="true">
-                    <path d="M3 20l18-8L3 4v6l12 2-12 2z" />
-                  </svg>
-                </button>
-              </form>
-            </>
-          )}
+                {/* Chat Input Bar */}
+                <form onSubmit={send} className="flex items-center gap-3 border-t border-white/10 p-4 sm:p-5 bg-black/40">
+                  <label className="sr-only" htmlFor="chat-message">
+                    Message
+                  </label>
+                  <input
+                    id="chat-message"
+                    className="field py-3 text-sm flex-1 bg-white/5 border-white/15 focus:border-[var(--accent)]"
+                    placeholder="Type your message or project question…"
+                    value={draft}
+                    maxLength={2000}
+                    onChange={(e) => setDraft(e.target.value)}
+                    autoComplete="off"
+                  />
+                  <button
+                    type="submit"
+                    className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[var(--accent)] text-white hover:brightness-110 active:scale-95 transition-all shadow-lg cursor-pointer"
+                    aria-label="Send message"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff" aria-hidden="true">
+                      <path d="M3 20l18-8L3 4v6l12 2-12 2z" />
+                    </svg>
+                  </button>
+                </form>
+              </>
+            )}
+          </div>
         </div>
       )}
     </>
