@@ -308,13 +308,41 @@ export function PortfolioAdmin({ onChanged }: { onChanged: () => void }) {
     }
     setGrabbing(true);
     try {
+      // 1. YouTube thumbnail extraction
+      const ytMatch = videoUrl.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
+      if (ytMatch && ytMatch[1]) {
+        const ytThumb = `https://img.youtube.com/vi/${ytMatch[1]}/maxresdefault.jpg`;
+        patch("thumbnailUrl", ytThumb);
+        setNotice("YouTube thumbnail automatically attached.");
+        return;
+      }
+
+      // 2. Vimeo thumbnail extraction
+      const vimeoMatch = videoUrl.match(/vimeo\.com\/(?:video\/)?(\d+)/i);
+      if (vimeoMatch && vimeoMatch[1]) {
+        try {
+          const vRes = await fetch(`https://vimeo.com/api/v2/video/${vimeoMatch[1]}.json`);
+          if (vRes.ok) {
+            const vData = (await vRes.json()) as Array<{ thumbnail_large?: string }>;
+            if (vData[0]?.thumbnail_large) {
+              patch("thumbnailUrl", vData[0].thumbnail_large);
+              setNotice("Vimeo thumbnail automatically attached.");
+              return;
+            }
+          }
+        } catch {
+          /* continue to direct frame grab */
+        }
+      }
+
+      // 3. Direct HTML5 video frame grab
       const video = document.createElement("video");
       video.crossOrigin = "anonymous";
       video.muted = true;
       video.src = videoUrl;
       await new Promise<void>((resolve, reject) => {
         video.onloadeddata = () => resolve();
-        video.onerror = () => reject(new Error("Could not load this video to grab a frame."));
+        video.onerror = () => reject(new Error("Could not load this video to grab a frame. Make sure the video URL is accessible."));
       });
       video.currentTime = Math.min(1.2, (video.duration || 3) / 3);
       await new Promise<void>((resolve) => {
@@ -328,12 +356,12 @@ export function PortfolioAdmin({ onChanged }: { onChanged: () => void }) {
       if (!context) throw new Error("Canvas is not available in this browser.");
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
       const blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob((result) => resolve(result), "image/jpeg", 0.85),
+        canvas.toBlob((result) => resolve(result), "image/jpeg", 0.90),
       );
       if (!blob) throw new Error("This video is protected by cross-origin rules, so a frame cannot be grabbed.");
-      const uploaded = await uploadBlob(blob, "image", `frame-${Date.now()}.jpg`);
+      const uploaded = await uploadBlob(blob, "image", `thumb-${Date.now()}.jpg`);
       patch("thumbnailUrl", uploaded.url);
-      setNotice("Thumbnail grabbed from the video.");
+      setNotice("Thumbnail frame grabbed from the video!");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not grab a frame.");
     } finally {
@@ -475,6 +503,9 @@ export function PortfolioAdmin({ onChanged }: { onChanged: () => void }) {
                     patch("videoUrl", result.url);
                     patch("videoSource", "upload");
                     setNotice("Video uploaded and attached to this project.");
+                    if (!form.thumbnailUrl) {
+                      void grabFrame(result.url);
+                    }
                   }}
                 />
               </div>

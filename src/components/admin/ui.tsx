@@ -450,31 +450,54 @@ export function Uploader({
 }
 
 /** Uploads a Blob/File directly (used by "grab frame" and drag&drop). */
-export function uploadBlob(
+export async function uploadBlob(
   blob: Blob,
   kind: "video" | "image",
   filename: string,
   projectId?: number,
 ): Promise<UploadResult> {
-  return new Promise((resolve, reject) => {
-    const form = new FormData();
-    form.append("file", blob, filename);
-    form.append("kind", kind);
-    if (projectId) form.append("projectId", String(projectId));
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", "/api/admin/upload");
-    xhr.onload = () => {
-      try {
-        const payload = JSON.parse(xhr.responseText || "{}");
-        if (xhr.status >= 200 && xhr.status < 300) resolve(payload as UploadResult);
-        else reject(new Error(payload.error || "Upload failed."));
-      } catch {
-        reject(new Error("Upload failed: unreadable server response."));
-      }
-    };
-    xhr.onerror = () => reject(new Error("Network error during upload."));
-    xhr.send(form);
-  });
+  // 1. Try Vercel Blob client upload first
+  try {
+    const { upload: vercelBlobUpload } = await import("@vercel/blob/client");
+    const fileObj = new File([blob], filename, { type: blob.type || "image/jpeg" });
+    const b = await vercelBlobUpload(filename, fileObj, {
+      access: "public",
+      handleUploadUrl: "/api/admin/blob/upload",
+    });
+    if (b && b.url) {
+      const regRes = await fetch("/api/admin/blob/upload", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          registerOnly: true,
+          url: b.url,
+          filename,
+          size: blob.size,
+          kind,
+          projectId,
+        }),
+      });
+      const regData = (await regRes.json().catch(() => ({}))) as UploadResult;
+      return regData.url
+        ? regData
+        : { url: b.url, kind, media: { id: Date.now(), filename, size: blob.size } };
+    }
+  } catch (blobErr) {
+    console.warn("[uploadBlob] Vercel Blob fallback:", blobErr);
+  }
+
+  // 2. Fallback to /api/admin/upload
+  const form = new FormData();
+  form.append("file", blob, filename);
+  form.append("kind", kind);
+  if (projectId) form.append("projectId", String(projectId));
+
+  const res = await fetch("/api/admin/upload", { method: "POST", body: form });
+  if (!res.ok) {
+    const errData = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(errData.error || "Upload failed.");
+  }
+  return (await res.json()) as UploadResult;
 }
 
 export function useAsyncAction() {
