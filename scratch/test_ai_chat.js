@@ -19,22 +19,20 @@ async function test() {
 
   // 1. Creative Query
   console.log('\n--- 1. Creative Query: Instagram Reels & Turnaround ---');
-  await fetch('https://mohitbabariya.in/api/chat/messages', {
+  const postRes1 = await fetch('https://mohitbabariya.in/api/chat/messages', {
     method: 'POST',
     headers: { 'content-type': 'application/json', Cookie: cookie },
     body: JSON.stringify({
       message: 'Do you edit vertical Instagram reels and what is the turnaround time?',
     }),
   });
+  console.log('Post 1 Status:', postRes1.status, await postRes1.text());
 
   let res = await fetch('https://mohitbabariya.in/api/chat/messages', {
     headers: { Cookie: cookie },
   });
   let data = await res.json();
-  console.log('Admin Online Status:', data.adminOnline);
-  for (const m of data.messages || []) {
-    console.log(`[${m.senderType}]: ${m.message}`);
-  }
+  console.log('GET 1 Status:', res.status, JSON.stringify(data, null, 2));
 
   // 2. Off-Topic Query
   console.log('\n--- 2. Off-Topic Query: Python Coding & Homework ---');

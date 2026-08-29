@@ -29,13 +29,27 @@ export function verifySigned(value: string | undefined): number | null {
   return numeric;
 }
 
-export async function getCustomerConversationId(): Promise<number | null> {
-  const jar = await cookies();
-  return verifySigned(jar.get(CHAT_COOKIE)?.value);
+export async function getCustomerConversationId(request?: Request): Promise<number | null> {
+  if (request) {
+    const header = request.headers.get("cookie") || "";
+    const match = header.match(new RegExp(`(?:^|;\\s*)${CHAT_COOKIE}=([^;]+)`));
+    if (match?.[1]) {
+      const id = verifySigned(match[1]);
+      if (id) return id;
+    }
+  }
+
+  try {
+    const jar = await cookies();
+    const val = jar.get(CHAT_COOKIE)?.value;
+    if (val) return verifySigned(val);
+  } catch {}
+
+  return null;
 }
 
-export async function getCustomerConversation() {
-  const id = await getCustomerConversationId();
+export async function getCustomerConversation(request?: Request) {
+  const id = await getCustomerConversationId(request);
   if (!id) return null;
   const rows = await db.select().from(chatConversations).where(eq(chatConversations.id, id)).limit(1);
   return rows[0] ?? null;

@@ -11,11 +11,11 @@ import { runChatAssistant } from "@/lib/ai";
 export const dynamic = "force-dynamic";
 
 /** Public (customer): fetch my conversation messages and status. */
-export async function GET() {
+export async function GET(request: Request) {
   return guard(async () => {
     const [settings, conversation] = await Promise.all([
       getNotificationSettings(),
-      getCustomerConversation(),
+      getCustomerConversation(request),
     ]);
 
     if (!conversation) {
@@ -43,7 +43,7 @@ export async function GET() {
 /** Public (customer): send a message. */
 export async function POST(request: Request) {
   return guard(async () => {
-    const conversation = await getCustomerConversation();
+    const conversation = await getCustomerConversation(request);
     if (!conversation) return badRequest("Start a chat first.");
     if (conversation.status === "closed") return badRequest("This conversation is closed.");
 
