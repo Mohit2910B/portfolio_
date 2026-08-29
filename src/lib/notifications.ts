@@ -64,8 +64,11 @@ export async function sendEmail(
     return { ok: false, error: "Recipient email is required" };
   }
 
-  const rawFrom = cleanEnvValue(process.env.EMAIL_FROM);
-  let from = "Portfolio <onboarding@resend.dev>";
+  const rawFrom =
+    cleanEnvValue(process.env.RESEND_FROM_EMAIL) ||
+    cleanEnvValue(process.env.EMAIL_FROM);
+
+  let from = "Mohit Babariya <noreply@mohitbabariya.in>";
   if (
     rawFrom &&
     !rawFrom.toLowerCase().includes("@gmail.") &&
