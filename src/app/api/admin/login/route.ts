@@ -68,12 +68,16 @@ export async function POST(request: Request) {
     // 2. Check Seed/Master Environment Admin Credentials
     const seedUser = (process.env.SEED_ADMIN_USERNAME || "mohit").toLowerCase();
     const seedEmail = (process.env.SEED_ADMIN_EMAIL || "mohitbabariyaa@gmail.com").toLowerCase();
-    const seedPassword = process.env.SEED_ADMIN_PASSWORD || "Mohit@2026";
+    const seedPassword = process.env.SEED_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD;
     const seedName = process.env.SEED_ADMIN_NAME || "MOHIT BABARIYA";
 
     if (
-      (identity === seedUser || identity === seedEmail || identity === "mohit" || identity === "mohitbabariyaa@gmail.com") &&
-      (password === seedPassword || password === "Mohit@2026")
+      seedPassword &&
+      (identity === seedUser ||
+        identity === seedEmail ||
+        identity === "mohit" ||
+        identity === "mohitbabariyaa@gmail.com") &&
+      password === seedPassword
     ) {
       const adminPayload = {
         id: 1,
