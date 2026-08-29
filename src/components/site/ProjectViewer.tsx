@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import VideoPlayer from "./VideoPlayer";
 import type { PublicProject } from "@/lib/data";
 
@@ -27,7 +27,11 @@ export default function ProjectViewer({
 
   if (!project) return null;
 
-  const isVertical = project.aspectRatio === "9:16" || project.aspectRatio === "4:5";
+  const [detectedVertical, setDetectedVertical] = useState<boolean | null>(null);
+  const isVertical =
+    detectedVertical !== null
+      ? detectedVertical
+      : project.aspectRatio === "9:16" || project.aspectRatio === "4:5";
 
   const tags = (project.tags || "")
     .split(",")
@@ -77,6 +81,7 @@ export default function ProjectViewer({
                   poster={project.thumbnailUrl}
                   ratio={project.aspectRatio}
                   onClose={onClose}
+                  onAspectRatioDetected={setDetectedVertical}
                 />
               ) : (
                 <div className="grid aspect-[9/16] place-items-center rounded-2xl border border-white/15 bg-white/5 text-sm text-white/60">
@@ -136,6 +141,7 @@ export default function ProjectViewer({
                 poster={project.thumbnailUrl}
                 ratio={project.aspectRatio}
                 onClose={onClose}
+                onAspectRatioDetected={setDetectedVertical}
               />
             ) : (
               <div className="grid aspect-video place-items-center rounded-2xl border border-white/15 bg-white/5 text-sm text-white/60">

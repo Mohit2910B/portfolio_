@@ -10,6 +10,7 @@ type Props = {
   autoPlay?: boolean;
   className?: string;
   onClose?: () => void;
+  onAspectRatioDetected?: (isVertical: boolean) => void;
 };
 
 export default function VideoPlayer({
@@ -19,6 +20,7 @@ export default function VideoPlayer({
   autoPlay = true,
   className = "",
   onClose,
+  onAspectRatioDetected,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -29,11 +31,11 @@ export default function VideoPlayer({
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [detectedVertical, setDetectedVertical] = useState<boolean | null>(null);
 
-  const pad = (() => {
-    const [w, h] = (ratio || "16:9").split(":").map(Number);
-    return w && h ? (h / w) * 100 : 56.25;
-  })();
+  const [w, h] = (ratio || "16:9").split(":").map(Number);
+  const isDeclaredVertical = (w && h && h > w) || ratio === "9:16" || ratio === "4:5";
+  const isVertical = detectedVertical !== null ? detectedVertical : isDeclaredVertical;
 
   const togglePlay = useCallback(() => {
     const video = videoRef.current;
@@ -81,6 +83,11 @@ export default function VideoPlayer({
       }
     };
     const onLoaded = () => {
+      if (video.videoWidth && video.videoHeight) {
+        const isVert = video.videoHeight > video.videoWidth;
+        setDetectedVertical(isVert);
+        onAspectRatioDetected?.(isVert);
+      }
       setDuration(video.duration);
       setLoading(false);
       setFailed(false);
@@ -116,8 +123,11 @@ export default function VideoPlayer({
 
   return (
     <div
-      className={`group relative w-full overflow-hidden rounded-2xl bg-black ${className}`}
-      style={{ paddingBottom: `${pad}%` }}
+      className={`group relative mx-auto w-full overflow-hidden rounded-2xl bg-black ${
+        isVertical
+          ? "max-w-[340px] sm:max-w-[370px] aspect-[9/16] max-h-[68vh]"
+          : "max-w-full aspect-video max-h-[68vh]"
+      } ${className}`}
     >
       <video
         ref={videoRef}
