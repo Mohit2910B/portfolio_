@@ -1,5 +1,5 @@
 import { eq, sql } from "drizzle-orm";
-import { db } from "@/db";
+import { db, getPool } from "@/db";
 import {
   carouselSettings,
   categories,
@@ -311,15 +311,12 @@ const DDL_STATEMENTS = [
 ];
 
 async function ensureTables(): Promise<void> {
-  try {
-    await db.execute(sql.raw(DDL_STATEMENTS.join(";\n")));
-  } catch {
-    for (const statement of DDL_STATEMENTS) {
-      try {
-        await db.execute(sql.raw(statement));
-      } catch (err) {
-        console.warn("[bootstrap] DDL notice:", err instanceof Error ? err.message : String(err));
-      }
+  const p = getPool();
+  for (const statement of DDL_STATEMENTS) {
+    try {
+      await p.query(statement);
+    } catch (err) {
+      console.warn("[bootstrap] DDL notice:", err instanceof Error ? err.message : String(err));
     }
   }
 }
@@ -332,6 +329,7 @@ async function count(table: string): Promise<number> {
     "services",
     "skills",
     "inquiries",
+    "enquiries",
     "site_settings",
     "chat_conversations",
     "chat_messages",
@@ -349,23 +347,13 @@ async function count(table: string): Promise<number> {
     throw new Error(`Invalid table name: ${table}`);
   }
 
-  const result = await db.execute(
-    sql.raw(`SELECT COUNT(*) AS c FROM "${table}"`),
-  );
-
-  const rows = Array.isArray(result)
-    ? result[0]
-    : (result as { rows?: unknown[] }).rows;
-
-  const firstRow = Array.isArray(rows) ? rows[0] : undefined;
-
-  if (!firstRow || typeof firstRow !== "object") {
+  try {
+    const p = getPool();
+    const result = await p.query(`SELECT count(*)::int AS c FROM "${table}"`);
+    return Number(result.rows?.[0]?.c ?? 0);
+  } catch {
     return 0;
   }
-
-  const value = (firstRow as { c?: string | number }).c;
-
-  return Number(value ?? 0);
 }
 async function seedAdmin() {
   const name = process.env.SEED_ADMIN_NAME || "MOHIT BABARIYA";
