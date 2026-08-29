@@ -36,7 +36,12 @@ export async function GET() {
     };
   } catch (err) {
     dbStatus = "error";
-    dbError = err instanceof Error ? err.message : String(err);
+    const causeMsg = (err as { cause?: { message?: string } })?.cause?.message;
+    dbError = causeMsg
+      ? `${err instanceof Error ? err.message : String(err)} [Cause: ${causeMsg}]`
+      : err instanceof Error
+        ? err.message
+        : String(err);
   }
 
   const emailStatus: "configured" | "not_configured" = hasResend
