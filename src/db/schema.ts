@@ -309,6 +309,7 @@ export const mobileOtpChallenges = pgTable("mobile_otp_challenges", {
 
 export const themeSettings = pgTable("theme_settings", {
   id: integer("id").primaryKey().default(1),
+  preset: text("preset").notNull().default("glass-luxe"),
   accent: text("accent").notNull().default("#e0147f"),
   glassOpacity: integer("glass_opacity").notNull().default(45),
   glassBlur: integer("glass_blur").notNull().default(20),

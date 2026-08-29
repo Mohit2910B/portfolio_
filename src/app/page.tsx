@@ -1,3 +1,4 @@
+import { buildThemeCssVariables } from "@/lib/theme-presets";
 import SiteNav from "@/components/site/SiteNav";
 import Hero from "@/components/site/Hero";
 import WorkCarousel from "@/components/site/WorkCarousel";
@@ -19,6 +20,7 @@ export default async function HomePage() {
   const order = visible.length > 0 ? visible : DEFAULT_ORDER;
   const theme = data?.theme || {
     id: 1,
+    preset: "glass-luxe",
     accent: "#e0147f",
     glassOpacity: 45,
     glassBlur: 20,
@@ -28,11 +30,7 @@ export default async function HomePage() {
   const homepage = data?.homepage || HOME_FALLBACK;
 
 
-  const themeStyle = {
-    "--accent": theme.accent || "#e0147f",
-    "--glass-alpha": String((theme.glassOpacity ?? 45) / 100),
-    "--glass-blur": `${theme.glassBlur ?? 20}px`,
-  } as React.CSSProperties;
+  const themeStyle = buildThemeCssVariables(theme);
 
   const marqueeText =
     homepage.heroSubtitle || "VIDEO EDITOR · MOTION GRAPHICS · GRAPHIC DESIGN · AI VIDEO";

@@ -123,6 +123,7 @@ export type SiteData = {
   contact: typeof CONTACT_FALLBACK & { id?: number; [key: string]: unknown };
   theme: {
     id: number;
+    preset?: string;
     accent: string;
     glassOpacity: number;
     glassBlur: number;
@@ -276,6 +277,7 @@ export const DEFAULT_CAROUSEL_SETTINGS: CarouselSettingItem[] = DEFAULT_CATEGORI
 function getFallbackSiteData(): SiteData {
   const theme = {
     id: 1,
+    preset: "glass-luxe",
     accent: "#e0147f",
     glassOpacity: 45,
     glassBlur: 20,
