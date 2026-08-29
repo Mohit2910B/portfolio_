@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { parseMediaUrl } from "@/lib/media-urls";
 import {
   Button,
   Card,
@@ -308,20 +309,25 @@ export function PortfolioAdmin({ onChanged }: { onChanged: () => void }) {
     }
     setGrabbing(true);
     try {
-      // 1. YouTube thumbnail extraction
-      const ytMatch = videoUrl.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
-      if (ytMatch && ytMatch[1]) {
-        const ytThumb = `https://img.youtube.com/vi/${ytMatch[1]}/maxresdefault.jpg`;
-        patch("thumbnailUrl", ytThumb);
-        setNotice("YouTube thumbnail automatically attached.");
+      const media = parseMediaUrl(videoUrl);
+
+      // 1. YouTube & Drive thumbnail extraction
+      if (media.thumbnailUrl) {
+        patch("thumbnailUrl", media.thumbnailUrl);
+        setNotice(`Thumbnail automatically generated from ${media.type === "youtube" ? "YouTube" : "Google Drive"}!`);
         return;
       }
 
-      // 2. Vimeo thumbnail extraction
-      const vimeoMatch = videoUrl.match(/vimeo\.com\/(?:video\/)?(\d+)/i);
-      if (vimeoMatch && vimeoMatch[1]) {
+      // 2. Instagram handling
+      if (media.type === "instagram") {
+        setNotice("Instagram Reel/Post recognized! Instagram displays its native thumbnail in the player. You can also upload a custom thumbnail below.");
+        return;
+      }
+
+      // 3. Vimeo thumbnail extraction
+      if (media.type === "vimeo" && media.id) {
         try {
-          const vRes = await fetch(`https://vimeo.com/api/v2/video/${vimeoMatch[1]}.json`);
+          const vRes = await fetch(`https://vimeo.com/api/v2/video/${media.id}.json`);
           if (vRes.ok) {
             const vData = (await vRes.json()) as Array<{ thumbnail_large?: string }>;
             if (vData[0]?.thumbnail_large) {
@@ -335,20 +341,30 @@ export function PortfolioAdmin({ onChanged }: { onChanged: () => void }) {
         }
       }
 
-      // 3. Direct HTML5 video frame grab
+      // 4. Direct HTML5 video frame grab
       const video = document.createElement("video");
       video.crossOrigin = "anonymous";
       video.muted = true;
-      video.src = videoUrl;
+      video.src = media.streamUrl || videoUrl;
+
       await new Promise<void>((resolve, reject) => {
-        video.onloadeddata = () => resolve();
-        video.onerror = () => reject(new Error("Could not load this video to grab a frame. Make sure the video URL is accessible."));
+        const timer = window.setTimeout(() => resolve(), 4000);
+        video.onloadeddata = () => {
+          window.clearTimeout(timer);
+          resolve();
+        };
+        video.onerror = () => {
+          window.clearTimeout(timer);
+          reject(new Error("Could not load direct video stream. You can upload a thumbnail image below."));
+        };
       });
+
       video.currentTime = Math.min(1.2, (video.duration || 3) / 3);
       await new Promise<void>((resolve) => {
         video.onseeked = () => resolve();
-        window.setTimeout(resolve, 3000);
+        window.setTimeout(resolve, 2000);
       });
+
       const canvas = document.createElement("canvas");
       canvas.width = video.videoWidth || 1280;
       canvas.height = video.videoHeight || 720;
@@ -500,12 +516,51 @@ export function PortfolioAdmin({ onChanged }: { onChanged: () => void }) {
                   ]}
                 />
               </Field>
-              <Field label="Video URL" hint="MP4, WebM or MOV link.">
+              <Field
+                label="Video URL"
+                hint="Instagram Reel, Google Drive, YouTube, Vimeo, or direct MP4/WebM link."
+              >
                 <TextInput
                   value={form.videoUrl}
-                  onChange={(v) => patch("videoUrl", v)}
-                  placeholder="https://…/video.mp4"
+                  onChange={(v) => {
+                    patch("videoUrl", v);
+                    const media = parseMediaUrl(v);
+                    if (media.type === "instagram") {
+                      patch("aspectRatio", media.suggestedRatio);
+                      setNotice("✨ Instagram Reel / Post recognized! Aspect ratio automatically adjusted.");
+                    } else if (media.type === "drive") {
+                      if (!form.thumbnailUrl && media.thumbnailUrl) {
+                        patch("thumbnailUrl", media.thumbnailUrl);
+                      }
+                      setNotice("✨ Google Drive video recognized! Ready to play.");
+                    } else if (media.type === "youtube") {
+                      if (!form.thumbnailUrl && media.thumbnailUrl) {
+                        patch("thumbnailUrl", media.thumbnailUrl);
+                      }
+                      if (media.isVertical) {
+                        patch("aspectRatio", "9:16");
+                      }
+                      setNotice("✨ YouTube video recognized! Thumbnail auto-attached.");
+                    }
+                  }}
+                  placeholder="Paste Instagram Reel, Drive, YouTube or MP4 link…"
                 />
+                {(() => {
+                  const media = parseMediaUrl(form.videoUrl);
+                  if (media.type === "instagram") {
+                    return <p className="mt-1 text-[0.7rem] font-medium text-pink-400">✨ Instagram {media.isVertical ? "Reel (9:16)" : "Post"} detected</p>;
+                  }
+                  if (media.type === "drive") {
+                    return <p className="mt-1 text-[0.7rem] font-medium text-emerald-400">✨ Google Drive video stream detected</p>;
+                  }
+                  if (media.type === "youtube") {
+                    return <p className="mt-1 text-[0.7rem] font-medium text-red-400">✨ YouTube {media.isVertical ? "Shorts" : "Video"} detected</p>;
+                  }
+                  if (media.type === "vimeo") {
+                    return <p className="mt-1 text-[0.7rem] font-medium text-sky-400">✨ Vimeo video detected</p>;
+                  }
+                  return null;
+                })()}
               </Field>
               <div className="sm:col-span-2">
                 <Uploader
@@ -522,16 +577,33 @@ export function PortfolioAdmin({ onChanged }: { onChanged: () => void }) {
                 />
               </div>
               <Field label="Video preview">
-                {form.videoUrl ? (
-                  <video
-                    src={form.videoUrl}
-                    controls
-                    preload="metadata"
-                    className="w-full rounded-2xl bg-black"
-                  />
-                ) : (
-                  <p className="text-sm text-ink/45">No video attached yet.</p>
-                )}
+                {(() => {
+                  if (!form.videoUrl) {
+                    return <p className="text-sm text-ink/45">No video attached yet.</p>;
+                  }
+                  const media = parseMediaUrl(form.videoUrl);
+                  if (media.embedUrl) {
+                    return (
+                      <div className="overflow-hidden rounded-2xl border border-white/10 bg-black aspect-video max-h-56">
+                        <iframe
+                          src={media.embedUrl}
+                          title="Preview"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          className="h-full w-full border-0"
+                        />
+                      </div>
+                    );
+                  }
+                  return (
+                    <video
+                      src={media.streamUrl || form.videoUrl}
+                      controls
+                      preload="metadata"
+                      className="w-full rounded-2xl bg-black max-h-56"
+                    />
+                  );
+                })()}
               </Field>
               <Field label="Thumbnail URL">
                 <TextInput
@@ -844,15 +916,33 @@ export function PortfolioAdmin({ onChanged }: { onChanged: () => void }) {
                     </Button>
                   </div>
                   {project.videoUrl ? (
-                    <video
-                      key={project.id}
-                      src={project.videoUrl}
-                      poster={project.thumbnailUrl || undefined}
-                      controls
-                      playsInline
-                      preload="metadata"
-                      className="w-full rounded-2xl bg-black"
-                    />
+                    (() => {
+                      const media = parseMediaUrl(project.videoUrl);
+                      if (media.embedUrl) {
+                        return (
+                          <div className="overflow-hidden rounded-2xl border border-white/10 bg-black aspect-video max-h-[70vh]">
+                            <iframe
+                              src={media.embedUrl}
+                              title={project.title}
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                              className="h-full w-full border-0"
+                            />
+                          </div>
+                        );
+                      }
+                      return (
+                        <video
+                          key={project.id}
+                          src={media.streamUrl || project.videoUrl}
+                          poster={project.thumbnailUrl || undefined}
+                          controls
+                          playsInline
+                          preload="metadata"
+                          className="w-full rounded-2xl bg-black max-h-[70vh]"
+                        />
+                      );
+                    })()
                   ) : (
                     <p className="py-10 text-center text-sm text-white/60">No video attached.</p>
                   )}

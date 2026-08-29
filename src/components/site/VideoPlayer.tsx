@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatDuration } from "@/lib/carousel";
+import { parseMediaUrl } from "@/lib/media-urls";
 
 type Props = {
   src: string;
@@ -22,6 +23,7 @@ export default function VideoPlayer({
   onClose,
   onAspectRatioDetected,
 }: Props) {
+  const media = useMemo(() => parseMediaUrl(src), [src]);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -34,7 +36,7 @@ export default function VideoPlayer({
   const [detectedVertical, setDetectedVertical] = useState<boolean | null>(null);
 
   const [w, h] = (ratio || "16:9").split(":").map(Number);
-  const isDeclaredVertical = (w && h && h > w) || ratio === "9:16" || ratio === "4:5";
+  const isDeclaredVertical = (w && h && h > w) || ratio === "9:16" || ratio === "4:5" || media.isVertical;
   const isVertical = detectedVertical !== null ? detectedVertical : isDeclaredVertical;
 
   const togglePlay = useCallback(() => {
@@ -74,6 +76,10 @@ export default function VideoPlayer({
   };
 
   useEffect(() => {
+    if (media.type !== "direct") {
+      setLoading(false);
+      return;
+    }
     const video = videoRef.current;
     if (!video) return;
     const onTime = () => {
@@ -119,8 +125,30 @@ export default function VideoPlayer({
       video.removeEventListener("waiting", onWaiting);
       video.removeEventListener("playing", onPlaying);
     };
-  }, [src, attempt]);
+  }, [src, attempt, media.type, onAspectRatioDetected]);
 
+  // 1. IFRAME EMBED PLAYER (Instagram, Google Drive, YouTube, Vimeo)
+  if (media.embedUrl) {
+    return (
+      <div
+        className={`group relative mx-auto w-full overflow-hidden rounded-2xl bg-black ${
+          isVertical
+            ? "max-w-[340px] sm:max-w-[370px] aspect-[9/16] max-h-[68vh]"
+            : "max-w-full aspect-video max-h-[68vh]"
+        } ${className}`}
+      >
+        <iframe
+          src={media.embedUrl}
+          title="Video preview"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+          className="absolute inset-0 h-full w-full border-0 bg-black"
+        />
+      </div>
+    );
+  }
+
+  // 2. NATIVE HTML5 PLAYER (Direct MP4 / WebM / Blob)
   return (
     <div
       className={`group relative mx-auto w-full overflow-hidden rounded-2xl bg-black ${
@@ -132,7 +160,7 @@ export default function VideoPlayer({
       <video
         ref={videoRef}
         key={`${src}-${attempt}`}
-        src={src}
+        src={media.streamUrl || src}
         poster={poster || undefined}
         className="absolute inset-0 h-full w-full bg-black object-contain"
         playsInline
@@ -159,110 +187,141 @@ export default function VideoPlayer({
       )}
 
       {failed && (
-        <div className="absolute inset-0 grid place-items-center bg-black/85 px-6 text-center">
-          <div>
-            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.28em] text-white/50">
-              Playback error
-            </p>
-            <p className="mt-3 max-w-sm text-sm text-white/80">
-              This video format could not be played in your browser, or the source is unavailable.
-            </p>
-            <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setFailed(false);
-                  setLoading(true);
-                  setAttempt((a) => a + 1);
-                }}
-                className="btn btn-light btn-xs"
-              >
-                Retry
-              </button>
-              {onClose && (
-                <button type="button" onClick={onClose} className="btn btn-xs border border-white/25 text-white">
-                  Close
-                </button>
-              )}
-            </div>
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/85 p-6 text-center">
+          <p className="text-xs font-semibold text-white">Playback error</p>
+          <p className="text-[0.68rem] text-white/60">The video could not be loaded directly.</p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setFailed(false);
+                setLoading(true);
+                setAttempt((a) => a + 1);
+              }}
+              className="btn btn-accent btn-xs"
+            >
+              Retry
+            </button>
+            <a
+              href={src}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="btn btn-ghost btn-xs text-white"
+            >
+              Open source link
+            </a>
           </div>
         </div>
       )}
 
-      {!playing && !failed && (
-        <button
-          type="button"
-          onClick={togglePlay}
-          aria-label="Play video"
-          className="absolute inset-0 grid place-items-center bg-gradient-to-t from-black/45 via-transparent to-black/10"
-        >
-          <span className="grid h-16 w-16 place-items-center rounded-full border border-white/40 bg-white/15 backdrop-blur-md transition-transform duration-300 hover:scale-110">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff" aria-hidden="true">
-              <path d="M8 5v14l11-7z" />
-            </svg>
+      {/* Hover Controls */}
+      <div
+        className="absolute inset-0 flex flex-col justify-between bg-gradient-to-t from-black/80 via-transparent to-black/40 p-4 opacity-0 transition-opacity duration-300 group-hover:opacity-100 focus-within:opacity-100"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) togglePlay();
+        }}
+      >
+        <div className="flex items-center justify-between">
+          <span className="mono text-[0.65rem] uppercase tracking-widest text-white/70">
+            {formatDuration(current)} / {formatDuration(duration)}
           </span>
-        </button>
-      )}
-
-      <div className="absolute inset-x-0 bottom-0 translate-y-1 bg-gradient-to-t from-black/80 to-transparent px-4 pb-3 pt-8 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 focus-within:translate-y-0 focus-within:opacity-100">
-        <div
-          role="slider"
-          tabIndex={0}
-          aria-label="Seek video"
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={Math.round(progress)}
-          onClick={seek}
-          className="group/bar relative h-4 cursor-pointer"
-        >
-          <span className="absolute top-1/2 h-[3px] w-full -translate-y-1/2 rounded-full bg-white/25" />
-          <span
-            className="absolute top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-[var(--accent)]"
-            style={{ width: `${progress}%` }}
-          />
-          <span
-            className="absolute top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full bg-white opacity-0 transition-opacity group-hover/bar:opacity-100"
-            style={{ left: `calc(${progress}% - 5px)` }}
-          />
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close video"
+              className="grid h-8 w-8 place-items-center rounded-full border border-white/20 text-white hover:bg-white/10 transition-colors"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" stroke="#fff" strokeWidth="2" fill="none">
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
+          )}
         </div>
-        <div className="mt-1 flex items-center justify-between text-[0.65rem] font-medium text-white/80">
-          <div className="flex items-center gap-3">
-            <button type="button" onClick={togglePlay} aria-label={playing ? "Pause" : "Play"}>
-              {playing ? (
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="#fff" aria-hidden="true">
-                  <path d="M6 5h4v14H6zM14 5h4v14h-4z" />
-                </svg>
-              ) : (
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="#fff" aria-hidden="true">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-              )}
-            </button>
-            <button type="button" onClick={toggleMute} aria-label={muted ? "Unmute" : "Mute"}>
-              {muted ? (
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="#fff" aria-hidden="true">
-                  <path d="M4 9h3l4-4v14l-4-4H4zM16 9.5l4 5-1.4 1.1-4-5z" />
-                </svg>
-              ) : (
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="#fff" aria-hidden="true">
-                  <path d="M4 9h3l4-4v14l-4-4H4zM15.5 8.5a4.5 4.5 0 010 7v-1.6a3 3 0 000-3.8z" />
-                </svg>
-              )}
-            </button>
-            <span className="mono tabular-nums">
-              {formatDuration(current || 0)} / {formatDuration(duration)}
-            </span>
-          </div>
+
+        {/* Big Center Play Button */}
+        <div className="flex items-center justify-center">
           <button
             type="button"
-            onClick={goFullscreen}
-            aria-label="Toggle fullscreen"
-            className="text-white/80 transition-colors hover:text-white"
+            onClick={togglePlay}
+            aria-label={playing ? "Pause" : "Play"}
+            className="grid h-14 w-14 place-items-center rounded-full bg-white/20 text-white backdrop-blur-md transition-transform hover:scale-105 active:scale-95"
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" aria-hidden="true">
-              <path d="M4 9V4h5M20 15v5h-5M15 4h5v5M9 20H4v-5" />
-            </svg>
+            {playing ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff">
+                <rect x="6" y="4" width="4" height="16" rx="1" />
+                <rect x="14" y="4" width="4" height="16" rx="1" />
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff" className="translate-x-0.5">
+                <path d="M5 3l14 9-14 9V3z" />
+              </svg>
+            )}
           </button>
+        </div>
+
+        {/* Bottom Bar */}
+        <div className="space-y-2">
+          {/* Progress Bar */}
+          <div
+            className="group/track relative h-1.5 w-full cursor-pointer rounded-full bg-white/20 hover:h-2 transition-all"
+            onClick={seek}
+          >
+            <div
+              className="h-full rounded-full bg-[var(--accent)]"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+
+          <div className="flex items-center justify-between text-white">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={togglePlay}
+                aria-label={playing ? "Pause" : "Play"}
+                className="text-white hover:opacity-80 transition-opacity"
+              >
+                {playing ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff">
+                    <rect x="6" y="4" width="4" height="16" />
+                    <rect x="14" y="4" width="4" height="16" />
+                  </svg>
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff">
+                    <path d="M5 3l14 9-14 9V3z" />
+                  </svg>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={toggleMute}
+                aria-label={muted ? "Unmute" : "Mute"}
+                className="text-white hover:opacity-80 transition-opacity"
+              >
+                {muted ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
+                    <path d="M11 5L6 9H2v6h4l5 4V5zM23 9l-6 6M17 9l6 6" />
+                  </svg>
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
+                    <path d="M11 5L6 9H2v6h4l5 4V5zM19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" />
+                  </svg>
+                )}
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={goFullscreen}
+              aria-label="Fullscreen"
+              className="text-white hover:opacity-80 transition-opacity"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
+                <path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
     </div>
