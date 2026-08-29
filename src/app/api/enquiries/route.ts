@@ -189,15 +189,20 @@ export async function POST(request: Request) {
       </div>
     `;
 
-    try {
-      await sendAdminNotification(emailSubject, emailHtml);
-    } catch (notifyErr) {
-      console.error("[enquiries] Error dispatching admin notification email:", notifyErr);
-    }
+    // Clear OTP verification session cookies so every new submission requires fresh verification
+    jar.delete("enquiry_otp_verified");
+    jar.delete("enquiry_otp_verified_token");
+    jar.delete("enquiry_otp_challenge");
+    jar.delete("enquiry_otp_challenge_id");
+
+    // Asynchronously dispatch admin notification email so client response returns in < 30ms without loading delay
+    Promise.resolve()
+      .then(() => sendAdminNotification(emailSubject, emailHtml))
+      .catch((err) => console.warn("[enquiries] Background admin notification error:", err));
 
     return created({
       enquiry: insertedRecord || { id: Date.now(), ...values },
-      message: "Enquiry received. I will reply shortly.",
+      message: "Enquiry received. Mohit will reply to your email shortly.",
     });
   });
 }

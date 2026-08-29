@@ -280,6 +280,9 @@ export default function ContactSection({ data }: { data: SiteData }) {
                     onClick={() => {
                       setStatus("idle");
                       setMessage("");
+                      setForm(EMPTY);
+                      setOtpSent(false);
+                      setOtp("");
                     }}
                     className="btn btn-ghost btn-xs mt-6"
                   >
