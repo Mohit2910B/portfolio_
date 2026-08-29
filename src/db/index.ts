@@ -37,6 +37,18 @@ function isLocalHost(host: string): boolean {
   );
 }
 
+function isInvalidOrPlaceholderHost(host: string): boolean {
+  const h = host.toLowerCase().trim();
+  return (
+    isLocalHost(h) ||
+    h === "host" ||
+    h === "your-database-host" ||
+    h === "example.com" ||
+    h === "your-db-host" ||
+    h === "dbname"
+  );
+}
+
 function extractHostname(rawUrl: string): string | null {
   try {
     const parsed = new URL(rawUrl);
@@ -110,12 +122,12 @@ export function getDatabaseResolution(): DbResolution {
   if (rawUrl) {
     urlHostname = extractHostname(rawUrl);
     if (urlHostname) {
-      urlIsLocal = isLocalHost(urlHostname);
+      urlIsLocal = isInvalidOrPlaceholderHost(urlHostname);
     }
   }
 
   const hostIsProvided = Boolean(dbHost);
-  const hostIsLocal = dbHost ? isLocalHost(dbHost) : false;
+  const hostIsLocal = dbHost ? isInvalidOrPlaceholderHost(dbHost) : false;
 
   // 1. Remote DATABASE_URL
   if (rawUrl && !urlIsLocal) {
