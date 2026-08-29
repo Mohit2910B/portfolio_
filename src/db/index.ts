@@ -194,9 +194,12 @@ export function getPool(): Pool {
     const pool = new Pool({
       connectionString: resolution.connectionString,
       ssl: resolution.ssl ? { rejectUnauthorized: false } : undefined,
-      max: 5,
-      idleTimeoutMillis: 10000,
-      connectionTimeoutMillis: 10000,
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 15000,
+    });
+    pool.on("error", (err) => {
+      console.warn("[db] Remote PostgreSQL pool client error (safe discard):", err.message);
     });
     globalForDb.cachedPgPool = pool;
     globalForDb.cachedPgKey = currentKey;
@@ -211,9 +214,12 @@ export function getPool(): Pool {
       password: resolution.password,
       database: resolution.database,
       ssl: resolution.ssl ? { rejectUnauthorized: false } : undefined,
-      max: 5,
-      idleTimeoutMillis: 10000,
-      connectionTimeoutMillis: 10000,
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 15000,
+    });
+    pool.on("error", (err) => {
+      console.warn("[db] Remote PostgreSQL params pool client error (safe discard):", err.message);
     });
     globalForDb.cachedPgPool = pool;
     globalForDb.cachedPgKey = currentKey;
@@ -223,7 +229,12 @@ export function getPool(): Pool {
   if (resolution.type === "local-url") {
     const pool = new Pool({
       connectionString: resolution.connectionString,
-      max: 5,
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
+    });
+    pool.on("error", (err) => {
+      console.warn("[db] Local PostgreSQL pool client error:", err.message);
     });
     globalForDb.cachedPgPool = pool;
     globalForDb.cachedPgKey = currentKey;
@@ -237,7 +248,12 @@ export function getPool(): Pool {
       user: resolution.user,
       password: resolution.password,
       database: resolution.database,
-      max: 5,
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
+    });
+    pool.on("error", (err) => {
+      console.warn("[db] Local params pool client error:", err.message);
     });
     globalForDb.cachedPgPool = pool;
     globalForDb.cachedPgKey = currentKey;

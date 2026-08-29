@@ -311,8 +311,16 @@ const DDL_STATEMENTS = [
 ];
 
 async function ensureTables(): Promise<void> {
-  for (const statement of DDL_STATEMENTS) {
-    await db.execute(sql.raw(statement));
+  try {
+    await db.execute(sql.raw(DDL_STATEMENTS.join(";\n")));
+  } catch {
+    for (const statement of DDL_STATEMENTS) {
+      try {
+        await db.execute(sql.raw(statement));
+      } catch (err) {
+        console.warn("[bootstrap] DDL notice:", err instanceof Error ? err.message : String(err));
+      }
+    }
   }
 }
 
