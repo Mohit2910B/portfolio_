@@ -229,20 +229,22 @@ export default function ChatWidget() {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-label="Chat with Mohit"
-        className="glass fixed bottom-5 right-4 z-[70] flex items-center gap-3 rounded-full px-5 py-3.5 text-[0.62rem] font-semibold uppercase tracking-[0.18em] transition-transform duration-300 hover:-translate-y-0.5 sm:bottom-8 sm:right-8 shadow-2xl"
+        className="neo-tactile-btn fixed bottom-5 right-4 z-[70] flex items-center gap-3 rounded-full px-5 py-3.5 text-[0.65rem] font-bold uppercase tracking-[0.18em] text-ink sm:bottom-8 sm:right-8 shadow-xl hover:scale-105 active:scale-95"
       >
         <span
-          className={`h-2 w-2 rounded-full ${
-            adminOnline ? "bg-emerald-400 animate-pulse" : "bg-[var(--accent)]"
+          className={`h-2.5 w-2.5 rounded-full shadow-sm ${
+            adminOnline ? "bg-emerald-500 animate-pulse" : "bg-[var(--accent)]"
           }`}
         />
-        {conversation && conversation.customerUnread > 0
-          ? `Chat · ${conversation.customerUnread}`
-          : "Chat with Mohit"}
+        <span>
+          {conversation && conversation.customerUnread > 0
+            ? `Chat · ${conversation.customerUnread}`
+            : "Chat with Mohit"}
+        </span>
       </button>
 
       {open && (
-        <div className="glass-dark fade-in fixed bottom-24 right-4 z-[71] flex h-[70vh] max-h-[580px] w-[calc(100vw-2rem)] max-w-sm flex-col overflow-hidden rounded-[26px] sm:right-8 border border-white/15 shadow-2xl backdrop-blur-xl">
+        <div className="glass-matte-dark fade-in fixed bottom-24 right-4 z-[71] flex h-[70vh] max-h-[580px] w-[calc(100vw-2rem)] max-w-sm flex-col overflow-hidden rounded-[28px] sm:right-8 shadow-2xl backdrop-blur-2xl">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-white/10 px-4 py-3.5 bg-black/30">
             <div className="flex-1 min-w-0 pr-2">

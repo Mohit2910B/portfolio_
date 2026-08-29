@@ -62,22 +62,22 @@ export default function EditorVisual() {
         }}
       />
 
-      <div className="glass relative overflow-hidden rounded-[28px] p-3 sm:p-4">
+      <div className="neo-tactile-card relative overflow-hidden rounded-[32px] p-3.5 sm:p-5">
         {/* window chrome */}
         <div className="flex items-center justify-between px-1 pb-3">
           <div className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-ink/15" />
-            <span className="h-2 w-2 rounded-full bg-ink/15" />
-            <span className="h-2 w-2 rounded-full bg-[var(--accent)]" />
+            <span className="h-2.5 w-2.5 rounded-full bg-ink/15 shadow-inner" />
+            <span className="h-2.5 w-2.5 rounded-full bg-ink/15 shadow-inner" />
+            <span className="h-2.5 w-2.5 rounded-full bg-[var(--accent)] shadow-sm" />
           </div>
-          <p className="mono text-[0.6rem] tracking-[0.18em] text-ink/45">
+          <p className="mono text-[0.6rem] font-bold tracking-[0.18em] text-ink/50">
             MOHIT_BABARIYA&nbsp;/&nbsp;SEQUENCE_01
           </p>
-          <p className="mono text-[0.6rem] tracking-[0.18em] text-ink/45">24 FPS</p>
+          <span className="rounded-full bg-black/5 px-2 py-0.5 mono text-[0.55rem] font-bold tracking-[0.14em] text-ink/60">24 FPS</span>
         </div>
 
         {/* preview */}
-        <div className="relative overflow-hidden rounded-2xl bg-ink" style={{ paddingBottom: "52%" }}>
+        <div className="relative overflow-hidden rounded-2xl bg-[#090a0f] shadow-inner" style={{ paddingBottom: "52%" }}>
           <div
             aria-hidden="true"
             className="absolute inset-0"
@@ -100,7 +100,7 @@ export default function EditorVisual() {
             type="button"
             onClick={() => setPlaying((p) => !p)}
             aria-label={playing ? "Pause preview" : "Play preview"}
-            className="absolute left-1/2 top-1/2 grid h-16 w-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/30 bg-white/10 backdrop-blur-md transition-transform duration-300 hover:scale-110"
+            className="absolute left-1/2 top-1/2 grid h-16 w-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/40 bg-white/15 backdrop-blur-lg shadow-[0_10px_30px_rgba(0,0,0,0.5)] transition-transform duration-300 hover:scale-110 active:scale-95"
           >
             {playing ? (
               <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff" aria-hidden="true">
@@ -115,33 +115,33 @@ export default function EditorVisual() {
 
           {/* badges */}
           <div className="absolute left-3 top-3 flex items-center gap-2">
-            <span className="rounded-md border border-white/20 bg-black/45 px-2 py-1 text-[0.55rem] font-semibold tracking-[0.16em] text-white/80 backdrop-blur-md">
+            <span className="rounded-md border border-white/20 bg-black/55 px-2 py-1 text-[0.55rem] font-semibold tracking-[0.16em] text-white/90 backdrop-blur-md">
               16:9
             </span>
-            <span className="rounded-md border border-white/20 bg-black/45 px-2 py-1 text-[0.55rem] font-semibold tracking-[0.16em] text-white/80 backdrop-blur-md">
+            <span className="rounded-md border border-white/20 bg-black/55 px-2 py-1 text-[0.55rem] font-semibold tracking-[0.16em] text-white/90 backdrop-blur-md">
               3840 × 2160
             </span>
           </div>
 
           <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
-            <p className="mono text-[0.6rem] tracking-[0.14em] text-white/75">{timecode(clock)}</p>
-            <div className="glass-dark flex items-center gap-2 rounded-full px-3 py-1.5">
+            <p className="mono text-[0.6rem] tracking-[0.14em] text-white/85">{timecode(clock)}</p>
+            <div className="glass-dark flex items-center gap-2 rounded-full px-3 py-1.5 shadow-md">
               <span className="pulse-dot h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
-              <span className="text-[0.55rem] font-semibold uppercase tracking-[0.18em] text-white/85">
+              <span className="text-[0.55rem] font-bold uppercase tracking-[0.18em] text-white/90">
                 AI upscale
               </span>
-              <span className="mono text-[0.55rem] text-white/60">{Math.round(render)}%</span>
+              <span className="mono text-[0.55rem] text-white/70">{Math.round(render)}%</span>
             </div>
           </div>
         </div>
 
         {/* timeline */}
-        <div className="mt-3 rounded-2xl border border-ink/8 bg-white/45 p-3">
+        <div className="mt-3.5 rounded-2xl border border-black/5 bg-black/5 p-3.5">
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-[0.55rem] font-semibold uppercase tracking-[0.22em] text-ink/45">
+            <p className="text-[0.55rem] font-bold uppercase tracking-[0.22em] text-ink/50">
               Timeline · V1 V2 A1
             </p>
-            <p className="mono text-[0.55rem] tracking-[0.14em] text-ink/40">00:00:12:08</p>
+            <p className="mono text-[0.55rem] font-semibold tracking-[0.14em] text-ink/50">00:00:12:08</p>
           </div>
 
           <div className="relative space-y-1.5">
@@ -150,7 +150,7 @@ export default function EditorVisual() {
               {Array.from({ length: 13 }).map((_, i) => (
                 <span
                   key={i}
-                  className="absolute top-0 h-1.5 w-px bg-ink/15"
+                  className="absolute top-0 h-1.5 w-px bg-ink/20"
                   style={{ left: `${(i / 12) * 100}%` }}
                 />
               ))}
@@ -165,7 +165,7 @@ export default function EditorVisual() {
               {[18, 34, 52, 68, 86].map((left, index) => (
                 <span
                   key={left}
-                  className="keyframe-float absolute top-1 h-2 w-2 rotate-45 border border-[var(--accent)] bg-white"
+                  className="keyframe-float absolute top-1 h-2 w-2 rotate-45 border border-[var(--accent)] bg-white shadow-sm"
                   style={{ left: `${left}%`, animationDelay: `${index * 0.4}s` }}
                 />
               ))}
@@ -173,23 +173,23 @@ export default function EditorVisual() {
 
             {/* playhead */}
             <div
-              className="pointer-events-none absolute -top-1 bottom-0 w-px bg-[var(--accent)]"
+              className="pointer-events-none absolute -top-1 bottom-0 w-0.5 bg-[var(--accent)] shadow-[0_0_8px_var(--accent)]"
               style={{ left: `${playhead}%`, transition: "left 220ms linear" }}
             >
-              <span className="absolute -left-1.5 -top-1 h-3 w-3 rounded-sm bg-[var(--accent)]" />
+              <span className="absolute -left-1.5 -top-1 h-3.5 w-3.5 rounded-sm bg-[var(--accent)] shadow-md" />
             </div>
           </div>
         </div>
       </div>
 
-      {/* floating chips */}
-      <div className="glass absolute -left-3 bottom-16 hidden rounded-2xl px-3 py-2 sm:block">
-        <p className="text-[0.5rem] font-semibold uppercase tracking-[0.2em] text-ink/45">Colour</p>
-        <p className="mono mt-1 text-[0.65rem] text-ink/80">Rec.709 · 3200K</p>
+      {/* floating 3D chips */}
+      <div className="neo-tactile-btn absolute -left-3 bottom-16 hidden rounded-2xl px-3.5 py-2.5 sm:block shadow-lg">
+        <p className="text-[0.5rem] font-bold uppercase tracking-[0.2em] text-ink/45">Colour</p>
+        <p className="mono mt-0.5 text-[0.65rem] font-bold text-ink/85">Rec.709 · 3200K</p>
       </div>
-      <div className="glass absolute -right-4 top-24 hidden rounded-2xl px-3 py-2 sm:block">
-        <p className="text-[0.5rem] font-semibold uppercase tracking-[0.2em] text-ink/45">Cut</p>
-        <p className="mono mt-1 text-[0.65rem] text-ink/80">J · L · Match</p>
+      <div className="neo-tactile-btn absolute -right-4 top-24 hidden rounded-2xl px-3.5 py-2.5 sm:block shadow-lg">
+        <p className="text-[0.5rem] font-bold uppercase tracking-[0.2em] text-ink/45">Cut</p>
+        <p className="mono mt-0.5 text-[0.65rem] font-bold text-ink/85">J · L · Match</p>
       </div>
     </div>
   );

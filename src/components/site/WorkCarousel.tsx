@@ -440,14 +440,18 @@ function FilterChip({
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-2.5 text-[0.62rem] font-semibold uppercase tracking-[0.16em] transition-all duration-300 ${
+      className={`flex shrink-0 items-center gap-2 rounded-full px-4 py-2.5 text-[0.62rem] font-bold uppercase tracking-[0.16em] transition-all duration-300 ${
         active
-          ? "border-ink bg-ink text-white"
-          : "border-ink/12 bg-white/50 text-ink/60 hover:border-ink/35 hover:text-ink"
+          ? "bg-ink text-white shadow-[0_8px_20px_-4px_rgba(11,11,12,0.5),inset_0_1px_0_rgba(255,255,255,0.25)] scale-[1.03]"
+          : "neo-tactile-btn text-ink/75 hover:text-ink"
       }`}
     >
-      {label}
-      <span className={`mono text-[0.55rem] ${active ? "text-white/60" : "text-ink/30"}`}>
+      <span>{label}</span>
+      <span
+        className={`mono text-[0.55rem] font-bold px-1.5 py-0.5 rounded-full ${
+          active ? "bg-white/20 text-white" : "bg-black/5 text-ink/45"
+        }`}
+      >
         {count}
       </span>
     </button>

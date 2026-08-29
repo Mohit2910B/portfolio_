@@ -139,21 +139,24 @@ export function Services({ data }: { data: SiteData }) {
         <div className="mt-12 grid gap-4 lg:grid-cols-2">
           {data.services.map((service, index) => (
             <Reveal key={service.id} delay={index * 50}>
-              <article className="glass-dark h-full rounded-3xl p-6 transition-transform duration-500 hover:-translate-y-1 sm:p-8">
+              <article className="glass-matte-dark group h-full rounded-3xl p-6 sm:p-8">
                 <div className="flex items-start justify-between gap-6">
                   <div>
-                    <p className="mono text-[0.6rem] tracking-[0.2em] text-white/35">
-                      {String(index + 1).padStart(2, "0")}
-                    </p>
-                    <h3 className="display mt-3 text-2xl text-white">{service.title}</h3>
+                    <div className="flex items-center gap-2">
+                      <span className="mono text-[0.6rem] font-bold tracking-[0.2em] text-[var(--accent)]">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <span className="h-1 w-1 rounded-full bg-[var(--accent)]" />
+                    </div>
+                    <h3 className="display mt-2 text-2xl font-bold text-white tracking-wide">{service.title}</h3>
                   </div>
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/15">
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-white/20 bg-white/5 text-white backdrop-blur-md transition-transform duration-300 group-hover:scale-105 group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]">
                     <ServiceIcon name={service.icon} />
                   </span>
                 </div>
 
                 {service.description && (
-                  <p className="mt-4 text-sm leading-relaxed text-white/60">{service.description}</p>
+                  <p className="mt-4 text-sm leading-relaxed text-white/70">{service.description}</p>
                 )}
 
                 <ul className="mt-6 flex flex-wrap gap-2">
@@ -164,7 +167,7 @@ export function Services({ data }: { data: SiteData }) {
                     .map((item) => (
                       <li
                         key={item}
-                        className="rounded-full border border-white/12 px-3 py-1 text-[0.58rem] uppercase tracking-[0.16em] text-white/60"
+                        className="rounded-full border border-white/15 bg-white/5 px-3.5 py-1 text-[0.6rem] font-medium uppercase tracking-[0.16em] text-white/80 backdrop-blur-sm transition-colors hover:border-[var(--accent)] hover:text-white"
                       >
                         {item}
                       </li>

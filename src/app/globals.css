@@ -385,6 +385,95 @@ body {
   transform: scaleX(1);
 }
 
+/* ---------------------------- Neo-Tactile & Reference UI Styles -------------------------- */
+
+.neo-tactile-card {
+  background: rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow:
+    8px 12px 28px -6px rgba(0, 0, 0, 0.08),
+    -6px -6px 20px rgba(255, 255, 255, 0.95),
+    inset 0 1px 1px rgba(255, 255, 255, 0.9);
+  transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.neo-tactile-card:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    12px 18px 36px -8px rgba(0, 0, 0, 0.12),
+    -8px -8px 24px rgba(255, 255, 255, 1),
+    inset 0 1px 1px rgba(255, 255, 255, 0.95);
+}
+
+.neo-tactile-groove {
+  background: rgba(0, 0, 0, 0.04);
+  box-shadow:
+    inset 2px 2px 5px rgba(0, 0, 0, 0.09),
+    inset -2px -2px 5px rgba(255, 255, 255, 0.8);
+  border-radius: 9999px;
+}
+
+.neo-tactile-btn {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 242, 245, 0.9) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow:
+    4px 6px 14px rgba(0, 0, 0, 0.08),
+    -3px -3px 10px rgba(255, 255, 255, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.neo-tactile-btn:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    6px 10px 20px rgba(0, 0, 0, 0.12),
+    -4px -4px 12px rgba(255, 255, 255, 1),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+.neo-tactile-btn:active {
+  transform: translateY(1px);
+  box-shadow:
+    inset 2px 2px 6px rgba(0, 0, 0, 0.12),
+    inset -1px -1px 4px rgba(255, 255, 255, 0.6);
+}
+
+.glass-vision {
+  background: rgba(255, 255, 255, 0.65);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow:
+    0 20px 50px -15px rgba(0, 0, 0, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.glass-matte-dark {
+  background: rgba(18, 20, 26, 0.78);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  backdrop-filter: blur(24px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 24px 60px -20px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 0 0 1px rgba(255, 255, 255, 0.03);
+  transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.glass-matte-dark:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 30px 70px -15px rgba(0, 0, 0, 0.85),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 0 25px -5px var(--accent, rgba(0, 242, 254, 0.25));
+}
+
+.pill-glow {
+  box-shadow: 0 0 18px -2px var(--accent, #e0147f);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .reveal {
     opacity: 1;
@@ -401,3 +490,4 @@ body {
     scroll-behavior: auto;
   }
 }
+

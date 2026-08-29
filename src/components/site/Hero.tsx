@@ -34,11 +34,11 @@ export default function Hero({ data }: { data: SiteData }) {
         <div>
           <Reveal>
             <div className="flex flex-wrap items-center gap-3">
-              <span className="glass inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[0.6rem] font-semibold uppercase tracking-[0.2em]">
-                <span className="pulse-dot h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
+              <span className="neo-tactile-btn inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[0.62rem] font-bold uppercase tracking-[0.2em] text-ink">
+                <span className="pulse-dot h-2 w-2 rounded-full bg-[var(--accent)]" />
                 {homepage.availabilityLabel}
               </span>
-              <span className="mono text-[0.6rem] tracking-[0.2em] text-ink/40">
+              <span className="mono text-[0.62rem] font-semibold tracking-[0.2em] text-ink/50">
                 {homepage.ownerName}
               </span>
             </div>
@@ -73,7 +73,7 @@ export default function Hero({ data }: { data: SiteData }) {
           </Reveal>
 
           <Reveal delay={200}>
-            <p className="editorial mt-6 max-w-xl text-lg leading-relaxed text-ink/70">
+            <p className="editorial mt-6 max-w-xl text-lg leading-relaxed text-ink/75">
               {homepage.heroDescription}
             </p>
           </Reveal>
@@ -83,14 +83,18 @@ export default function Hero({ data }: { data: SiteData }) {
               <button
                 type="button"
                 onClick={() => (homepage.reelUrl ? setReelOpen(true) : scrollToContact())}
-                className="btn btn-dark"
+                className="btn btn-dark shadow-xl hover:scale-105 active:scale-95 transition-transform"
               >
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                   <path d="M8 5v14l11-7z" />
                 </svg>
                 {homepage.ctaPrimaryLabel}
               </button>
-              <button type="button" onClick={scrollToContact} className="btn btn-ghost">
+              <button
+                type="button"
+                onClick={scrollToContact}
+                className="neo-tactile-btn inline-flex items-center justify-center rounded-full px-6 py-3.5 text-[0.72rem] font-bold uppercase tracking-[0.16em] text-ink hover:scale-105 active:scale-95 transition-transform"
+              >
                 {homepage.ctaSecondaryLabel}
               </button>
             </div>
