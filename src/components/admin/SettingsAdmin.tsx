@@ -356,7 +356,7 @@ function ThemeForm({
           Select your desired theme mode. Dark Apple Clay applies deep dark tactile depth with crisp white text.
         </p>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <button
             type="button"
             onClick={() => setDraft({ ...draft, preset: "dark-clay" })}
@@ -367,7 +367,7 @@ function ThemeForm({
             }`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-white">🌙 Dark 3D Apple Clay</span>
+              <span className="text-xs font-bold text-white">🌙 Dark Apple Clay</span>
               {draft.preset === "dark-clay" && (
                 <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
               )}
@@ -379,15 +379,35 @@ function ThemeForm({
 
           <button
             type="button"
+            onClick={() => setDraft({ ...draft, preset: "3d-emboss" })}
+            className={`flex flex-col text-left rounded-2xl p-4 transition-all duration-300 cursor-pointer ${
+              draft.preset === "3d-emboss"
+                ? "bg-[#eef2f7] text-[#111827] ring-2 ring-blue-500 shadow-xl scale-[1.02]"
+                : "border border-ink/15 bg-[#eef2f7]/70 text-ink/75 hover:text-ink"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-[#111827]">💎 3D Emboss Clay</span>
+              {draft.preset === "3d-emboss" && (
+                <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+              )}
+            </div>
+            <p className="mt-2 text-[0.65rem] text-ink/60 leading-relaxed">
+              Dual-shadow concave & convex grooves, embossed pill buttons & depth.
+            </p>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setDraft({ ...draft, preset: "3d-neo" })}
             className={`flex flex-col text-left rounded-2xl p-4 transition-all duration-300 cursor-pointer ${
-              draft.preset === "3d-neo" || (!draft.preset && draft.preset !== "dark-clay")
+              draft.preset === "3d-neo" || (!draft.preset && draft.preset !== "dark-clay" && draft.preset !== "3d-emboss")
                 ? "bg-white text-ink ring-2 ring-ink shadow-xl scale-[1.02]"
                 : "border border-ink/15 bg-white/60 text-ink/70 hover:text-ink"
             }`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-ink">☀️ Light 3D Apple Clay</span>
+              <span className="text-xs font-bold text-ink">☀️ Light Apple Clay</span>
               {(draft.preset === "3d-neo" || !draft.preset) && (
                 <span className="h-2 w-2 rounded-full bg-ink" />
               )}

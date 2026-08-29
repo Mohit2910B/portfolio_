@@ -57,8 +57,9 @@ export default async function HomePage() {
   };
 
   const isDarkClay = theme.preset === "dark-clay" || theme.preset === "3d-dark";
+  const is3dEmboss = theme.preset === "3d-emboss";
   const wrapperClass = [
-    isDarkClay ? "theme-dark-clay" : "",
+    isDarkClay ? "theme-dark-clay" : is3dEmboss ? "theme-3d-emboss" : "",
     theme.grain ? "grain" : "",
     "relative min-h-screen",
   ]

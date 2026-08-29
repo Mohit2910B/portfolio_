@@ -492,6 +492,65 @@ body {
   box-shadow: 0 20px 50px -15px rgba(0, 0, 0, 0.8);
 }
 
+/* ---------------- 3D Emboss Neomorphic Theme ---------------- */
+.theme-3d-emboss {
+  --color-paper: #eef2f7;
+  --color-ink: #111827;
+  --paper: #eef2f7;
+  --ink: #111827;
+  background-color: #eef2f7 !important;
+  color: #111827 !important;
+}
+
+.theme-3d-emboss .neo-tactile-card {
+  background: #eef2f7;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow:
+    10px 14px 26px rgba(166, 180, 200, 0.45),
+    -10px -10px 24px rgba(255, 255, 255, 0.95),
+    inset 0 1px 2px rgba(255, 255, 255, 0.8);
+  border-radius: 1.75rem;
+}
+
+.theme-3d-emboss .neo-tactile-card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    14px 20px 34px rgba(166, 180, 200, 0.55),
+    -12px -12px 28px rgba(255, 255, 255, 1),
+    inset 0 1px 2px rgba(255, 255, 255, 0.9);
+}
+
+.theme-3d-emboss .neo-tactile-btn {
+  background: linear-gradient(145deg, #ffffff, #e1e7f0);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  color: #111827;
+  box-shadow:
+    6px 8px 18px rgba(166, 180, 200, 0.4),
+    -5px -5px 14px rgba(255, 255, 255, 0.95),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+.theme-3d-emboss .neo-tactile-btn:active {
+  box-shadow:
+    inset 4px 4px 8px rgba(166, 180, 200, 0.5),
+    inset -3px -3px 8px rgba(255, 255, 255, 0.9);
+}
+
+.theme-3d-emboss .neo-tactile-groove {
+  background: #e5ebf3;
+  box-shadow:
+    inset 3px 3px 7px rgba(166, 180, 200, 0.5),
+    inset -3px -3px 7px rgba(255, 255, 255, 0.9);
+}
+
+.theme-3d-emboss .glass-vision {
+  background: rgba(238, 242, 247, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow:
+    8px 12px 24px rgba(166, 180, 200, 0.35),
+    -8px -8px 20px rgba(255, 255, 255, 0.9);
+}
+
 .glass-vision {
   background: rgba(255, 255, 255, 0.65);
   -webkit-backdrop-filter: blur(28px) saturate(180%);
