@@ -8,21 +8,26 @@ export type SendEmailResult = {
 };
 
 export async function getNotificationSettings() {
+  const defaultEmail =
+    process.env.NOTIFICATION_EMAIL ||
+    process.env.SEED_ADMIN_EMAIL ||
+    "mohitbabariyaa@gmail.com";
+
   try {
     const rows = await db.select().from(notificationSettings).limit(1);
     return (
       rows[0] ?? {
         id: 1,
-        emailEnabled: false,
-        notificationEmail: process.env.NOTIFICATION_EMAIL ?? "",
+        emailEnabled: true,
+        notificationEmail: defaultEmail,
       }
     );
   } catch (error) {
     console.error("[notifications] Failed to fetch notification settings:", error);
     return {
       id: 1,
-      emailEnabled: false,
-      notificationEmail: process.env.NOTIFICATION_EMAIL ?? "",
+      emailEnabled: true,
+      notificationEmail: defaultEmail,
     };
   }
 }
