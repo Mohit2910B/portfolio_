@@ -180,6 +180,7 @@ export function getDatabaseResolution(): DbResolution {
 const globalForDb = globalThis as unknown as {
   cachedPgPool?: Pool;
   cachedPgKey?: string;
+  cachedDrizzle?: ReturnType<typeof drizzle>;
 };
 
 export function getPool(): Pool {
@@ -287,6 +288,31 @@ export function getPool(): Pool {
   return unconfiguredPool;
 }
 
+export function getDb() {
+  const currentPool = getPool();
+  const resolution = getDatabaseResolution();
+  const currentKey = JSON.stringify(resolution);
+
+  if (globalForDb.cachedDrizzle && globalForDb.cachedPgKey === currentKey) {
+    return globalForDb.cachedDrizzle;
+  }
+
+  const d = drizzle(currentPool);
+  globalForDb.cachedDrizzle = d;
+  return d;
+}
+
+export const db = new Proxy({} as ReturnType<typeof drizzle>, {
+  get(_target, prop, receiver) {
+    const active = getDb();
+    const value = Reflect.get(active, prop, receiver);
+    if (typeof value === "function") {
+      return value.bind(active);
+    }
+    return value;
+  },
+});
+
 export const pool = new Proxy({} as Pool, {
   get(_target, prop, receiver) {
     const active = getPool();
@@ -297,8 +323,6 @@ export const pool = new Proxy({} as Pool, {
     return value;
   },
 });
-
-export const db = drizzle(pool);
 
 
 
