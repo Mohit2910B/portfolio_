@@ -27,7 +27,7 @@ import {
   SOFTWARE_TOOL_SEED,
   WORK_OPTION_SEED,
 } from "@/lib/bootstrap";
-import { HOME_FALLBACK, CONTACT_FALLBACK } from "@/lib/data";
+import { HOME_FALLBACK, CONTACT_FALLBACK, invalidateSiteDataCache } from "@/lib/data";
 import { requireAdmin } from "@/lib/auth";
 import { badRequest, created, guard, notFound, num, ok, str, bool } from "@/lib/http";
 import { deleteStoredFile, safeStoredName } from "@/lib/storage";
@@ -36,6 +36,13 @@ export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ path?: string[] }> };
 type ProjectInsert = typeof projects.$inferInsert;
+
+function revalidatePublic() {
+  try {
+    invalidateSiteDataCache();
+    revalidatePath("/");
+  } catch {}
+}
 
 async function seg(ctx: Params): Promise<string[]> {
   const params = await ctx.params;
@@ -597,9 +604,7 @@ export async function POST(request: Request, ctx: Params) {
   return guard(async () => {
     await requireAdmin();
     await ensureDatabase();
-    try {
-      revalidatePath("/");
-    } catch {}
+    revalidatePublic();
     const parts = await seg(ctx);
     const [resource, second, third, fourth] = parts;
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
@@ -905,9 +910,7 @@ export async function PATCH(request: Request, ctx: Params) {
   return guard(async () => {
     await requireAdmin();
     await ensureDatabase();
-    try {
-      revalidatePath("/");
-    } catch {}
+    revalidatePublic();
     const parts = await seg(ctx);
     const [resource, second, third] = parts;
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
@@ -1181,9 +1184,7 @@ export async function DELETE(_request: Request, ctx: Params) {
   return guard(async () => {
     await requireAdmin();
     await ensureDatabase();
-    try {
-      revalidatePath("/");
-    } catch {}
+    revalidatePublic();
     const parts = await seg(ctx);
     const [resource, second] = parts;
     const id = Number(second);

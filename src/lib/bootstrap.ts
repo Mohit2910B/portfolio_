@@ -864,24 +864,29 @@ async function seedNotificationSettings() {
   }
 }
 
-let ensured: Promise<void> | null = null;
+declare global {
+  // eslint-disable-next-line no-var
+  var __dbBootstrapped: boolean | undefined;
+  // eslint-disable-next-line no-var
+  var __dbEnsuredPromise: Promise<void> | null | undefined;
+}
 
 /** Idempotent first-run bootstrap: verifies tables exist and seeds defaults. */
 export function ensureDatabase(): Promise<void> {
-  if (bootstrapped) return Promise.resolve();
-  if (!ensured) {
-    ensured = (async () => {
+  if (globalThis.__dbBootstrapped) return Promise.resolve();
+  if (!globalThis.__dbEnsuredPromise) {
+    globalThis.__dbEnsuredPromise = (async () => {
       await ensureTables();
       await seedAdmin();
       await seedNotificationSettings();
       await seedContent();
-      bootstrapped = true;
+      globalThis.__dbBootstrapped = true;
     })().catch((error) => {
-      ensured = null;
+      globalThis.__dbEnsuredPromise = null;
       throw error;
     });
   }
-  return ensured;
+  return globalThis.__dbEnsuredPromise;
 }
 
 

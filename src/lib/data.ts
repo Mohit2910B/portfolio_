@@ -49,7 +49,95 @@ export type PublicProject = {
   sortOrder: number;
 };
 
-export type SiteData = Awaited<ReturnType<typeof getSiteData>>;
+export type CategoryItem = {
+  id: number;
+  name: string;
+  slug: string;
+  description: string;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type ServiceItem = {
+  id: number;
+  title: string;
+  description: string;
+  deliverables: string;
+  icon: string;
+  priceFrom: string;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type ToolItem = {
+  id: number;
+  name: string;
+  category: string;
+  icon: string;
+  proficiency: number | null;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type WorkOptionItem = {
+  id: number;
+  label: string;
+  value: string;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type SectionItem = {
+  id: number;
+  sectionKey: string;
+  label: string;
+  sortOrder: number;
+  isVisible: boolean;
+  updatedAt: Date;
+};
+
+export type CarouselSettingItem = {
+  id: number;
+  categoryId: number | null;
+  slots: number;
+  centerSize: string;
+  sideSize: string;
+  autoFill: boolean;
+  projectIds: string;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type SiteData = {
+  homepage: typeof HOME_FALLBACK & { id?: number; [key: string]: unknown };
+  contact: typeof CONTACT_FALLBACK & { id?: number; [key: string]: unknown };
+  theme: {
+    id: number;
+    accent: string;
+    glassOpacity: number;
+    glassBlur: number;
+    grain: boolean;
+    updatedAt: Date;
+  };
+  categories: CategoryItem[];
+  allCategories: CategoryItem[];
+  projects: PublicProject[];
+  services: ServiceItem[];
+  softwareTools: ToolItem[];
+  workOptions: WorkOptionItem[];
+  sections: SectionItem[];
+  carouselSettings: CarouselSettingItem[];
+};
 
 export const HOME_FALLBACK = {
   ownerName: "Mohit Babariya",
@@ -88,7 +176,7 @@ export const CONTACT_FALLBACK = {
   responseTime: "Replies within 24 hours",
 };
 
-export const DEFAULT_CATEGORIES = CATEGORY_SEED.map(([name, description], index) => ({
+export const DEFAULT_CATEGORIES: CategoryItem[] = CATEGORY_SEED.map(([name, description], index) => ({
   id: index + 1,
   name,
   slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
@@ -125,7 +213,7 @@ export const DEFAULT_PROJECTS: PublicProject[] = PROJECT_SEED.map((p, index) => 
   sortOrder: index,
 }));
 
-export const DEFAULT_SERVICES = SERVICE_SEED.map((s, index) => ({
+export const DEFAULT_SERVICES: ServiceItem[] = SERVICE_SEED.map((s, index) => ({
   id: index + 1,
   title: s.title,
   description: s.description,
@@ -138,7 +226,7 @@ export const DEFAULT_SERVICES = SERVICE_SEED.map((s, index) => ({
   updatedAt: new Date(),
 }));
 
-export const DEFAULT_SOFTWARE_TOOLS = SOFTWARE_TOOL_SEED.map(
+export const DEFAULT_SOFTWARE_TOOLS: ToolItem[] = SOFTWARE_TOOL_SEED.map(
   ([name, category, icon, proficiency], index) => ({
     id: index + 1,
     name,
@@ -152,7 +240,7 @@ export const DEFAULT_SOFTWARE_TOOLS = SOFTWARE_TOOL_SEED.map(
   }),
 );
 
-export const DEFAULT_WORK_OPTIONS = WORK_OPTION_SEED.map((label, index) => ({
+export const DEFAULT_WORK_OPTIONS: WorkOptionItem[] = WORK_OPTION_SEED.map((label, index) => ({
   id: index + 1,
   label,
   value: label.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
@@ -162,7 +250,7 @@ export const DEFAULT_WORK_OPTIONS = WORK_OPTION_SEED.map((label, index) => ({
   updatedAt: new Date(),
 }));
 
-export const DEFAULT_SECTIONS = SECTION_SEED.map(([sectionKey, label], index) => ({
+export const DEFAULT_SECTIONS: SectionItem[] = SECTION_SEED.map(([sectionKey, label], index) => ({
   id: index + 1,
   sectionKey,
   label,
@@ -171,7 +259,7 @@ export const DEFAULT_SECTIONS = SECTION_SEED.map(([sectionKey, label], index) =>
   updatedAt: new Date(),
 }));
 
-export const DEFAULT_CAROUSEL_SETTINGS = DEFAULT_CATEGORIES.map((category, index) => ({
+export const DEFAULT_CAROUSEL_SETTINGS: CarouselSettingItem[] = DEFAULT_CATEGORIES.map((category, index) => ({
   id: index + 1,
   categoryId: category.id,
   slots: index === 0 ? 7 : 5,
@@ -185,7 +273,7 @@ export const DEFAULT_CAROUSEL_SETTINGS = DEFAULT_CATEGORIES.map((category, index
   updatedAt: new Date(),
 }));
 
-function getFallbackSiteData() {
+function getFallbackSiteData(): SiteData {
   const theme = {
     id: 1,
     accent: "#e0147f",
@@ -210,7 +298,17 @@ function getFallbackSiteData() {
   };
 }
 
-export async function getSiteData() {
+let cachedSiteData: { data: SiteData; expiresAt: number } | null = null;
+
+export function invalidateSiteDataCache() {
+  cachedSiteData = null;
+}
+
+export async function getSiteData(): Promise<SiteData> {
+  if (cachedSiteData && Date.now() < cachedSiteData.expiresAt) {
+    return cachedSiteData.data;
+  }
+
   try {
     await ensureDatabase();
 
@@ -302,7 +400,7 @@ export async function getSiteData() {
     const finalSections = sectionRows.length > 0 ? sectionRows : DEFAULT_SECTIONS;
     const finalCarousel = carouselRows.length > 0 ? carouselRows : DEFAULT_CAROUSEL_SETTINGS;
 
-    return {
+    const result = {
       homepage,
       contact,
       theme,
@@ -315,6 +413,9 @@ export async function getSiteData() {
       sections: finalSections.filter((section) => (section.sectionKey as string) !== "capabilities"),
       carouselSettings: finalCarousel,
     };
+
+    cachedSiteData = { data: result, expiresAt: Date.now() + 30000 };
+    return result;
   } catch (error) {
     console.error("[getSiteData] Database fetch failed, serving default site data:", error);
     return getFallbackSiteData();

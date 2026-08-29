@@ -7,7 +7,7 @@ import SoftwareTools from "@/components/site/SoftwareTools";
 import { About, Footer, Marquee, Services } from "@/components/site/Sections";
 import { getSiteData, HOME_FALLBACK } from "@/lib/data";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 const DEFAULT_ORDER = ["hero", "about", "tools", "services", "work", "contact"];
 
