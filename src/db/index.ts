@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { Pool, type PoolConfig } from "pg";
+import { Pool } from "pg";
 
 export class DatabaseNotConfiguredError extends Error {
   constructor(message?: string) {
@@ -12,6 +12,19 @@ export class DatabaseNotConfiguredError extends Error {
   }
 }
 
+function cleanEnvValue(value?: string): string {
+  if (!value) return "";
+  let v = value.trim();
+  if (
+    (v.startsWith('"') && v.endsWith('"')) ||
+    (v.startsWith("'") && v.endsWith("'")) ||
+    (v.startsWith("`") && v.endsWith("`"))
+  ) {
+    v = v.slice(1, -1).trim();
+  }
+  return v;
+}
+
 function isLocalHost(host: string): boolean {
   const h = host.toLowerCase().trim();
   return (
@@ -19,8 +32,24 @@ function isLocalHost(host: string): boolean {
     h === "127.0.0.1" ||
     h === "::1" ||
     h === "0.0.0.0" ||
-    h.endsWith(".localhost")
+    h.endsWith(".localhost") ||
+    h === "host.docker.internal"
   );
+}
+
+function extractHostname(rawUrl: string): string | null {
+  try {
+    const parsed = new URL(rawUrl);
+    return parsed.hostname?.trim() || null;
+  } catch {
+    const atIndex = rawUrl.lastIndexOf("@");
+    if (atIndex !== -1) {
+      const hostPart = rawUrl.slice(atIndex + 1);
+      const host = hostPart.split("/")[0]?.split(":")[0]?.split("?")[0]?.trim();
+      if (host) return host;
+    }
+    return null;
+  }
 }
 
 function isCloudOrProduction(): boolean {
@@ -34,7 +63,7 @@ function isCloudOrProduction(): boolean {
   );
 }
 
-export function getDatabaseResolution():
+export type DbResolution =
   | { type: "remote-url"; connectionString: string; ssl: boolean }
   | {
       type: "remote-params";
@@ -54,30 +83,40 @@ export function getDatabaseResolution():
       database: string;
       password?: string;
     }
-  | { type: "unconfigured" } {
-  const isCloud = isCloudOrProduction();
-  const rawUrl = process.env.DATABASE_URL?.trim();
-  const dbHost = process.env.DB_HOST?.trim();
-  const dbPort = process.env.DB_PORT ? Number(process.env.DB_PORT) : 5432;
-  const dbUser = process.env.DB_USER?.trim();
-  const dbPassword = process.env.DB_PASSWORD ?? "";
-  const dbName = process.env.DB_NAME?.trim();
-  const dbSslEnv = process.env.DB_SSL?.trim()?.toLowerCase();
+  | { type: "unconfigured" };
 
+export function getDatabaseResolution(): DbResolution {
+  const isCloud = isCloudOrProduction();
+
+  const rawUrl =
+    cleanEnvValue(process.env.DATABASE_URL) ||
+    cleanEnvValue(process.env.POSTGRES_URL) ||
+    cleanEnvValue(process.env.POSTGRES_PRISMA_URL) ||
+    cleanEnvValue(process.env.POSTGRES_URL_NON_POOLING) ||
+    cleanEnvValue(process.env.DATABASE_URI) ||
+    cleanEnvValue(process.env.DB_URL);
+
+  const dbHost = cleanEnvValue(process.env.DB_HOST);
+  const dbPort = process.env.DB_PORT ? Number(cleanEnvValue(process.env.DB_PORT)) : 5432;
+  const dbUser = cleanEnvValue(process.env.DB_USER);
+  const dbPassword = process.env.DB_PASSWORD ? cleanEnvValue(process.env.DB_PASSWORD) : "";
+  const dbName = cleanEnvValue(process.env.DB_NAME);
+  const dbSslEnv = cleanEnvValue(process.env.DB_SSL).toLowerCase();
+
+  let urlHostname: string | null = null;
   let urlIsLocal = false;
+
   if (rawUrl) {
-    try {
-      const parsed = new URL(rawUrl);
-      urlIsLocal = isLocalHost(parsed.hostname);
-    } catch {
-      urlIsLocal = rawUrl.includes("localhost") || rawUrl.includes("127.0.0.1");
+    urlHostname = extractHostname(rawUrl);
+    if (urlHostname) {
+      urlIsLocal = isLocalHost(urlHostname);
     }
   }
 
   const hostIsProvided = Boolean(dbHost);
   const hostIsLocal = dbHost ? isLocalHost(dbHost) : false;
 
-  // 1. Prioritize remote DATABASE_URL
+  // 1. Remote DATABASE_URL
   if (rawUrl && !urlIsLocal) {
     const sslDisabled = rawUrl.includes("sslmode=disable") || dbSslEnv === "false";
     const sslEnabled =
@@ -94,15 +133,15 @@ export function getDatabaseResolution():
     };
   }
 
-  // 2. Prioritize remote DB_HOST
+  // 2. Remote discrete DB_HOST
   if (hostIsProvided && !hostIsLocal) {
     const sslDisabled = dbSslEnv === "false";
     const sslEnabled = dbSslEnv === "true" || !sslDisabled;
 
     return {
       type: "remote-params",
-      host: dbHost!,
-      port: dbPort,
+      host: dbHost,
+      port: dbPort || 5432,
       user: dbUser || "postgres",
       password: dbPassword,
       database: dbName || "postgres",
@@ -110,12 +149,12 @@ export function getDatabaseResolution():
     };
   }
 
-  // 3. In cloud/production: DO NOT connect to localhost/127.0.0.1
+  // 3. In cloud/production, if no remote DB credentials exist, do NOT connect to loopback
   if (isCloud) {
     return { type: "unconfigured" };
   }
 
-  // 4. In local development only:
+  // 4. Local development only:
   if (rawUrl) {
     return { type: "local-url", connectionString: rawUrl };
   }
@@ -124,7 +163,7 @@ export function getDatabaseResolution():
     return {
       type: "local-params",
       host: dbHost || "localhost",
-      port: dbPort,
+      port: dbPort || 5432,
       user: dbUser || "postgres",
       password: dbPassword,
       database: dbName || "postgres",
@@ -137,21 +176,31 @@ export function getDatabaseResolution():
   };
 }
 
-function createProductionSafePool(): Pool {
+let cachedPool: Pool | null = null;
+let cachedKey = "";
+
+export function getPool(): Pool {
   const resolution = getDatabaseResolution();
+  const currentKey = JSON.stringify(resolution);
+
+  if (cachedPool && cachedKey === currentKey) {
+    return cachedPool;
+  }
 
   if (resolution.type === "remote-url") {
-    return new Pool({
+    cachedPool = new Pool({
       connectionString: resolution.connectionString,
       ssl: resolution.ssl ? { rejectUnauthorized: false } : undefined,
       max: 10,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000,
     });
+    cachedKey = currentKey;
+    return cachedPool;
   }
 
   if (resolution.type === "remote-params") {
-    return new Pool({
+    cachedPool = new Pool({
       host: resolution.host,
       port: resolution.port,
       user: resolution.user,
@@ -162,17 +211,21 @@ function createProductionSafePool(): Pool {
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000,
     });
+    cachedKey = currentKey;
+    return cachedPool;
   }
 
   if (resolution.type === "local-url") {
-    return new Pool({
+    cachedPool = new Pool({
       connectionString: resolution.connectionString,
       max: 5,
     });
+    cachedKey = currentKey;
+    return cachedPool;
   }
 
   if (resolution.type === "local-params") {
-    return new Pool({
+    cachedPool = new Pool({
       host: resolution.host,
       port: resolution.port,
       user: resolution.user,
@@ -180,11 +233,11 @@ function createProductionSafePool(): Pool {
       database: resolution.database,
       max: 5,
     });
+    cachedKey = currentKey;
+    return cachedPool;
   }
 
-  // Unconfigured in cloud production: Create a safe stub pool that rejects queries with descriptive instructions
   const unconfiguredPool = new Pool({
-    // Dummy loopback config that is never actually connected to because query/connect are intercepted
     connectionString: "postgresql://unconfigured:unconfigured@0.0.0.0:5432/unconfigured",
     max: 1,
     connectionTimeoutMillis: 1000,
@@ -194,32 +247,35 @@ function createProductionSafePool(): Pool {
 
   unconfiguredPool.query = (async () => {
     console.error(
-      "[db] Production database error: Neither DATABASE_URL nor DB_HOST points to a live remote PostgreSQL server in Netlify environment variables. Localhost/127.0.0.1 cannot be used on Netlify.",
+      "[db] Production database error: Neither DATABASE_URL nor DB_HOST points to a live remote PostgreSQL server in Netlify environment variables.",
     );
     throw unconfiguredError;
   }) as unknown as typeof unconfiguredPool.query;
 
   unconfiguredPool.connect = (async () => {
     console.error(
-      "[db] Production database error: Neither DATABASE_URL nor DB_HOST points to a live remote PostgreSQL server in Netlify environment variables. Localhost/127.0.0.1 cannot be used on Netlify.",
+      "[db] Production database error: Neither DATABASE_URL nor DB_HOST points to a live remote PostgreSQL server in Netlify environment variables.",
     );
     throw unconfiguredError;
   }) as unknown as typeof unconfiguredPool.connect;
 
-  return unconfiguredPool;
+  cachedPool = unconfiguredPool;
+  cachedKey = currentKey;
+  return cachedPool;
 }
 
-const globalForDb = globalThis as typeof globalThis & {
-  __arenaNextJsPostgresqlPool?: Pool;
-};
-
-export const pool =
-  globalForDb.__arenaNextJsPostgresqlPool ?? createProductionSafePool();
-
-if (process.env.NODE_ENV !== "production") {
-  globalForDb.__arenaNextJsPostgresqlPool = pool;
-}
+export const pool = new Proxy({} as Pool, {
+  get(_target, prop, receiver) {
+    const active = getPool();
+    const value = Reflect.get(active, prop, receiver);
+    if (typeof value === "function") {
+      return value.bind(active);
+    }
+    return value;
+  },
+});
 
 export const db = drizzle(pool);
+
 
 
