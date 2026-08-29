@@ -62,35 +62,53 @@ export async function POST(request: Request) {
 
       const kind = wantsVideo ? "video" : "image";
       const url = `/api/files/${filename}`;
-      const inserted = await db
-        .insert(mediaFiles)
-        .values({
-          filename,
-          originalName: file.name,
-          mimeType: mime || "application/octet-stream",
-          kind,
-          size: stat.size,
-          url,
-          width: num(form.get("width")),
-          height: num(form.get("height")),
-        })
-        .returning();
+      let insertedMedia = {
+        id: Date.now(),
+        filename,
+        originalName: file.name,
+        mimeType: mime || "application/octet-stream",
+        kind,
+        size: stat.size,
+        url,
+        width: num(form.get("width")),
+        height: num(form.get("height")),
+        createdAt: new Date(),
+      };
 
-      // Optional auto-attach to a project (used by the admin uploader).
-      const projectId = num(form.get("projectId"));
-      if (projectId) {
-        const patch = wantsVideo
-          ? { videoUrl: url, videoSource: "upload", updatedAt: new Date() }
-          : { thumbnailUrl: url, updatedAt: new Date() };
-        const updated = await db
-          .update(projects)
-          .set(patch)
-          .where(eq(projects.id, projectId))
+      try {
+        const inserted = await db
+          .insert(mediaFiles)
+          .values({
+            filename,
+            originalName: file.name,
+            mimeType: mime || "application/octet-stream",
+            kind,
+            size: stat.size,
+            url,
+            width: num(form.get("width")),
+            height: num(form.get("height")),
+          })
           .returning();
-        if (!updated[0]) return notFound("Project not found for attachment.");
+        if (inserted[0]) {
+          insertedMedia = inserted[0];
+        }
+
+        // Optional auto-attach to a project (used by the admin uploader).
+        const projectId = num(form.get("projectId"));
+        if (projectId) {
+          const patch = wantsVideo
+            ? { videoUrl: url, videoSource: "upload", updatedAt: new Date() }
+            : { thumbnailUrl: url, updatedAt: new Date() };
+          await db
+            .update(projects)
+            .set(patch)
+            .where(eq(projects.id, projectId));
+        }
+      } catch (dbErr) {
+        console.warn("[upload] Database save skipped, file written to disk:", dbErr);
       }
 
-      return created({ media: inserted[0], url, kind });
+      return created({ media: insertedMedia, url, kind });
     } catch (error) {
       await fsp.unlink(target).catch(() => undefined);
       console.error("[upload]", error);

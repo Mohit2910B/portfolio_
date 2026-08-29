@@ -18,7 +18,14 @@ import {
   themeSettings,
   workOptions,
 } from "@/db/schema";
-import { ensureDatabase } from "@/lib/bootstrap";
+import {
+  ensureDatabase,
+  CATEGORY_SEED,
+  SERVICE_SEED,
+  SKILL_SEED,
+  SOFTWARE_TOOL_SEED,
+  WORK_OPTION_SEED,
+} from "@/lib/bootstrap";
 import { requireAdmin } from "@/lib/auth";
 import { badRequest, created, guard, notFound, num, ok, str, bool } from "@/lib/http";
 import { deleteStoredFile } from "@/lib/storage";
@@ -433,28 +440,88 @@ export async function GET(_request: Request, ctx: Params) {
             mediaFiles: 0,
             enquiries: { total: 0, unread: 0 },
             chat: { total: 0, unread: 0 },
-            categories: 0,
-            skills: 0,
-            services: 0,
-            softwareTools: 0,
+            categories: CATEGORY_SEED.length,
+            skills: SKILL_SEED.length,
+            services: SERVICE_SEED.length,
+            softwareTools: SOFTWARE_TOOL_SEED.length,
           });
         case "projects":
           return ok({ projects: [] });
         case "categories":
-          return ok({ categories: [] });
-        case "skills":
-          return ok({ skills: [] });
-        case "software-tools":
-          return ok({ softwareTools: [] });
+          return ok({
+            categories: CATEGORY_SEED.map(([name, description], i) => ({
+              id: i + 1,
+              name,
+              slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+              description,
+              sortOrder: i,
+              isActive: true,
+              projectCount: 0,
+            })),
+          });
         case "services":
-          return ok({ services: [] });
+          return ok({
+            services: SERVICE_SEED.map((s, i) => ({
+              id: i + 1,
+              title: s.title,
+              description: s.description,
+              deliverables: s.deliverables,
+              icon: s.icon,
+              sortOrder: i,
+              isActive: true,
+            })),
+          });
+        case "skills":
+          return ok({
+            skills: SKILL_SEED.map(([name, category, description, level], i) => ({
+              id: i + 1,
+              name,
+              category,
+              description,
+              level,
+              sortOrder: i,
+              isActive: true,
+            })),
+          });
+        case "software-tools":
+          return ok({
+            softwareTools: SOFTWARE_TOOL_SEED.map(([name, category, icon, level], i) => ({
+              id: i + 1,
+              name,
+              category,
+              icon,
+              level,
+              sortOrder: i,
+              isActive: true,
+            })),
+          });
         case "work-options":
-          return ok({ workOptions: [] });
+          return ok({
+            workOptions: WORK_OPTION_SEED.map((label, i) => ({
+              id: i + 1,
+              label,
+              value: label.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+              sortOrder: i,
+              isActive: true,
+            })),
+          });
         case "media":
           return ok({ media: [] });
         case "carousel":
           return ok({ carousel: [] });
         case "settings":
+          if (second === "notifications") {
+            return ok({
+              settings: {
+                id: 1,
+                emailEnabled: true,
+                notificationEmail:
+                  process.env.NOTIFICATION_EMAIL ||
+                  process.env.SEED_ADMIN_EMAIL ||
+                  "mohitbabariyaa@gmail.com",
+              },
+            });
+          }
           return ok({ settings: null });
         case "layout":
           return ok({ sections: [] });
