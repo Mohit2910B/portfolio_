@@ -106,6 +106,8 @@ export function getDatabaseResolution(): DbResolution {
     cleanEnvValue(process.env.POSTGRES_URL) ||
     cleanEnvValue(process.env.POSTGRES_PRISMA_URL) ||
     cleanEnvValue(process.env.POSTGRES_URL_NON_POOLING) ||
+    cleanEnvValue(process.env.NEON_URL) ||
+    cleanEnvValue(process.env.STORAGE_URL) ||
     cleanEnvValue(process.env.DATABASE_URI) ||
     cleanEnvValue(process.env.DB_URL);
 
