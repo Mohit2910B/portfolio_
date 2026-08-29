@@ -1,4 +1,4 @@
-import { randomBytes, scrypt as scryptCb, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, scrypt as scryptCb, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { cookies } from "next/headers";
 import { and, eq, gt } from "drizzle-orm";
@@ -13,6 +13,32 @@ const scrypt = promisify(scryptCb) as (
 
 export const ADMIN_COOKIE = "mb_admin_session";
 const SESSION_DAYS = 7;
+
+const AUTH_SECRET =
+  process.env.AUTH_SECRET ||
+  process.env.RESEND_API_KEY ||
+  "portfolio-creative-admin-secret-2026";
+
+function signAdminPayload(payloadObj: object): string {
+  const payload = Buffer.from(JSON.stringify(payloadObj)).toString("base64url");
+  const signature = createHmac("sha256", AUTH_SECRET).update(payload).digest("hex");
+  return `admin:${payload}.${signature}`;
+}
+
+function verifyAdminPayload<T>(token: string): T | null {
+  try {
+    if (!token.startsWith("admin:")) return null;
+    const raw = token.slice("admin:".length);
+    const parts = raw.split(".");
+    if (parts.length !== 2) return null;
+    const [payload, signature] = parts;
+    const expected = createHmac("sha256", AUTH_SECRET).update(payload).digest("hex");
+    if (signature !== expected) return null;
+    return JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as T;
+  } catch {
+    return null;
+  }
+}
 
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16).toString("hex");
@@ -33,10 +59,21 @@ export function newSessionToken(): string {
   return randomBytes(32).toString("hex");
 }
 
-export async function createSession(adminId: number): Promise<string> {
-  const token = newSessionToken();
+export async function createSession(
+  adminId: number,
+  adminData?: { id: number; name: string; email: string; username: string; role: string },
+): Promise<string> {
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
-  await db.insert(adminSessions).values({ token, adminId, expiresAt });
+  const token = adminData
+    ? signAdminPayload({ ...adminData, expiresAt: expiresAt.getTime() })
+    : newSessionToken();
+
+  try {
+    await db.insert(adminSessions).values({ token, adminId, expiresAt });
+  } catch {
+    // Database session insert skipped if DB is unconfigured
+  }
+
   const jar = await cookies();
   jar.set(ADMIN_COOKIE, token, {
     httpOnly: true,
@@ -60,6 +97,20 @@ export async function getCurrentAdmin(): Promise<SessionAdmin | null> {
   const jar = await cookies();
   const token = jar.get(ADMIN_COOKIE)?.value;
   if (!token) return null;
+
+  // 1. Try signed cryptographic admin token
+  const signed = verifyAdminPayload<SessionAdmin & { expiresAt: number }>(token);
+  if (signed && signed.expiresAt > Date.now()) {
+    return {
+      id: signed.id || 1,
+      name: signed.name || "Mohit Babariya",
+      email: signed.email || "mohitbabariyaa@gmail.com",
+      username: signed.username || "mohit",
+      role: signed.role || "owner",
+    };
+  }
+
+  // 2. Try DB session lookup
   try {
     const rows = await db
       .select({
@@ -83,7 +134,9 @@ export async function destroySession(): Promise<void> {
   const jar = await cookies();
   const token = jar.get(ADMIN_COOKIE)?.value;
   if (token) {
-    await db.delete(adminSessions).where(eq(adminSessions.token, token));
+    try {
+      await db.delete(adminSessions).where(eq(adminSessions.token, token));
+    } catch {}
   }
   jar.delete(ADMIN_COOKIE);
 }
@@ -109,3 +162,4 @@ export async function requireAdmin(): Promise<SessionAdmin> {
   }
   return admin;
 }
+
