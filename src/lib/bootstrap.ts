@@ -381,7 +381,7 @@ async function seedAdmin() {
   });
 }
 
-const CATEGORY_SEED = [
+export const CATEGORY_SEED = [
   ["Real Estate", "Property walk-throughs, listing films and cinematic tours."],
   ["Instagram", "Reels, vertical edits and scroll-stopping social cuts."],
   ["YouTube", "Long-form edits, retention pacing and thumbnail systems."],
@@ -393,7 +393,7 @@ const CATEGORY_SEED = [
   ["Other", "Experiments, personal cuts and everything in between."],
 ] as const;
 
-const SKILL_SEED = [
+export const SKILL_SEED = [
   ["Video Editing", "Post Production", "Narrative structure, pacing and rhythm across long and short form.", 95],
   ["Motion Graphics", "Motion", "Kinetic typography, animated logos, lower thirds and title systems.", 90],
   ["After Effects", "Tools", "Compositing, keyframing, expressions and plugin-driven workflows.", 92],
@@ -406,7 +406,7 @@ const SKILL_SEED = [
   ["Creative Direction", "Strategy", "References, storyboards, edit styles and visual systems.", 88],
 ] as const;
 
-const SOFTWARE_TOOL_SEED = [
+export const SOFTWARE_TOOL_SEED = [
   ["Adobe Premiere Pro", "Editing", "premiere", 95],
   ["Adobe After Effects", "Motion", "after-effects", 92],
   ["DaVinci Resolve", "Colour", "davinci", 88],
@@ -418,11 +418,11 @@ const SOFTWARE_TOOL_SEED = [
   ["AI / Generative AI tools", "AI Video", "ai", 85],
 ] as const;
 
-const SERVICE_SEED = [
+export const SERVICE_SEED = [
   {
     title: "Video Editing",
     description:
-      "Timeline-led editing for brands, creators and studios â€” from raw footage to a finished master.",
+      "Timeline-led editing for brands, creators and studios — from raw footage to a finished master.",
     deliverables: "Story assembly|Rhythm & pacing|Subtitles|Multi-ratio delivery",
     icon: "cut",
   },
@@ -463,7 +463,7 @@ const SERVICE_SEED = [
   },
 ] as const;
 
-const WORK_OPTION_SEED = [
+export const WORK_OPTION_SEED = [
   "Video Editing",
   "Reels",
   "YouTube",
@@ -477,7 +477,7 @@ const WORK_OPTION_SEED = [
   "Other",
 ] as const;
 
-const SECTION_SEED = [
+export const SECTION_SEED = [
   ["hero", "Hero"],
   ["about", "About"],
   ["tools", "Tools & Software"],
@@ -486,7 +486,7 @@ const SECTION_SEED = [
   ["contact", "Contact & Enquiry"],
 ] as const;
 
-type SeedProject = {
+export type SeedProject = {
   title: string;
   description: string;
   category: string;
@@ -504,7 +504,8 @@ type SeedProject = {
   durationSeconds: number;
 };
 
-const PROJECT_SEED: SeedProject[] = [
+export const PROJECT_SEED: SeedProject[] = [
+
   {
     title: "Concrete Light â€” Property Film",
     description:
