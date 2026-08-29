@@ -308,6 +308,17 @@ const DDL_STATEMENTS = [
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
   )`,
   `CREATE INDEX IF NOT EXISTS mobile_otp_challenges_phone_idx ON mobile_otp_challenges (phone)`,
+
+  `CREATE TABLE IF NOT EXISTS notification_settings (
+    id                 INTEGER PRIMARY KEY DEFAULT 1,
+    email_enabled      BOOLEAN NOT NULL DEFAULT true,
+    notification_email TEXT NOT NULL DEFAULT 'mohitbabariyaa@gmail.com',
+    admin_status       TEXT NOT NULL DEFAULT 'offline',
+    ai_auto_reply      BOOLEAN NOT NULL DEFAULT true,
+    updated_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
+  `ALTER TABLE notification_settings ADD COLUMN IF NOT EXISTS admin_status TEXT NOT NULL DEFAULT 'offline'`,
+  `ALTER TABLE notification_settings ADD COLUMN IF NOT EXISTS ai_auto_reply BOOLEAN NOT NULL DEFAULT true`,
 ];
 
 async function ensureTables(): Promise<void> {

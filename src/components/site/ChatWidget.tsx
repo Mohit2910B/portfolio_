@@ -29,6 +29,7 @@ export default function ChatWidget() {
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
+  const [adminOnline, setAdminOnline] = useState(false);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -47,10 +48,12 @@ export default function ChatWidget() {
       const payload = (await response.json()) as {
         conversation: Conversation | null;
         messages?: Message[];
+        adminOnline?: boolean;
         error?: string;
       };
       if (!response.ok) return;
       setConversation(payload.conversation);
+      if (payload.adminOnline !== undefined) setAdminOnline(payload.adminOnline);
       if (payload.messages) setMessages(payload.messages);
       if (payload.conversation && payload.conversation.customerUnread > 0) {
         await fetch("/api/chat/messages", { method: "PATCH" });
@@ -165,16 +168,19 @@ export default function ChatWidget() {
           <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
             <div>
               <p className="text-[0.62rem] font-semibold uppercase tracking-[0.2em] text-white">
-                Chat with Mohit
+                {adminOnline ? "Chat with Mohit (Live)" : "Mohit Studio AI Assistant"}
               </p>
-              <p className="mt-1 flex items-center gap-2 text-[0.6rem] text-white/50">
-                {conversation ? (
+              <p className="mt-1 flex items-center gap-2 text-[0.6rem] text-white/70">
+                {adminOnline ? (
                   <>
-                    <span className="pulse-dot h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
-                    {conversation.name} · usually replies within a few hours
+                    <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>Mohit is online · Instant direct chat</span>
                   </>
                 ) : (
-                  "Share your details to start the conversation"
+                  <>
+                    <span className="h-2 w-2 rounded-full bg-amber-400" />
+                    <span>AI Assistant active · Instant replies on editing & design</span>
+                  </>
                 )}
               </p>
             </div>
@@ -182,7 +188,7 @@ export default function ChatWidget() {
               type="button"
               onClick={() => setOpen(false)}
               aria-label="Close chat"
-              className="grid h-8 w-8 place-items-center rounded-full border border-white/20"
+              className="grid h-8 w-8 place-items-center rounded-full border border-white/20 hover:bg-white/10 transition-colors"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" stroke="#fff" strokeWidth="2" fill="none" aria-hidden="true">
                 <path d="M6 6l12 12M18 6L6 18" />
@@ -277,20 +283,28 @@ export default function ChatWidget() {
                 )}
                 {messages.map((message) => {
                   const mine = message.senderType === "customer";
+                  const isAssistant = message.senderType === "assistant";
                   return (
                     <div
                       key={message.id}
                       className={`flex ${mine ? "justify-end" : "justify-start"}`}
                     >
                       <div
-                        className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 text-[0.78rem] leading-relaxed ${
+                        className={`max-w-[84%] rounded-2xl px-3.5 py-2.5 text-[0.78rem] leading-relaxed ${
                           mine
                             ? "bg-[var(--accent)] text-white"
-                            : message.senderType === "system"
-                              ? "border border-white/10 bg-white/5 text-white/50"
-                              : "border border-white/12 bg-white/10 text-white/90"
+                            : isAssistant
+                              ? "border border-amber-400/30 bg-amber-500/15 text-white/95"
+                              : message.senderType === "system"
+                                ? "border border-white/10 bg-white/5 text-white/50"
+                                : "border border-white/12 bg-white/10 text-white/90"
                         }`}
                       >
+                        {!mine && (
+                          <div className="text-[0.58rem] font-bold uppercase tracking-wider text-white/50 mb-1 flex items-center gap-1">
+                            {isAssistant ? "🤖 Mohit Studio AI" : "👤 Mohit Babariya"}
+                          </div>
+                        )}
                         {message.message}
                         <span className="mono mt-1 block text-[0.55rem] opacity-60">
                           {new Date(message.createdAt).toLocaleTimeString([], {

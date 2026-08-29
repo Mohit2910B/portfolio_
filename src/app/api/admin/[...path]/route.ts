@@ -354,13 +354,13 @@ export async function GET(_request: Request, ctx: Params) {
             try {
               const inserted = await db
                 .insert(notificationSettings)
-                .values({ id: 1, emailEnabled: true, notificationEmail: "mohitbabariyaa@gmail.com" })
+                .values({ id: 1, emailEnabled: true, notificationEmail: "mohitbabariyaa@gmail.com", adminStatus: "offline", aiAutoReply: true })
                 .returning();
               rows = inserted;
             } catch {}
           }
           return ok({
-            settings: rows[0] ?? { id: 1, emailEnabled: true, notificationEmail: "mohitbabariyaa@gmail.com" },
+            settings: rows[0] ?? { id: 1, emailEnabled: true, notificationEmail: "mohitbabariyaa@gmail.com", adminStatus: "offline", aiAutoReply: true },
           });
         }
         throw notFound("Unknown settings resource.");
@@ -380,6 +380,14 @@ export async function GET(_request: Request, ctx: Params) {
       }
 
       case "chat": {
+        if (second === "status") {
+          const rows = await db.select().from(notificationSettings).limit(1);
+          const s = rows[0];
+          return ok({
+            adminStatus: s?.adminStatus || "offline",
+            aiAutoReply: s?.aiAutoReply !== false,
+          });
+        }
         if (second !== "conversations") throw notFound("Unknown chat resource.");
         if (!third) {
           const rows = await db
@@ -1085,6 +1093,8 @@ export async function PATCH(request: Request, ctx: Params) {
           const patch: Partial<typeof notificationSettings.$inferInsert> = { updatedAt: now };
           if ("emailEnabled" in body) patch.emailEnabled = bool(body.emailEnabled);
           if ("notificationEmail" in body) patch.notificationEmail = str(body.notificationEmail).toLowerCase();
+          if ("adminStatus" in body) patch.adminStatus = str(body.adminStatus, "offline") === "online" ? "online" : "offline";
+          if ("aiAutoReply" in body) patch.aiAutoReply = bool(body.aiAutoReply);
           const existing = await db.select().from(notificationSettings).limit(1);
           if (!existing[0]) {
             const inserted = await db.insert(notificationSettings).values({ id: 1, ...patch }).returning();
@@ -1128,6 +1138,19 @@ export async function PATCH(request: Request, ctx: Params) {
       }
 
       case "chat": {
+        if (second === "status") {
+          const patch: Partial<typeof notificationSettings.$inferInsert> = { updatedAt: new Date() };
+          if ("adminStatus" in body) patch.adminStatus = str(body.adminStatus, "offline") === "online" ? "online" : "offline";
+          if ("aiAutoReply" in body) patch.aiAutoReply = bool(body.aiAutoReply);
+          const existing = await db.select().from(notificationSettings).limit(1);
+          if (!existing[0]) {
+            const inserted = await db.insert(notificationSettings).values({ id: 1, ...patch }).returning();
+            return ok({ status: inserted[0] });
+          }
+          const updated = await db.update(notificationSettings).set(patch).where(eq(notificationSettings.id, existing[0].id)).returning();
+          return ok({ status: updated[0] });
+        }
+
         const id = Number(second === "conversations" ? third : second);
         if (!Number.isInteger(id)) return badRequest("Invalid conversation id.");
         if (bool(body.markRead)) {

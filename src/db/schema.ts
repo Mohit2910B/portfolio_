@@ -265,8 +265,10 @@ export const contactSettings = pgTable("contact_settings", {
 
 export const notificationSettings = pgTable("notification_settings", {
   id: integer("id").primaryKey().default(1),
-  emailEnabled: boolean("email_enabled").notNull().default(false),
-  notificationEmail: text("notification_email").notNull().default(""),
+  emailEnabled: boolean("email_enabled").notNull().default(true),
+  notificationEmail: text("notification_email").notNull().default("mohitbabariyaa@gmail.com"),
+  adminStatus: text("admin_status").notNull().default("offline"),
+  aiAutoReply: boolean("ai_auto_reply").notNull().default(true),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

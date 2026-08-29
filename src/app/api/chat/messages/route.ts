@@ -4,31 +4,45 @@ import { chatConversations, chatMessages } from "@/db/schema";
 import { ensureDatabase } from "@/lib/bootstrap";
 import { getCustomerConversation } from "@/lib/chat";
 import { badRequest, guard, ok, rateLimit, str } from "@/lib/http";
-import { sendAdminNotification } from "@/lib/notifications";
+import { getNotificationSettings, sendAdminNotification } from "@/lib/notifications";
 import { runChatAssistant } from "@/lib/ai";
 
 
 export const dynamic = "force-dynamic";
 
-/** Public (customer): fetch my conversation messages. */
+/** Public (customer): fetch my conversation messages and status. */
 export async function GET() {
   return guard(async () => {
-    await ensureDatabase();
-    const conversation = await getCustomerConversation();
-    if (!conversation) return ok({ conversation: null, messages: [] });
+    const [settings, conversation] = await Promise.all([
+      getNotificationSettings(),
+      getCustomerConversation(),
+    ]);
+
+    if (!conversation) {
+      return ok({
+        conversation: null,
+        messages: [],
+        adminOnline: settings.adminStatus === "online",
+      });
+    }
+
     const messages = await db
       .select()
       .from(chatMessages)
       .where(eq(chatMessages.conversationId, conversation.id))
       .orderBy(asc(chatMessages.createdAt), asc(chatMessages.id));
-    return ok({ conversation, messages });
+
+    return ok({
+      conversation,
+      messages,
+      adminOnline: settings.adminStatus === "online",
+    });
   });
 }
 
 /** Public (customer): send a message. */
 export async function POST(request: Request) {
   return guard(async () => {
-    await ensureDatabase();
     const conversation = await getCustomerConversation();
     if (!conversation) return badRequest("Start a chat first.");
     if (conversation.status === "closed") return badRequest("This conversation is closed.");
@@ -74,7 +88,12 @@ export async function POST(request: Request) {
       console.warn("[chat] Error dispatching admin chat notification email:", notifyErr);
     }
 
-    void runChatAssistant(conversation.id, message);
+    try {
+      await runChatAssistant(conversation.id, message);
+    } catch (aiErr) {
+      console.warn("[chat] AI assistant error:", aiErr);
+    }
+
     return ok({ message: inserted[0] });
   });
 }

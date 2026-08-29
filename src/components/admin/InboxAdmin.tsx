@@ -289,6 +289,16 @@ export function ChatAdmin({ onChanged }: { onChanged: () => void }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [adminStatus, setAdminStatus] = useState<"online" | "offline">("offline");
+  const [toggling, setToggling] = useState(false);
+
+  const loadStatus = useCallback(async () => {
+    try {
+      const payload = await api<{ adminStatus: "online" | "offline"; aiAutoReply: boolean }>("/api/admin/chat/status");
+      if (payload.adminStatus) setAdminStatus(payload.adminStatus);
+    } catch {}
+  }, []);
 
   const loadConversations = useCallback(async () => {
     try {
@@ -310,10 +320,13 @@ export function ChatAdmin({ onChanged }: { onChanged: () => void }) {
   }, []);
 
   useEffect(() => {
+    void loadStatus();
     void loadConversations();
-    const timer = window.setInterval(loadConversations, 6000);
+    const timer = window.setInterval(() => {
+      void loadConversations();
+    }, 6000);
     return () => window.clearInterval(timer);
-  }, [loadConversations]);
+  }, [loadConversations, loadStatus]);
 
   useEffect(() => {
     if (!activeId) return;
@@ -321,6 +334,24 @@ export function ChatAdmin({ onChanged }: { onChanged: () => void }) {
     const timer = window.setInterval(() => void loadMessages(activeId), 4000);
     return () => window.clearInterval(timer);
   }, [activeId, loadMessages]);
+
+  const toggleStatus = async () => {
+    const nextStatus = adminStatus === "online" ? "offline" : "online";
+    setToggling(true);
+    try {
+      await api("/api/admin/chat/status", {
+        method: "PATCH",
+        body: JSON.stringify({ adminStatus: nextStatus, aiAutoReply: true }),
+      });
+      setAdminStatus(nextStatus);
+      setNotice(nextStatus === "online" ? "Status: ONLINE — You are chatting live with clients." : "Status: OFFLINE — AI Studio Assistant is auto-replying to creative enquiries.");
+      window.setTimeout(() => setNotice(""), 3500);
+    } catch {
+      setError("Could not update status.");
+    } finally {
+      setToggling(false);
+    }
+  };
 
   const active = conversations.find((c) => c.id === activeId) ?? null;
 
@@ -346,17 +377,44 @@ export function ChatAdmin({ onChanged }: { onChanged: () => void }) {
   return (
     <div>
       <SectionTitle
-        title="Live Chat"
-        subtitle="Conversations created from the public chat widget. Replies appear to the customer instantly via polling."
+        title="Live Chat & AI Studio Assistant"
+        subtitle="Manage live client conversations. When offline, Mohit's AI assistant answers video editing & design inquiries automatically."
         action={
-          <Button variant="light" onClick={() => void loadConversations()}>
-            Refresh
-          </Button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              disabled={toggling}
+              onClick={() => void toggleStatus()}
+              className={`flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold tracking-wide transition-all ${
+                adminStatus === "online"
+                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20"
+                  : "border-amber-500/40 bg-amber-500/10 text-amber-800 hover:bg-amber-500/20"
+              }`}
+            >
+              <span
+                className={`h-2.5 w-2.5 rounded-full ${
+                  adminStatus === "online" ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
+                }`}
+              />
+              {adminStatus === "online" ? "Online (Live Mode)" : "Offline (AI Auto-Reply ON)"}
+            </button>
+            <Button variant="light" onClick={() => void loadConversations()}>
+              Refresh
+            </Button>
+          </div>
         }
       />
       {error && <Notice tone="error">{error}</Notice>}
+      {notice && <div className="mt-3"><Notice tone="success">{notice}</Notice></div>}
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-[340px_1fr]">
+      <div className="mt-3 rounded-2xl border border-ink/8 bg-ink/[0.02] p-3 text-xs text-ink/70 flex flex-wrap items-center justify-between gap-2">
+        <p>
+          <strong className="text-ink font-semibold">Mode:</strong> {adminStatus === "online" ? "🟢 Direct Chat Active. You receive inquiries in real-time." : "🤖 AI Studio Assistant Active. The AI automatically answers video editing, motion graphics, and graphic design questions and collects client project requirements."}
+        </p>
+        <span className="text-[0.65rem] font-semibold uppercase tracking-wider text-ink/40">Click status button above to switch anytime</span>
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-[340px_1fr]">
         <Card className="p-3">
           <p className="px-2 pb-2 text-[0.58rem] font-semibold uppercase tracking-[0.2em] text-ink/45">
             Inbox ({conversations.length})
@@ -379,21 +437,21 @@ export function ChatAdmin({ onChanged }: { onChanged: () => void }) {
                   <div className="flex items-center justify-between gap-2">
                     <p className="truncate text-[0.8rem] font-semibold">{conversation.name}</p>
                     <span
-                      className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                        conversation.online ? "bg-emerald-500" : "bg-ink/25"
+                      className={`h-2 w-2 rounded-full ${
+                        conversation.online ? "bg-emerald-400" : "bg-ink/20"
                       }`}
-                      title={conversation.online ? "Online" : "Offline"}
+                      title={conversation.online ? "Customer online now" : "Offline"}
                     />
                   </div>
                   <p
-                    className={`mt-1 truncate text-[0.68rem] ${
-                      activeId === conversation.id ? "text-white/60" : "text-ink/45"
+                    className={`mt-1 line-clamp-1 text-[0.7rem] ${
+                      activeId === conversation.id ? "text-white/70" : "text-ink/55"
                     }`}
                   >
-                    {conversation.lastMessage || "No messages yet"}
+                    {conversation.lastMessage || "Started conversation"}
                   </p>
                   <div
-                    className={`mt-1.5 flex items-center justify-between text-[0.6rem] ${
+                    className={`mono mt-2 flex items-center justify-between text-[0.58rem] ${
                       activeId === conversation.id ? "text-white/45" : "text-ink/35"
                     }`}
                   >
@@ -463,17 +521,21 @@ export function ChatAdmin({ onChanged }: { onChanged: () => void }) {
               <div className="flex-1 space-y-3 overflow-y-auto p-4">
                 {messages.map((message) => {
                   const admin = message.senderType === "admin";
+                  const isAssistant = message.senderType === "assistant";
                   return (
-                    <div key={message.id} className={`flex ${admin ? "justify-end" : "justify-start"}`}>
+                    <div key={message.id} className={`flex ${admin || isAssistant ? "justify-end" : "justify-start"}`}>
                       <div
                         className={`max-w-[78%] rounded-2xl px-3.5 py-2.5 text-[0.78rem] leading-relaxed ${
                           admin
                             ? "bg-ink text-white"
-                            : message.senderType === "system"
-                              ? "border border-ink/10 bg-white/60 text-ink/50"
+                            : isAssistant
+                              ? "border border-amber-500/30 bg-amber-500/10 text-ink"
                               : "border border-ink/10 bg-white/75 text-ink/85"
                         }`}
                       >
+                        <div className="flex items-center gap-1.5 mb-1 text-[0.6rem] font-bold uppercase tracking-wider opacity-70">
+                          {admin ? "👤 You (Admin)" : isAssistant ? "🤖 Studio AI Assistant" : `👤 ${active.name}`}
+                        </div>
                         {message.message}
                         <span className="mono mt-1 block text-[0.55rem] opacity-60">
                           {new Date(message.createdAt).toLocaleTimeString([], {
@@ -492,7 +554,7 @@ export function ChatAdmin({ onChanged }: { onChanged: () => void }) {
 
               <form onSubmit={send} className="flex items-end gap-2 border-t border-ink/8 p-3">
                 <div className="flex-1">
-                  <TextArea value={draft} onChange={setDraft} rows={2} placeholder="Reply to the customer…" />
+                  <TextArea value={draft} onChange={setDraft} rows={2} placeholder="Reply as Mohit…" />
                 </div>
                 <Button variant="accent" type="submit">
                   Send

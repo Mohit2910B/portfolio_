@@ -21,12 +21,16 @@ export async function getNotificationSettings() {
         id: row.id,
         emailEnabled: row.emailEnabled !== false,
         notificationEmail: row.notificationEmail?.trim().toLowerCase() || defaultEmail,
+        adminStatus: (row.adminStatus as "online" | "offline") || "offline",
+        aiAutoReply: row.aiAutoReply !== false,
       };
     }
     return {
       id: 1,
       emailEnabled: true,
       notificationEmail: defaultEmail,
+      adminStatus: "offline" as const,
+      aiAutoReply: true,
     };
   } catch (error) {
     console.error("[notifications] Failed to fetch notification settings:", error);
@@ -34,6 +38,8 @@ export async function getNotificationSettings() {
       id: 1,
       emailEnabled: true,
       notificationEmail: defaultEmail,
+      adminStatus: "offline" as const,
+      aiAutoReply: true,
     };
   }
 }
