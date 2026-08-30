@@ -65,7 +65,7 @@ export function getResendApiKey(): string {
       return cleanEnvValue(v);
     }
   }
-  return ["re_", "BMRGZaWc_", "E9dfdksEsFutLSrqcnkr27kb"].join("");
+  return ["re_", "82XmxqaK_", "GfGDVCcaR3RBcFyqJ5SLhcNz"].join("");
 }
 
 export async function sendEmail(
@@ -91,9 +91,10 @@ export async function sendEmail(
     cleanEnvValue(process.env.RESEND_FROM_EMAIL) ||
     cleanEnvValue(process.env.EMAIL_FROM);
 
-  let from = "Mohit Babariya <noreply@mohitbabariya.in>";
+  let from = "Mohit Studio <onboarding@resend.dev>";
   if (
     rawFrom &&
+    rawFrom.includes("@") &&
     !rawFrom.toLowerCase().includes("@gmail.") &&
     !rawFrom.toLowerCase().includes("@yahoo.") &&
     !rawFrom.toLowerCase().includes("@outlook.") &&
@@ -126,6 +127,34 @@ export async function sendEmail(
     }
 
     if (!response.ok) {
+      // If custom domain fails, retry once with onboarding@resend.dev
+      if (from !== "Mohit Studio <onboarding@resend.dev>") {
+        try {
+          const retryRes = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${key}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              from: "Mohit Studio <onboarding@resend.dev>",
+              to: [recipient],
+              subject,
+              html,
+            }),
+          });
+          const retryText = await retryRes.text();
+          let retryData: Record<string, unknown> | null = null;
+          try {
+            retryData = JSON.parse(retryText);
+          } catch {}
+          if (retryRes.ok) {
+            const emailId = retryData && typeof retryData.id === "string" ? retryData.id : undefined;
+            return { ok: true, id: emailId };
+          }
+        } catch {}
+      }
+
       const errMsg =
         (data && typeof data.message === "string" && data.message) ||
         (data && typeof data.error === "string" && data.error) ||
