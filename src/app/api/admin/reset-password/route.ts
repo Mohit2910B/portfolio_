@@ -2,7 +2,7 @@ import { createHash } from "crypto";
 import { desc, eq, or } from "drizzle-orm";
 import { db } from "@/db";
 import { admins, emailOtpChallenges } from "@/db/schema";
-import { hashPassword } from "@/lib/auth";
+import { hashPassword, createSession, savePasswordToMemory, saveAdminToMemory } from "@/lib/auth";
 import { ensureDatabase } from "@/lib/bootstrap";
 import { badRequest, guard, ok, rateLimit, str } from "@/lib/http";
 import { getNotificationSettings, sendEmail } from "@/lib/notifications";
@@ -200,9 +200,10 @@ export async function POST(request: Request) {
       return badRequest("Incorrect OTP code. Please check the code received from Mohit and try again.");
     }
 
+    const passwordHash = await hashPassword(newPassword);
+
     // Update password in DB if available
     try {
-      const passwordHash = await hashPassword(newPassword);
       if (challenge.adminId) {
         await db
           .update(admins)
@@ -216,11 +217,29 @@ export async function POST(request: Request) {
       }
     } catch {}
 
+    // Save to memory custom password store
+    savePasswordToMemory(identity, passwordHash);
+    savePasswordToMemory(challenge.username, passwordHash);
+    savePasswordToMemory(challenge.email, passwordHash);
+
+    const adminPayload = {
+      id: challenge.adminId || 1,
+      name: challenge.username || "Mohit",
+      email: challenge.email || "mohitbabariyaa@gmail.com",
+      username: challenge.username || "mohit",
+      role: "owner",
+    };
+
+    // Automatically create session for seamless instant access
+    await createSession(adminPayload.id, adminPayload);
+
     globalThis.__memoryAdminResetChallenges?.delete(identity);
 
     return ok({
       success: true,
-      message: "Password has been successfully updated! You can now sign in with your new password.",
+      loggedIn: true,
+      admin: adminPayload,
+      message: "Password has been successfully updated and you are now signed in!",
     });
   });
 }

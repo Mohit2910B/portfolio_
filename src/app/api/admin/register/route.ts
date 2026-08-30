@@ -2,7 +2,7 @@ import { createHash } from "crypto";
 import { desc, eq, or } from "drizzle-orm";
 import { db } from "@/db";
 import { admins, adminOtpChallenges } from "@/db/schema";
-import { hashPassword, requireAdmin } from "@/lib/auth";
+import { hashPassword, requireAdmin, createSession, saveAdminToMemory } from "@/lib/auth";
 import { ensureDatabase } from "@/lib/bootstrap";
 import { badRequest, conflict, created, guard, ok, rateLimit, str } from "@/lib/http";
 import { getNotificationSettings, sendEmail } from "@/lib/notifications";
@@ -294,13 +294,27 @@ export async function POST(request: Request) {
       }
     } catch {}
 
+    // Save to memory store so login always works even if DB is temporarily unconfigured
+    saveAdminToMemory({
+      id: createdAdmin.id,
+      name: createdAdmin.name,
+      email: createdAdmin.email,
+      username: createdAdmin.username,
+      role: createdAdmin.role,
+      passwordHash: challenge.passwordHash,
+    });
+
+    // Automatically create session for seamless instant access
+    await createSession(createdAdmin.id, createdAdmin);
+
     // Clean up challenge
     globalThis.__memoryAdminOtpChallenges?.delete(email);
 
     return created({
       success: true,
+      loggedIn: true,
       admin: createdAdmin,
-      message: "Admin account successfully authorized and created! You can now sign in.",
+      message: "Admin account successfully authorized and signed in!",
     });
   });
 }

@@ -39,6 +39,53 @@ function verifyAdminPayload<T>(token: string): T | null {
     return null;
   }
 }
+export type StoredAdminRecord = {
+  id: number;
+  name: string;
+  email: string;
+  username: string;
+  role: string;
+  passwordHash: string;
+};
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __registeredAdminsMap: Map<string, StoredAdminRecord> | undefined;
+  // eslint-disable-next-line no-var
+  var __customPasswordsMap: Map<string, string> | undefined;
+}
+
+if (!globalThis.__registeredAdminsMap) {
+  globalThis.__registeredAdminsMap = new Map<string, StoredAdminRecord>();
+}
+
+if (!globalThis.__customPasswordsMap) {
+  globalThis.__customPasswordsMap = new Map<string, string>();
+}
+
+export function saveAdminToMemory(admin: StoredAdminRecord) {
+  globalThis.__registeredAdminsMap?.set(admin.username.toLowerCase(), admin);
+  globalThis.__registeredAdminsMap?.set(admin.email.toLowerCase(), admin);
+  if (admin.passwordHash) {
+    globalThis.__customPasswordsMap?.set(admin.username.toLowerCase(), admin.passwordHash);
+    globalThis.__customPasswordsMap?.set(admin.email.toLowerCase(), admin.passwordHash);
+  }
+}
+
+export function getAdminFromMemory(identity: string): StoredAdminRecord | null {
+  const clean = identity.toLowerCase().trim();
+  return globalThis.__registeredAdminsMap?.get(clean) || null;
+}
+
+export function savePasswordToMemory(identity: string, passwordHash: string) {
+  const clean = identity.toLowerCase().trim();
+  globalThis.__customPasswordsMap?.set(clean, passwordHash);
+}
+
+export function getCustomPasswordHash(identity: string): string | null {
+  const clean = identity.toLowerCase().trim();
+  return globalThis.__customPasswordsMap?.get(clean) || null;
+}
 
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16).toString("hex");

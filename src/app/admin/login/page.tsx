@@ -119,20 +119,9 @@ export default function AdminLoginPage() {
             "Authorization code sent to Mohit's email. Please enter the OTP provided by Mohit.",
         );
       } else if (payload.success) {
-        setNotice(payload.message ?? "Admin account created successfully! You can now sign in.");
-        setMode("login");
-        setIdentity(regForm.username || regForm.email);
-        setPassword("");
-        setRegForm({
-          name: "",
-          username: "",
-          email: "",
-          role: "editor",
-          password: "",
-          confirmPassword: "",
-          otp: "",
-        });
-        setRegStep(1);
+        setNotice(payload.message ?? "Admin account created successfully! Signing you in...");
+        window.location.href = "/admin";
+        return;
       }
     } catch {
       setError("Network error. Please try again.");
@@ -170,6 +159,7 @@ export default function AdminLoginPage() {
       const payload = (await response.json()) as {
         requiresOtp?: boolean;
         success?: boolean;
+        loggedIn?: boolean;
         message?: string;
         error?: string;
       };
@@ -183,12 +173,9 @@ export default function AdminLoginPage() {
         setResetStep(2);
         setNotice(payload.message ?? "Security OTP has been dispatched to Mohit's email.");
       } else if (payload.success) {
-        setNotice(payload.message ?? "Password updated successfully! Please sign in.");
-        setMode("login");
-        setIdentity(resetForm.identity);
-        setPassword("");
-        setResetForm({ identity: "", otp: "", newPassword: "", confirmPassword: "" });
-        setResetStep(1);
+        setNotice(payload.message ?? "Password updated successfully! Signing you in...");
+        window.location.href = "/admin";
+        return;
       }
     } catch {
       setError("Network error. Please try again.");
