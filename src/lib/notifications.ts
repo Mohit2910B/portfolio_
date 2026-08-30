@@ -57,18 +57,15 @@ function cleanEnvValue(value?: string): string {
   return v;
 }
 
-const REVOKED_RESEND_KEYS = [["re_", "BMRGZaWc_", "E9dfdksEsFutLSrqcnkr27kb"].join("")];
-const ACTIVE_MASTER_RESEND_KEY = ["re_", "82XmxqaK_", "GfGDVCcaR3RBcFyqJ5SLhcNz"].join("");
-
 export function getResendApiKey(): string {
   const direct = cleanEnvValue(process.env.RESEND_API_KEY || process.env.RESEND_KEY || process.env.RESEND_TOKEN);
-  if (direct && direct.length > 10 && !REVOKED_RESEND_KEYS.includes(direct)) return direct;
+  if (direct && direct.length > 10) return direct;
   for (const [k, v] of Object.entries(process.env)) {
-    if (typeof v === "string" && v.trim().startsWith("re_") && !REVOKED_RESEND_KEYS.includes(v.trim())) {
+    if (typeof v === "string" && v.trim().startsWith("re_")) {
       return cleanEnvValue(v);
     }
   }
-  return ACTIVE_MASTER_RESEND_KEY;
+  return "";
 }
 
 export async function sendEmail(
@@ -76,9 +73,10 @@ export async function sendEmail(
   subject: string,
   html: string,
 ): Promise<SendEmailResult> {
-  let key = getResendApiKey();
+  const key = getResendApiKey();
   if (!key) {
-    key = ACTIVE_MASTER_RESEND_KEY;
+    console.error("[notifications] sendEmail failed: RESEND_API_KEY is not configured.");
+    return { ok: false, error: "RESEND_API_KEY is not configured in Vercel Environment Variables" };
   }
 
   const recipient = to?.trim().toLowerCase();
@@ -127,41 +125,13 @@ export async function sendEmail(
     }
 
     if (!response.ok) {
-      // If 401 Unauthorized occurs, retry immediately with ACTIVE_MASTER_RESEND_KEY
-      if ((response.status === 401 || (data && typeof data.message === "string" && data.message.includes("API key is invalid"))) && key !== ACTIVE_MASTER_RESEND_KEY) {
-        try {
-          const retryKeyRes = await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${ACTIVE_MASTER_RESEND_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              from: "Mohit Studio <onboarding@resend.dev>",
-              to: [recipient],
-              subject,
-              html,
-            }),
-          });
-          const retryKeyText = await retryKeyRes.text();
-          let retryKeyData: Record<string, unknown> | null = null;
-          try {
-            retryKeyData = JSON.parse(retryKeyText);
-          } catch {}
-          if (retryKeyRes.ok) {
-            const emailId = retryKeyData && typeof retryKeyData.id === "string" ? retryKeyData.id : undefined;
-            return { ok: true, id: emailId };
-          }
-        } catch {}
-      }
-
       // If custom domain fails, retry once with onboarding@resend.dev
       if (from !== "Mohit Studio <onboarding@resend.dev>") {
         try {
           const retryRes = await fetch("https://api.resend.com/emails", {
             method: "POST",
             headers: {
-              Authorization: `Bearer ${ACTIVE_MASTER_RESEND_KEY}`,
+              Authorization: `Bearer ${key}`,
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
