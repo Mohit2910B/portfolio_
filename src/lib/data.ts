@@ -2,6 +2,7 @@ import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import {
   carouselGlobalSettings,
+  carouselItems,
   carouselSettings,
   categories,
   contactSettings,
@@ -35,8 +36,8 @@ export type PublicProject = {
   software: string;
   tags: string;
   externalLink: string;
-  videoUrl: string;
   videoSource: string;
+  videoUrl: string;
   thumbnailUrl: string;
   aspectRatio: string;
   displaySize: string;
@@ -46,6 +47,7 @@ export type PublicProject = {
   height: number | null;
   durationSeconds: number | null;
   featured: boolean;
+  published: boolean;
   demoStatus: string;
   sortOrder: number;
   carouselEnabled: boolean;
@@ -71,6 +73,18 @@ export type ServiceItem = {
   deliverables: string;
   icon: string;
   priceFrom: string;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type SkillItem = {
+  id: number;
+  name: string;
+  category: string;
+  description: string;
+  level: number | null;
   sortOrder: number;
   isActive: boolean;
   createdAt: Date;
@@ -135,6 +149,131 @@ export type CarouselGlobalSettings = {
   updatedAt: Date;
 };
 
+export type CarouselItem = {
+  id: number;
+  title: string;
+  category: string;
+  description: string;
+  duration: string;
+  videoUrl: string;
+  videoSource: string;
+  thumbnailUrl: string;
+  aspectRatio: string;
+  isActive: boolean;
+  sortOrder: number;
+  projectId?: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export const DEFAULT_CAROUSEL_ITEMS: CarouselItem[] = [
+  {
+    id: 1,
+    title: "Cinematic Coastline Tour",
+    category: "Real Estate",
+    description: "Aerial cliffside drone capture and luxury oceanfront property walk-through.",
+    duration: "0:30",
+    videoUrl: "https://videos.pexels.com/video-files/39105109/16638114_3840_2160_30fps.mp4",
+    videoSource: "upload",
+    thumbnailUrl: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80",
+    aspectRatio: "9:16",
+    isActive: true,
+    sortOrder: 0,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 2,
+    title: "Organic Skincare Ritual",
+    category: "Product Video",
+    description: "Tactile textures, macro product application, and glowing studio lighting.",
+    duration: "0:15",
+    videoUrl: "https://videos.pexels.com/video-files/3843433/3843433-hd_1080_1920_30fps.mp4",
+    videoSource: "upload",
+    thumbnailUrl: "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=800&q=80",
+    aspectRatio: "9:16",
+    isActive: true,
+    sortOrder: 1,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 3,
+    title: "Citrus & Culinary Craft",
+    category: "Commercial",
+    description: "High-speed macro food preparation with kinetic cuts and natural color grading.",
+    duration: "0:20",
+    videoUrl: "https://videos.pexels.com/video-files/4255557/4255557-hd_1080_1920_25fps.mp4",
+    videoSource: "upload",
+    thumbnailUrl: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=800&q=80",
+    aspectRatio: "9:16",
+    isActive: true,
+    sortOrder: 2,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 4,
+    title: "Modern Dining Experience",
+    category: "Social Reel",
+    description: "Atmospheric lifestyle dining, ambient cuts, and fast-paced sound design.",
+    duration: "0:35",
+    videoUrl: "https://videos.pexels.com/video-files/4440854/4440854-hd_1080_1920_25fps.mp4",
+    videoSource: "upload",
+    thumbnailUrl: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80",
+    aspectRatio: "9:16",
+    isActive: true,
+    sortOrder: 3,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 5,
+    title: "Urban Highway Midnight Cut",
+    category: "Motion Graphics",
+    description: "Night motorcycle speed tracking, kinetic text tracking, and neon grade.",
+    duration: "0:25",
+    videoUrl: "https://videos.pexels.com/video-files/2887463/2887463-hd_1080_1920_30fps.mp4",
+    videoSource: "upload",
+    thumbnailUrl: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=800&q=80",
+    aspectRatio: "9:16",
+    isActive: true,
+    sortOrder: 4,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 6,
+    title: "Artisan Fresh Brew",
+    category: "Brand Film",
+    description: "Warm cafe aesthetic, pour-over coffee ritual, and organic depth of field.",
+    duration: "0:30",
+    videoUrl: "https://videos.pexels.com/video-files/3015510/3015510-hd_1080_1920_24fps.mp4",
+    videoSource: "upload",
+    thumbnailUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=800&q=80",
+    aspectRatio: "9:16",
+    isActive: true,
+    sortOrder: 5,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 7,
+    title: "Studio Recording Session",
+    category: "Music & Event",
+    description: "Intimate acoustic performance, vintage microphone styling, and warm grading.",
+    duration: "0:45",
+    videoUrl: "https://videos.pexels.com/video-files/3196236/3196236-hd_1080_1920_25fps.mp4",
+    videoSource: "upload",
+    thumbnailUrl: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&q=80",
+    aspectRatio: "9:16",
+    isActive: true,
+    sortOrder: 6,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+];
+
 export type SiteData = {
   homepage: typeof HOME_FALLBACK & { id?: number; [key: string]: unknown };
   contact: typeof CONTACT_FALLBACK & { id?: number; [key: string]: unknown };
@@ -155,6 +294,7 @@ export type SiteData = {
   sections: SectionItem[];
   carouselSettings: CarouselSettingItem[];
   carouselGlobalSettings: CarouselGlobalSettings;
+  carouselItems: CarouselItem[];
 };
 
 export const HOME_FALLBACK = {
@@ -227,6 +367,7 @@ export const DEFAULT_PROJECTS: PublicProject[] = PROJECT_SEED.map((p, index) => 
   height: p.height,
   durationSeconds: p.durationSeconds,
   featured: p.featured,
+  published: true,
   demoStatus: p.demoStatus,
   sortOrder: index,
   carouselEnabled: true,
@@ -365,6 +506,7 @@ function getFallbackSiteData(): SiteData {
       ),
     carouselSettings: [],
     carouselGlobalSettings: overrides.carouselGlobalSettings || DEFAULT_CAROUSEL_GLOBAL_SETTINGS,
+    carouselItems: overrides.carouselItems || DEFAULT_CAROUSEL_ITEMS,
   };
 }
 
@@ -394,6 +536,7 @@ export async function getSiteData(): Promise<SiteData> {
       sectionRows,
       carouselRows,
       carouselGlobalRows,
+      carouselItemRows,
     ] = await Promise.all([
       db.select().from(homepageSettings).limit(1),
       db.select().from(contactSettings).limit(1),
@@ -425,6 +568,7 @@ export async function getSiteData(): Promise<SiteData> {
         .orderBy(asc(layoutSections.sortOrder), asc(layoutSections.id)),
       db.select().from(carouselSettings).orderBy(asc(carouselSettings.sortOrder), asc(carouselSettings.id)),
       db.select().from(carouselGlobalSettings).limit(1),
+      db.select().from(carouselItems).orderBy(asc(carouselItems.sortOrder), asc(carouselItems.id)),
     ]);
 
     const homepage = { ...HOME_FALLBACK, ...(homeRows[0] ?? {}) };
@@ -461,7 +605,8 @@ export async function getSiteData(): Promise<SiteData> {
       height: p.height,
       durationSeconds: p.durationSeconds,
       featured: p.featured,
-      demoStatus: p.demoStatus,
+      published: p.published,
+      demoStatus: p.demoStatus ?? "none",
       sortOrder: p.sortOrder,
       carouselEnabled: p.carouselEnabled !== false,
       carouselPinned: Boolean(p.carouselPinned),
@@ -478,10 +623,10 @@ export async function getSiteData(): Promise<SiteData> {
       ? {
           id: carouselGlobalRows[0].id,
           enabled: carouselGlobalRows[0].enabled !== false,
-          sectionTitle: carouselGlobalRows[0].sectionTitle || "Selected Works",
+          sectionTitle: carouselGlobalRows[0].sectionTitle || "Engage Audiences with Stunning Videos",
           sectionSubtitle:
             carouselGlobalRows[0].sectionSubtitle ||
-            "A curated showcase of video editing, motion design, and visual storytelling.",
+            "Boost your brand with high-impact short videos & cinematic visual storytelling.",
           autoplay: carouselGlobalRows[0].autoplay !== false,
           autoplaySpeed: carouselGlobalRows[0].autoplaySpeed || 5,
           infiniteLoop: carouselGlobalRows[0].infiniteLoop !== false,
@@ -490,6 +635,11 @@ export async function getSiteData(): Promise<SiteData> {
           updatedAt: carouselGlobalRows[0].updatedAt || new Date(),
         }
       : DEFAULT_CAROUSEL_GLOBAL_SETTINGS;
+
+    const finalCarouselItems: CarouselItem[] =
+      carouselItemRows && carouselItemRows.length > 0
+        ? carouselItemRows
+        : DEFAULT_CAROUSEL_ITEMS;
 
     const result = {
       homepage,
@@ -504,6 +654,7 @@ export async function getSiteData(): Promise<SiteData> {
       sections: finalSections.filter((section) => (section.sectionKey as string) !== "capabilities"),
       carouselSettings: finalCarousel,
       carouselGlobalSettings: finalCarouselGlobal,
+      carouselItems: finalCarouselItems,
     };
 
     cachedSiteData = { data: result, expiresAt: Date.now() + 30000 };

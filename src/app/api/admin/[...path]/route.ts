@@ -19,6 +19,7 @@ import {
   themeSettings,
   workOptions,
   carouselGlobalSettings,
+  carouselItems,
 } from "@/db/schema";
 import {
   ensureDatabase,
@@ -32,6 +33,7 @@ import {
   HOME_FALLBACK,
   CONTACT_FALLBACK,
   DEFAULT_CAROUSEL_GLOBAL_SETTINGS,
+  DEFAULT_CAROUSEL_ITEMS,
   DEFAULT_PROJECTS,
   invalidateSiteDataCache,
   setRuntimeOverride,
@@ -325,10 +327,10 @@ export async function GET(_request: Request, ctx: Params) {
             globalSettings = {
               id: rows[0].id,
               enabled: rows[0].enabled !== false,
-              sectionTitle: rows[0].sectionTitle || "Selected Works",
+              sectionTitle: rows[0].sectionTitle || "Engage Audiences with Stunning Videos",
               sectionSubtitle:
                 rows[0].sectionSubtitle ||
-                "A curated showcase of video editing, motion design, and visual storytelling.",
+                "Boost your brand with high-impact short videos & cinematic visual storytelling.",
               autoplay: rows[0].autoplay !== false,
               autoplaySpeed: rows[0].autoplaySpeed || 5,
               infiniteLoop: rows[0].infiniteLoop !== false,
@@ -339,32 +341,32 @@ export async function GET(_request: Request, ctx: Params) {
           }
         } catch {}
 
-        let projectList: any[] = [];
+        let items: any[] = [];
         try {
-          const rows = await db
-            .select({ project: projects, categoryName: categories.name })
-            .from(projects)
-            .leftJoin(categories, eq(categories.id, projects.categoryId))
-            .orderBy(
-              desc(projects.carouselPinned),
-              asc(projects.carouselOrder),
-              asc(projects.sortOrder),
-              desc(projects.id),
-            );
-          projectList = rows.map((r) => ({
-            ...r.project,
-            categoryName: r.categoryName ?? "",
-            carouselEnabled: r.project.carouselEnabled !== false,
-            carouselPinned: Boolean(r.project.carouselPinned),
-            carouselOrder: r.project.carouselOrder ?? r.project.sortOrder,
-          }));
+          items = await db
+            .select()
+            .from(carouselItems)
+            .orderBy(asc(carouselItems.sortOrder), asc(carouselItems.id));
+          if (items.length === 0) {
+            items = DEFAULT_CAROUSEL_ITEMS;
+          }
         } catch {
-          projectList = DEFAULT_PROJECTS;
+          items = getRuntimeOverride("carouselItems") || DEFAULT_CAROUSEL_ITEMS;
         }
+
+        let categoryList: any[] = [];
+        try {
+          categoryList = await db
+            .select()
+            .from(categories)
+            .where(eq(categories.isActive, true))
+            .orderBy(asc(categories.sortOrder));
+        } catch {}
 
         return ok({
           globalSettings,
-          projects: projectList,
+          items,
+          categories: categoryList,
         });
       }
 
@@ -902,39 +904,76 @@ export async function POST(request: Request, ctx: Params) {
 
       case "carousel": {
         if (second === "reorder") {
-          const id = Number(body.id);
-          const direction = str(body.direction, "up") === "down" ? "down" : "up";
-          const rows = await db
-            .select()
-            .from(carouselSettings)
-            .orderBy(asc(carouselSettings.sortOrder), asc(carouselSettings.id));
-          const index = rows.findIndex((r) => r.id === id);
-          if (index === -1) throw notFound("Carousel setting not found.");
-          const swap = direction === "up" ? index - 1 : index + 1;
-          if (swap < 0 || swap >= rows.length) return ok({ moved: false });
-          await db
-            .update(carouselSettings)
-            .set({ sortOrder: rows[swap].sortOrder })
-            .where(eq(carouselSettings.id, rows[index].id));
-          await db
-            .update(carouselSettings)
-            .set({ sortOrder: rows[index].sortOrder })
-            .where(eq(carouselSettings.id, rows[swap].id));
-          return ok({ moved: true });
+          const items = Array.isArray(body.items) ? body.items : [];
+          try {
+            for (const item of items) {
+              const id = Number(item.id);
+              if (Number.isInteger(id)) {
+                await db
+                  .update(carouselItems)
+                  .set({
+                    sortOrder: num(item.sortOrder) ?? 0,
+                    isActive: "isActive" in item ? bool(item.isActive) : true,
+                    updatedAt: new Date(),
+                  })
+                  .where(eq(carouselItems.id, id));
+              }
+            }
+          } catch {}
+          return ok({ success: true, count: items.length });
         }
-        const inserted = await db
-          .insert(carouselSettings)
-          .values({
-            categoryId: num(body.categoryId),
-            slots: Math.min(Math.max(num(body.slots) ?? 5, 1), 24),
-            centerSize: str(body.centerSize, "large"),
-            sideSize: str(body.sideSize, "small"),
-            autoFill: "autoFill" in body ? bool(body.autoFill) : true,
-            projectIds: JSON.stringify(Array.isArray(body.projectIds) ? body.projectIds : []),
-            sortOrder: num(body.sortOrder) ?? 0,
-          })
-          .returning();
-        return created({ setting: inserted[0] });
+
+        const title = str(body.title);
+        if (!title) return badRequest("Item title is required.", { title: "Required" });
+        const category = str(body.category) || "Video Edit";
+        const description = str(body.description);
+        const duration = str(body.duration);
+        const videoUrl = str(body.videoUrl);
+        const videoSource = str(body.videoSource, "upload") === "url" ? "url" : "upload";
+        const thumbnailUrl = str(body.thumbnailUrl);
+        const aspectRatio = str(body.aspectRatio, "9:16") || "9:16";
+        const isActive = "isActive" in body ? bool(body.isActive) : true;
+        const sortOrder = num(body.sortOrder) ?? 0;
+        const projectId = num(body.projectId);
+
+        try {
+          const inserted = await db
+            .insert(carouselItems)
+            .values({
+              title,
+              category,
+              description,
+              duration,
+              videoUrl,
+              videoSource,
+              thumbnailUrl,
+              aspectRatio,
+              isActive,
+              sortOrder,
+              projectId,
+            })
+            .returning();
+          return created({ item: inserted[0] });
+        } catch {
+          return created({
+            item: {
+              id: Date.now(),
+              title,
+              category,
+              description,
+              duration,
+              videoUrl,
+              videoSource,
+              thumbnailUrl,
+              aspectRatio,
+              isActive,
+              sortOrder,
+              projectId,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          });
+        }
       }
 
       case "layout": {
@@ -1160,64 +1199,49 @@ export async function PATCH(request: Request, ctx: Params) {
         }
 
         if (second === "reorder") {
-          const items = Array.isArray(body.items)
-            ? (body.items as {
-                id: number;
-                carouselOrder?: number;
-                carouselPinned?: boolean;
-                carouselEnabled?: boolean;
-              }[])
-            : [];
-
+          const items = Array.isArray(body.items) ? body.items : [];
           try {
             for (const item of items) {
               const id = Number(item.id);
               if (Number.isInteger(id)) {
-                const patch: Partial<ProjectInsert> = { updatedAt: new Date() };
-                if ("carouselOrder" in item) patch.carouselOrder = num(item.carouselOrder) ?? 0;
-                if ("carouselPinned" in item) patch.carouselPinned = bool(item.carouselPinned);
-                if ("carouselEnabled" in item) patch.carouselEnabled = bool(item.carouselEnabled);
-                await db.update(projects).set(patch).where(eq(projects.id, id));
+                await db
+                  .update(carouselItems)
+                  .set({
+                    sortOrder: num(item.sortOrder) ?? 0,
+                    isActive: "isActive" in item ? bool(item.isActive) : true,
+                    updatedAt: new Date(),
+                  })
+                  .where(eq(carouselItems.id, id));
               }
             }
           } catch {}
           return ok({ success: true, count: items.length });
         }
 
-        if (second === "project" && third) {
-          const id = Number(third);
-          if (!Number.isInteger(id)) return badRequest("Invalid project id.");
-          const patch: Partial<ProjectInsert> = { updatedAt: new Date() };
-          if ("carouselEnabled" in body) patch.carouselEnabled = bool(body.carouselEnabled);
-          if ("carouselPinned" in body) patch.carouselPinned = bool(body.carouselPinned);
-          if ("carouselOrder" in body) patch.carouselOrder = num(body.carouselOrder) ?? 0;
-          try {
-            const updated = await db
-              .update(projects)
-              .set(patch)
-              .where(eq(projects.id, id))
-              .returning();
-            return ok({ project: updated[0] });
-          } catch {
-            return ok({ project: { id, ...patch } });
-          }
-        }
+        const itemId = Number(second === "item" && third ? third : second);
+        if (Number.isInteger(itemId) && itemId > 0) {
+          const patch: Partial<typeof carouselItems.$inferInsert> = { updatedAt: new Date() };
+          if ("title" in body) patch.title = str(body.title);
+          if ("category" in body) patch.category = str(body.category);
+          if ("description" in body) patch.description = str(body.description);
+          if ("duration" in body) patch.duration = str(body.duration);
+          if ("videoUrl" in body) patch.videoUrl = str(body.videoUrl);
+          if ("videoSource" in body) patch.videoSource = str(body.videoSource, "upload") === "url" ? "url" : "upload";
+          if ("thumbnailUrl" in body) patch.thumbnailUrl = str(body.thumbnailUrl);
+          if ("aspectRatio" in body) patch.aspectRatio = str(body.aspectRatio, "9:16");
+          if ("isActive" in body) patch.isActive = bool(body.isActive);
+          if ("sortOrder" in body) patch.sortOrder = num(body.sortOrder) ?? 0;
+          if ("projectId" in body) patch.projectId = num(body.projectId);
 
-        const id = Number(second);
-        if (Number.isInteger(id)) {
-          const patch: Partial<ProjectInsert> = { updatedAt: new Date() };
-          if ("carouselEnabled" in body) patch.carouselEnabled = bool(body.carouselEnabled);
-          if ("carouselPinned" in body) patch.carouselPinned = bool(body.carouselPinned);
-          if ("carouselOrder" in body) patch.carouselOrder = num(body.carouselOrder) ?? 0;
           try {
             const updated = await db
-              .update(projects)
+              .update(carouselItems)
               .set(patch)
-              .where(eq(projects.id, id))
+              .where(eq(carouselItems.id, itemId))
               .returning();
-            return ok({ project: updated[0] });
+            return ok({ item: updated[0] });
           } catch {
-            return ok({ project: { id, ...patch } });
+            return ok({ item: { id: itemId, ...patch } });
           }
         }
 
@@ -1488,9 +1512,15 @@ export async function DELETE(_request: Request, ctx: Params) {
           if (media?.url) await deleteStoredFile(media.url);
           return ok({ deleted: id });
         }
-        case "carousel":
-          await db.delete(carouselSettings).where(eq(carouselSettings.id, id));
+        case "carousel": {
+          const item = await one(
+            await db.select().from(carouselItems).where(eq(carouselItems.id, id)).limit(1),
+          );
+          await db.delete(carouselItems).where(eq(carouselItems.id, id));
+          if (item?.videoUrl) await deleteStoredFile(item.videoUrl);
+          if (item?.thumbnailUrl) await deleteStoredFile(item.thumbnailUrl);
           return ok({ deleted: id });
+        }
         case "layout":
           await db.delete(layoutSections).where(eq(layoutSections.id, id));
           return ok({ deleted: id });

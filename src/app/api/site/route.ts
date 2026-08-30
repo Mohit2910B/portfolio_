@@ -22,6 +22,7 @@ export async function GET() {
       sections: data.sections,
       carouselSettings: data.carouselSettings,
       carouselGlobalSettings: data.carouselGlobalSettings,
+      carouselItems: data.carouselItems,
     });
   });
 }

@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { parseMediaUrl } from "@/lib/media-urls";
+import type { CarouselItem, CarouselGlobalSettings } from "@/lib/data";
 import {
   Button,
   Card,
@@ -8,91 +10,104 @@ import {
   Notice,
   SectionTitle,
   Select,
-  TextInput,
   TextArea,
+  TextInput,
   Toggle,
+  Uploader,
   api,
+  uploadBlob,
 } from "./ui";
 
-export type CarouselProject = {
-  id: number;
-  title: string;
-  description: string;
-  categoryId: number | null;
-  categoryLabel?: string;
-  categoryName?: string;
-  videoUrl: string;
-  videoSource: string;
-  thumbnailUrl: string;
-  aspectRatio: string;
-  displaySize: string;
-  featured: boolean;
-  published: boolean;
-  sortOrder: number;
-  carouselEnabled: boolean;
-  carouselPinned: boolean;
-  carouselOrder: number;
-};
-
-export type GlobalCarouselSettings = {
-  id: number;
-  enabled: boolean;
-  sectionTitle: string;
-  sectionSubtitle: string;
-  autoplay: boolean;
-  autoplaySpeed: number;
-  infiniteLoop: boolean;
-  showArrows: boolean;
-  showDots: boolean;
-};
-
-const DEFAULT_GLOBAL: GlobalCarouselSettings = {
+const DEFAULT_GLOBAL: CarouselGlobalSettings = {
   id: 1,
   enabled: true,
-  sectionTitle: "Selected Works",
-  sectionSubtitle: "A curated showcase of video editing, motion design, and visual storytelling.",
+  sectionTitle: "Engage Audiences with Stunning Videos",
+  sectionSubtitle:
+    "Boost your brand with high-impact short videos & cinematic visual storytelling.",
   autoplay: true,
   autoplaySpeed: 5,
   infiniteLoop: true,
   showArrows: true,
   showDots: true,
+  updatedAt: new Date(),
 };
 
+type ItemFormState = {
+  title: string;
+  category: string;
+  description: string;
+  duration: string;
+  videoUrl: string;
+  videoSource: string;
+  thumbnailUrl: string;
+  aspectRatio: string;
+  isActive: boolean;
+};
+
+const EMPTY_FORM: ItemFormState = {
+  title: "",
+  category: "Video Edit",
+  description: "",
+  duration: "0:30",
+  videoUrl: "",
+  videoSource: "upload",
+  thumbnailUrl: "",
+  aspectRatio: "9:16",
+  isActive: true,
+};
+
+const CATEGORY_PRESETS = [
+  "Real Estate",
+  "Product Video",
+  "Commercial",
+  "Social Reel",
+  "Motion Graphics",
+  "Brand Film",
+  "Music & Event",
+  "AI Video",
+];
+
 export function CarouselAdmin({ onChanged }: { onChanged?: () => void }) {
-  const [globalSettings, setGlobalSettings] = useState<GlobalCarouselSettings>(DEFAULT_GLOBAL);
-  const [projects, setProjects] = useState<CarouselProject[]>([]);
+  const [globalSettings, setGlobalSettings] = useState<CarouselGlobalSettings>(DEFAULT_GLOBAL);
+  const [items, setItems] = useState<CarouselItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingGlobal, setSavingGlobal] = useState(false);
-  const [savingOrder, setSavingOrder] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
 
   // Filters & Search
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
-  const [visibilityFilter, setVisibilityFilter] = useState<"all" | "in-carousel" | "hidden">("all");
-  const [pinnedFilter, setPinnedFilter] = useState<"all" | "pinned" | "unpinned">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "hidden">("all");
 
-  // Remove confirmation modal
-  const [confirmRemoveId, setConfirmRemoveId] = useState<number | null>(null);
+  // Item Modal (Create / Edit)
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [form, setForm] = useState<ItemFormState>(EMPTY_FORM);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [savingItem, setSavingItem] = useState(false);
+  const [grabbingFrame, setGrabbingFrame] = useState(false);
+
+  // Delete Confirmation Modal
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  // Drag-and-Drop state
+  const [draggedItemId, setDraggedItemId] = useState<number | null>(null);
+  const [dragOverItemId, setDragOverItemId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
       const res = await api<{
-        globalSettings?: GlobalCarouselSettings;
-        projects?: CarouselProject[];
+        globalSettings?: CarouselGlobalSettings;
+        items?: CarouselItem[];
       }>("/api/admin/carousel");
 
-      if (res.globalSettings) {
-        setGlobalSettings(res.globalSettings);
-      }
-      if (Array.isArray(res.projects)) {
-        setProjects(res.projects);
-      }
+      if (res.globalSettings) setGlobalSettings(res.globalSettings);
+      if (Array.isArray(res.items)) setItems(res.items);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to load carousel data.");
+      setError(caught instanceof Error ? caught.message : "Failed to load carousel data.");
     } finally {
       setLoading(false);
     }
@@ -112,14 +127,15 @@ export function CarouselAdmin({ onChanged }: { onChanged?: () => void }) {
     setSavingGlobal(true);
     setError("");
     try {
-      const res = await api<{ globalSettings: GlobalCarouselSettings }>("/api/admin/carousel/settings", {
-        method: "PATCH",
-        body: JSON.stringify(globalSettings),
-      });
-      if (res.globalSettings) {
-        setGlobalSettings(res.globalSettings);
-      }
-      showToast("Global carousel settings saved.");
+      const res = await api<{ globalSettings: CarouselGlobalSettings }>(
+        "/api/admin/carousel/settings",
+        {
+          method: "PATCH",
+          body: JSON.stringify(globalSettings),
+        },
+      );
+      if (res.globalSettings) setGlobalSettings(res.globalSettings);
+      showToast("Global showcase settings saved.");
       onChanged?.();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Failed to save settings.");
@@ -128,173 +144,293 @@ export function CarouselAdmin({ onChanged }: { onChanged?: () => void }) {
     }
   };
 
-  // 2. Toggle Pin
-  const togglePin = async (id: number) => {
-    const current = projects.find((p) => p.id === id);
-    if (!current) return;
-    const nextPinned = !current.carouselPinned;
+  // 2. Open Create Modal
+  const openCreate = () => {
+    setEditingId(null);
+    setForm(EMPTY_FORM);
+    setFieldErrors({});
+    setModalOpen(true);
+  };
 
-    const updated = projects.map((p) => (p.id === id ? { ...p, carouselPinned: nextPinned } : p));
-    setProjects(updated);
+  // 3. Open Edit Modal
+  const openEdit = (item: CarouselItem) => {
+    setEditingId(item.id);
+    setForm({
+      title: item.title,
+      category: item.category,
+      description: item.description || "",
+      duration: item.duration || "0:30",
+      videoUrl: item.videoUrl || "",
+      videoSource: item.videoSource || "upload",
+      thumbnailUrl: item.thumbnailUrl || "",
+      aspectRatio: item.aspectRatio || "9:16",
+      isActive: item.isActive !== false,
+    });
+    setFieldErrors({});
+    setModalOpen(true);
+  };
 
+  // 4. Save Carousel Item (Create / Edit)
+  const saveItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const errors: Record<string, string> = {};
+    if (!form.title.trim()) errors.title = "Card title is required.";
+    if (!form.category.trim()) errors.category = "Category is required.";
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    setSavingItem(true);
+    setError("");
     try {
-      await api(`/api/admin/carousel/project/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ carouselPinned: nextPinned }),
-      });
-      showToast(nextPinned ? `Pinned "${current.title}" to top of carousel.` : `Unpinned "${current.title}".`);
+      if (editingId) {
+        // Edit
+        await api(`/api/admin/carousel/item/${editingId}`, {
+          method: "PATCH",
+          body: JSON.stringify(form),
+        });
+        showToast(`Updated "${form.title}".`);
+      } else {
+        // Create
+        await api("/api/admin/carousel", {
+          method: "POST",
+          body: JSON.stringify({
+            ...form,
+            sortOrder: items.length,
+          }),
+        });
+        showToast(`Created "${form.title}".`);
+      }
+      setModalOpen(false);
+      await load();
       onChanged?.();
-    } catch {
-      setProjects(projects);
-      setError("Failed to update pin status.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Failed to save carousel card.");
+    } finally {
+      setSavingItem(false);
     }
   };
 
-  // 3. Toggle In-Carousel (Enabled / Disabled)
-  const toggleEnabled = async (id: number) => {
-    const current = projects.find((p) => p.id === id);
-    if (!current) return;
-    const nextEnabled = !current.carouselEnabled;
-
-    const updated = projects.map((p) => (p.id === id ? { ...p, carouselEnabled: nextEnabled } : p));
-    setProjects(updated);
-
+  // 5. Delete Item
+  const deleteItem = async (id: number) => {
+    setDeletingId(null);
     try {
-      await api(`/api/admin/carousel/project/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ carouselEnabled: nextEnabled }),
-      });
-      showToast(nextEnabled ? `"${current.title}" enabled in carousel.` : `"${current.title}" hidden from carousel.`);
+      await api(`/api/admin/carousel/${id}`, { method: "DELETE" });
+      showToast("Carousel card deleted.");
+      await load();
       onChanged?.();
-    } catch {
-      setProjects(projects);
-      setError("Failed to update carousel visibility.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Failed to delete carousel card.");
     }
   };
 
-  // 4. Remove from carousel (explicit action)
-  const removeFromCarousel = async (id: number) => {
-    setConfirmRemoveId(null);
-    const current = projects.find((p) => p.id === id);
-    if (!current) return;
-
-    const updated = projects.map((p) => (p.id === id ? { ...p, carouselEnabled: false, carouselPinned: false } : p));
-    setProjects(updated);
+  // 6. Toggle Active / Hidden
+  const toggleActive = async (item: CarouselItem) => {
+    const nextActive = !item.isActive;
+    const updated = items.map((i) => (i.id === item.id ? { ...i, isActive: nextActive } : i));
+    setItems(updated);
 
     try {
-      await api(`/api/admin/carousel/project/${id}`, {
+      await api(`/api/admin/carousel/item/${item.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ carouselEnabled: false, carouselPinned: false }),
+        body: JSON.stringify({ isActive: nextActive }),
       });
-      showToast(`Removed "${current.title}" from carousel (preserved in Portfolio CMS).`);
+      showToast(nextActive ? `"${item.title}" enabled.` : `"${item.title}" hidden.`);
       onChanged?.();
     } catch {
-      setProjects(projects);
-      setError("Failed to remove project from carousel.");
+      setItems(items);
+      setError("Failed to update status.");
     }
   };
 
-  // 5. Move Up / Down
-  const moveProject = async (id: number, direction: "up" | "down") => {
-    const list = [...projects];
-    const index = list.findIndex((p) => p.id === id);
+  // 7. Move Up / Down
+  const moveItem = async (id: number, direction: "up" | "down") => {
+    const list = [...items];
+    const index = list.findIndex((i) => i.id === id);
     if (index === -1) return;
-    const targetIndex = direction === "up" ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= list.length) return;
+    const target = direction === "up" ? index - 1 : index + 1;
+    if (target < 0 || target >= list.length) return;
 
     const temp = list[index];
-    list[index] = list[targetIndex];
-    list[targetIndex] = temp;
+    list[index] = list[target];
+    list[target] = temp;
 
-    const ordered = list.map((item, idx) => ({ ...item, carouselOrder: idx }));
-    setProjects(ordered);
-    setSavingOrder(true);
+    const ordered = list.map((item, idx) => ({ ...item, sortOrder: idx }));
+    setItems(ordered);
 
     try {
       await api("/api/admin/carousel/reorder", {
-        method: "PATCH",
+        method: "POST",
         body: JSON.stringify({
-          items: ordered.map((p) => ({
-            id: p.id,
-            carouselOrder: p.carouselOrder,
-            carouselPinned: p.carouselPinned,
-            carouselEnabled: p.carouselEnabled,
-          })),
+          items: ordered.map((i) => ({ id: i.id, sortOrder: i.sortOrder, isActive: i.isActive })),
         }),
       });
-      showToast("Carousel order updated.");
+      showToast("Order updated.");
       onChanged?.();
     } catch {
-      setError("Failed to save reordered list.");
-    } finally {
-      setSavingOrder(false);
+      setError("Failed to save reordered cards.");
     }
   };
 
+  // 8. Drag and Drop Reordering
+  const handleDragStart = (id: number) => {
+    setDraggedItemId(id);
+  };
+
+  const handleDragOver = (e: React.DragEvent, id: number) => {
+    e.preventDefault();
+    if (dragOverItemId !== id) setDragOverItemId(id);
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetId: number) => {
+    e.preventDefault();
+    if (draggedItemId === null || draggedItemId === targetId) {
+      setDraggedItemId(null);
+      setDragOverItemId(null);
+      return;
+    }
+
+    const list = [...items];
+    const srcIndex = list.findIndex((i) => i.id === draggedItemId);
+    const destIndex = list.findIndex((i) => i.id === targetId);
+    if (srcIndex === -1 || destIndex === -1) return;
+
+    const [dragged] = list.splice(srcIndex, 1);
+    list.splice(destIndex, 0, dragged);
+
+    const ordered = list.map((item, idx) => ({ ...item, sortOrder: idx }));
+    setItems(ordered);
+    setDraggedItemId(null);
+    setDragOverItemId(null);
+
+    try {
+      await api("/api/admin/carousel/reorder", {
+        method: "POST",
+        body: JSON.stringify({
+          items: ordered.map((i) => ({ id: i.id, sortOrder: i.sortOrder, isActive: i.isActive })),
+        }),
+      });
+      showToast("Order updated via drag-and-drop.");
+      onChanged?.();
+    } catch {
+      setError("Failed to save reordered cards.");
+    }
+  };
+
+  // 9. Frame Grabber from HTML5 Video
+  const grabFrame = async (videoSrc?: string) => {
+    const url = videoSrc || form.videoUrl;
+    if (!url) {
+      setError("Attach or paste a video URL first before grabbing a frame.");
+      return;
+    }
+    setGrabbingFrame(true);
+    setError("");
+    try {
+      const media = parseMediaUrl(url);
+      const targetSrc = media.streamUrl || url;
+
+      const video = document.createElement("video");
+      video.crossOrigin = "anonymous";
+      video.muted = true;
+      video.src = targetSrc;
+
+      await new Promise<void>((resolve, reject) => {
+        const timer = window.setTimeout(() => resolve(), 5000);
+        video.onloadeddata = () => {
+          window.clearTimeout(timer);
+          resolve();
+        };
+        video.onerror = () => {
+          window.clearTimeout(timer);
+          reject(new Error("Could not load direct video stream. Upload a thumbnail image below."));
+        };
+      });
+
+      video.currentTime = Math.min(1.0, (video.duration || 3) / 3);
+      await new Promise<void>((resolve) => {
+        video.onseeked = () => resolve();
+        window.setTimeout(resolve, 2000);
+      });
+
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth || 1080;
+      canvas.height = video.videoHeight || 1920;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Canvas is not supported in this browser.");
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob((b) => resolve(b), "image/jpeg", 0.85),
+      );
+
+      if (blob) {
+        const uploaded = await uploadBlob(blob, "image", `thumb-frame-${Date.now()}.jpg`);
+        if (uploaded?.url) {
+          setForm((prev) => ({ ...prev, thumbnailUrl: uploaded.url }));
+          showToast("Extracted and saved high-res thumbnail frame from video.");
+        }
+      }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Frame grabber failed. Upload an image.");
+    } finally {
+      setGrabbingFrame(false);
+    }
+  };
+
+  // Categories list for filter
   const categoriesList = useMemo(() => {
     const set = new Set<string>();
-    for (const p of projects) {
-      const cat = p.categoryLabel || p.categoryName || "General";
-      if (cat) set.add(cat);
+    for (const item of items) {
+      if (item.category) set.add(item.category);
     }
     return Array.from(set);
-  }, [projects]);
+  }, [items]);
 
-  const filteredProjects = useMemo(() => {
-    return projects.filter((p) => {
+  // Filtered items
+  const filteredItems = useMemo(() => {
+    return items.filter((item) => {
       if (search.trim()) {
         const q = search.toLowerCase();
-        const matchTitle = p.title?.toLowerCase().includes(q);
-        const matchDesc = p.description?.toLowerCase().includes(q);
-        const matchCat = (p.categoryLabel || p.categoryName || "").toLowerCase().includes(q);
-        if (!matchTitle && !matchDesc && !matchCat) return false;
+        const matchTitle = item.title?.toLowerCase().includes(q);
+        const matchCat = item.category?.toLowerCase().includes(q);
+        const matchDesc = item.description?.toLowerCase().includes(q);
+        if (!matchTitle && !matchCat && !matchDesc) return false;
       }
-      if (categoryFilter !== "all") {
-        const cat = p.categoryLabel || p.categoryName || "General";
-        if (cat !== categoryFilter) return false;
-      }
-      if (visibilityFilter === "in-carousel" && !p.carouselEnabled) return false;
-      if (visibilityFilter === "hidden" && p.carouselEnabled) return false;
-      if (pinnedFilter === "pinned" && !p.carouselPinned) return false;
-      if (pinnedFilter === "unpinned" && p.carouselPinned) return false;
-
+      if (categoryFilter !== "all" && item.category !== categoryFilter) return false;
+      if (statusFilter === "active" && !item.isActive) return false;
+      if (statusFilter === "hidden" && item.isActive) return false;
       return true;
     });
-  }, [projects, search, categoryFilter, visibilityFilter, pinnedFilter]);
+  }, [items, search, categoryFilter, statusFilter]);
 
-  const activeInCarouselCount = useMemo(
-    () => projects.filter((p) => p.carouselEnabled).length,
-    [projects],
-  );
-
-  const pinnedCount = useMemo(
-    () => projects.filter((p) => p.carouselPinned && p.carouselEnabled).length,
-    [projects],
-  );
+  const activeCount = useMemo(() => items.filter((i) => i.isActive).length, [items]);
 
   return (
     <div className="space-y-10">
+      {/* Header */}
       <div>
         <SectionTitle
           title="CAROUSEL MANAGER"
-          subtitle="Control which projects appear in the homepage carousel, their order, visibility and presentation."
+          subtitle="Manage the reference-style horizontal video showcase cards, drag to reorder, and configure playback settings."
+          action={
+            <Button variant="dark" onClick={openCreate} className="text-xs uppercase tracking-wider">
+              + Add Video Card
+            </Button>
+          }
         />
         <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-ink/60">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 font-medium text-emerald-600">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-            {activeInCarouselCount} in carousel
+            {activeCount} active in carousel
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 font-medium text-amber-600">
-            ★ {pinnedCount} pinned
-          </span>
-          <span className="text-ink/40">Total portfolio items: {projects.length}</span>
+          <span className="text-ink/40">Total showcase items: {items.length}</span>
         </div>
       </div>
 
       {notice && <Notice tone="success">{notice}</Notice>}
       {error && <Notice tone="error">{error}</Notice>}
 
-      {/* ----------------- GLOBAL SETTINGS ----------------- */}
+      {/* ----------------- GLOBAL SETTINGS CARD ----------------- */}
       <Card className="p-6 md:p-8">
         <div className="flex items-center justify-between border-b border-black/5 pb-4">
           <div>
@@ -302,7 +438,7 @@ export function CarouselAdmin({ onChanged }: { onChanged?: () => void }) {
               Global Showcase Settings
             </h3>
             <p className="text-xs text-ink/60">
-              Configure homepage carousel behavior and display titles.
+              Configure titles, autoplay timing, and navigation behavior.
             </p>
           </div>
           <Button
@@ -323,13 +459,11 @@ export function CarouselAdmin({ onChanged }: { onChanged?: () => void }) {
               onChange={(val) => setGlobalSettings({ ...globalSettings, enabled: val })}
             />
 
-            <Field label="Section Title" hint="Primary heading above the showcase">
+            <Field label="Section Title" hint="Heading above the video cards">
               <TextInput
                 value={globalSettings.sectionTitle}
-                onChange={(val) =>
-                  setGlobalSettings({ ...globalSettings, sectionTitle: val })
-                }
-                placeholder="Selected Works"
+                onChange={(val) => setGlobalSettings({ ...globalSettings, sectionTitle: val })}
+                placeholder="Engage Audiences with Stunning Videos"
               />
             </Field>
 
@@ -337,10 +471,8 @@ export function CarouselAdmin({ onChanged }: { onChanged?: () => void }) {
               <TextArea
                 rows={2}
                 value={globalSettings.sectionSubtitle}
-                onChange={(val) =>
-                  setGlobalSettings({ ...globalSettings, sectionSubtitle: val })
-                }
-                placeholder="A curated showcase of video editing..."
+                onChange={(val) => setGlobalSettings({ ...globalSettings, sectionSubtitle: val })}
+                placeholder="Boost your brand with high-impact short videos & cinematic visual storytelling."
               />
             </Field>
           </div>
@@ -355,7 +487,7 @@ export function CarouselAdmin({ onChanged }: { onChanged?: () => void }) {
             {globalSettings.autoplay && (
               <Field
                 label={`Autoplay Interval: ${globalSettings.autoplaySpeed}s`}
-                hint="Seconds per project card transition"
+                hint="Seconds before advancing to next card"
               >
                 <div className="flex items-center gap-4">
                   <input
@@ -402,15 +534,15 @@ export function CarouselAdmin({ onChanged }: { onChanged?: () => void }) {
         </div>
       </Card>
 
-      {/* ----------------- PROJECT MANAGEMENT ----------------- */}
+      {/* ----------------- CAROUSEL ITEMS LIST ----------------- */}
       <div className="space-y-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h3 className="font-heading text-lg font-bold uppercase tracking-tight text-ink">
-              Showcase Projects ({filteredProjects.length})
+              Showcase Video Cards ({filteredItems.length})
             </h3>
             <p className="text-xs text-ink/60">
-              Pin prioritized projects, toggle carousel visibility, or adjust sequence order.
+              Drag cards to reorder sequence or click edit to update video & thumbnail assets.
             </p>
           </div>
 
@@ -420,7 +552,7 @@ export function CarouselAdmin({ onChanged }: { onChanged?: () => void }) {
               <TextInput
                 value={search}
                 onChange={(val) => setSearch(val)}
-                placeholder="Search projects…"
+                placeholder="Search cards…"
               />
             </div>
 
@@ -430,206 +562,185 @@ export function CarouselAdmin({ onChanged }: { onChanged?: () => void }) {
                 onChange={(val) => setCategoryFilter(val)}
                 options={[
                   { value: "all", label: "All Categories" },
-                  ...categoriesList.map((cat) => ({ value: cat, label: cat })),
+                  ...categoriesList.map((c) => ({ value: c, label: c })),
                 ]}
               />
             </div>
 
             <div className="w-36">
               <Select
-                value={visibilityFilter}
-                onChange={(val) => setVisibilityFilter(val as typeof visibilityFilter)}
+                value={statusFilter}
+                onChange={(val) => setStatusFilter(val as typeof statusFilter)}
                 options={[
                   { value: "all", label: "All Statuses" },
-                  { value: "in-carousel", label: "In Carousel" },
-                  { value: "hidden", label: "Hidden" },
-                ]}
-              />
-            </div>
-
-            <div className="w-32">
-              <Select
-                value={pinnedFilter}
-                onChange={(val) => setPinnedFilter(val as typeof pinnedFilter)}
-                options={[
-                  { value: "all", label: "All Items" },
-                  { value: "pinned", label: "★ Pinned" },
-                  { value: "unpinned", label: "Normal" },
+                  { value: "active", label: "Active Only" },
+                  { value: "hidden", label: "Hidden Only" },
                 ]}
               />
             </div>
           </div>
         </div>
 
-        {/* Loading state */}
+        {/* Loading State */}
         {loading && (
           <div className="flex h-48 items-center justify-center rounded-3xl border border-dashed border-black/10">
-            <p className="text-sm font-medium text-ink/40">Loading portfolio projects…</p>
+            <p className="text-sm font-medium text-ink/40">Loading carousel cards…</p>
           </div>
         )}
 
-        {/* Empty state */}
-        {!loading && filteredProjects.length === 0 && (
+        {/* Empty State */}
+        {!loading && filteredItems.length === 0 && (
           <Card className="flex flex-col items-center justify-center p-12 text-center">
             <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-black/5 text-2xl">
-              📂
+              🎬
             </div>
-            <h4 className="font-heading text-base font-bold text-ink">No projects match filters</h4>
+            <h4 className="font-heading text-base font-bold text-ink">No carousel cards found</h4>
             <p className="mt-1 max-w-sm text-xs text-ink/60">
-              Try changing search query or category filters. You can create projects in the
-              Portfolio section.
+              Click &ldquo;+ Add Video Card&rdquo; above to create your first showcase item.
             </p>
-            {(search || categoryFilter !== "all" || visibilityFilter !== "all" || pinnedFilter !== "all") && (
-              <Button
-                variant="light"
-                onClick={() => {
-                  setSearch("");
-                  setCategoryFilter("all");
-                  setVisibilityFilter("all");
-                  setPinnedFilter("all");
-                }}
-                className="mt-4 text-xs"
-              >
-                Clear all filters
-              </Button>
-            )}
+            <Button variant="dark" onClick={openCreate} className="mt-4 text-xs">
+              + Add Video Card
+            </Button>
           </Card>
         )}
 
-        {/* Project Cards List */}
-        {!loading && filteredProjects.length > 0 && (
-          <div className="space-y-3">
-            {filteredProjects.map((project, index) => {
+        {/* Cards Drag-and-Drop List */}
+        {!loading && filteredItems.length > 0 && (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            {filteredItems.map((item, index) => {
               const isFirst = index === 0;
-              const isLast = index === filteredProjects.length - 1;
-              const category = project.categoryLabel || project.categoryName || "General";
+              const isLast = index === filteredItems.length - 1;
+              const isDragging = draggedItemId === item.id;
+              const isOver = dragOverItemId === item.id;
 
               return (
                 <div
-                  key={project.id}
-                  className={`group relative flex flex-col gap-4 rounded-2xl border p-4 transition-all duration-200 md:flex-row md:items-center md:justify-between ${
-                    project.carouselPinned
-                      ? "border-amber-500/30 bg-amber-500/[0.03] shadow-sm"
-                      : project.carouselEnabled
-                        ? "border-black/10 bg-white/80 hover:border-black/20"
-                        : "border-black/5 bg-black/[0.02] opacity-60"
+                  key={item.id}
+                  draggable
+                  onDragStart={() => handleDragStart(item.id)}
+                  onDragOver={(e) => handleDragOver(e, item.id)}
+                  onDrop={(e) => void handleDrop(e, item.id)}
+                  className={`group relative flex flex-col overflow-hidden rounded-2xl border bg-white p-3 shadow-sm transition-all duration-200 ${
+                    isDragging
+                      ? "opacity-30 scale-95 border-brand"
+                      : isOver
+                        ? "border-brand ring-2 ring-brand/30 shadow-lg"
+                        : item.isActive
+                          ? "border-black/10 hover:border-black/25 hover:shadow-md"
+                          : "border-black/5 bg-black/[0.02] opacity-60"
                   }`}
                 >
-                  {/* Left: Thumbnail + Details */}
-                  <div className="flex items-center gap-4">
-                    {/* Position order number */}
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-black/5 font-mono text-xs font-bold text-ink/50">
-                      {index + 1}
+                  {/* Top: Drag Handle + Order Badge + Status */}
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <span className="cursor-grab text-xs text-ink/30 hover:text-ink">⋮⋮</span>
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-black/5 font-mono text-[10px] font-bold text-ink/60">
+                        {index + 1}
+                      </span>
                     </div>
 
-                    {/* Thumbnail preview */}
-                    <div className="relative h-16 w-24 shrink-0 overflow-hidden rounded-xl bg-black/10">
-                      {project.thumbnailUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={project.thumbnailUrl}
-                          alt={project.title}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-ink/30">
-                          No Poster
-                        </div>
-                      )}
-                      {project.videoUrl && (
-                        <div className="absolute bottom-1 right-1 rounded-md bg-black/70 px-1 py-0.5 text-[9px] font-bold text-white">
-                          ▶ VIDEO
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Info */}
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h4 className="truncate font-heading text-sm font-bold text-ink">
-                          {project.title}
-                        </h4>
-                        {project.carouselPinned && (
-                          <span className="inline-flex items-center rounded-md bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-700">
-                            ★ PINNED
-                          </span>
-                        )}
-                        <span className="rounded-md bg-black/5 px-2 py-0.5 text-[10px] font-medium text-ink/60">
-                          {category}
-                        </span>
-                        <span className="rounded-md bg-black/5 px-1.5 py-0.5 text-[10px] font-mono text-ink/40">
-                          {project.aspectRatio || "16:9"}
-                        </span>
-                      </div>
-                      <p className="mt-0.5 line-clamp-1 text-xs text-ink/50">
-                        {project.description || "No description provided."}
-                      </p>
+                    <div className="flex items-center gap-1.5">
+                      <span className="rounded-md bg-black/5 px-2 py-0.5 text-[10px] font-medium text-ink/60">
+                        {item.category}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => void toggleActive(item)}
+                        title={item.isActive ? "Hide from carousel" : "Show in carousel"}
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-bold transition ${
+                          item.isActive
+                            ? "bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/25"
+                            : "bg-black/5 text-ink/40 hover:bg-black/10"
+                        }`}
+                      >
+                        {item.isActive ? "Active" : "Hidden"}
+                      </button>
                     </div>
                   </div>
 
-                  {/* Right: Actions */}
-                  <div className="flex shrink-0 items-center gap-2">
-                    {/* Pin button */}
-                    <button
-                      type="button"
-                      onClick={() => togglePin(project.id)}
-                      title={project.carouselPinned ? "Unpin project" : "Pin to top of carousel"}
-                      className={`inline-flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
-                        project.carouselPinned
-                          ? "bg-amber-500 text-white shadow-sm hover:bg-amber-600"
-                          : "bg-black/5 text-ink/60 hover:bg-black/10 hover:text-ink"
-                      }`}
-                    >
-                      {project.carouselPinned ? "★ Pinned" : "☆ Pin"}
-                    </button>
+                  {/* Thumbnail / Video Box */}
+                  <div className="relative aspect-[9/16] w-full overflow-hidden rounded-xl bg-black/10">
+                    {item.thumbnailUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={item.thumbnailUrl}
+                        alt={item.title}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full flex-col items-center justify-center bg-neutral-900 text-white/40">
+                        <span className="text-2xl">🎬</span>
+                        <span className="mt-1 text-[10px] uppercase tracking-wider">No Poster</span>
+                      </div>
+                    )}
 
-                    {/* Enable / Disable toggle */}
-                    <button
-                      type="button"
-                      onClick={() => toggleEnabled(project.id)}
-                      title={project.carouselEnabled ? "Hide from carousel" : "Show in carousel"}
-                      className={`inline-flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
-                        project.carouselEnabled
-                          ? "bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/25"
-                          : "bg-black/5 text-ink/40 hover:bg-black/10 hover:text-ink"
-                      }`}
-                    >
-                      {project.carouselEnabled ? "✓ In Carousel" : "✕ Hidden"}
-                    </button>
+                    {/* Center Play Icon Overlay */}
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/30 text-white backdrop-blur-md">
+                        ▶
+                      </div>
+                    </div>
 
-                    {/* Up / Down Reorder */}
-                    <div className="flex items-center rounded-xl bg-black/5 p-0.5">
+                    {/* Duration badge */}
+                    {item.duration && (
+                      <span className="absolute bottom-2 right-2 rounded-md bg-black/70 px-1.5 py-0.5 font-mono text-[9px] font-semibold text-white">
+                        {item.duration}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Details */}
+                  <div className="mt-2.5 min-w-0 flex-1">
+                    <h4 className="truncate font-heading text-xs font-bold text-ink">{item.title}</h4>
+                    {item.description && (
+                      <p className="mt-0.5 line-clamp-1 text-[11px] text-ink/50">
+                        {item.description}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Action Bar */}
+                  <div className="mt-3 flex items-center justify-between border-t border-black/5 pt-2.5">
+                    {/* Move Up / Down */}
+                    <div className="flex items-center gap-1">
                       <button
                         type="button"
-                        disabled={isFirst || savingOrder}
-                        onClick={() => moveProject(project.id, "up")}
-                        title="Move Up"
-                        className="rounded-lg p-1.5 text-xs text-ink/60 transition hover:bg-white hover:text-ink disabled:opacity-20"
+                        disabled={isFirst}
+                        onClick={() => void moveItem(item.id, "up")}
+                        title="Move Left / Earlier"
+                        className="rounded-lg p-1 text-xs text-ink/50 hover:bg-black/5 hover:text-ink disabled:opacity-20"
                       >
-                        ▲
+                        ◀
                       </button>
                       <button
                         type="button"
-                        disabled={isLast || savingOrder}
-                        onClick={() => moveProject(project.id, "down")}
-                        title="Move Down"
-                        className="rounded-lg p-1.5 text-xs text-ink/60 transition hover:bg-white hover:text-ink disabled:opacity-20"
+                        disabled={isLast}
+                        onClick={() => void moveItem(item.id, "down")}
+                        title="Move Right / Later"
+                        className="rounded-lg p-1 text-xs text-ink/50 hover:bg-black/5 hover:text-ink disabled:opacity-20"
                       >
-                        ▼
+                        ▶
                       </button>
                     </div>
 
-                    {/* Remove from Carousel button */}
-                    {project.carouselEnabled && (
+                    {/* Edit & Delete */}
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        variant="light"
+                        onClick={() => openEdit(item)}
+                        className="!px-2.5 !py-1 text-[10px] font-semibold"
+                      >
+                        Edit
+                      </Button>
                       <button
                         type="button"
-                        onClick={() => setConfirmRemoveId(project.id)}
-                        title="Remove from Carousel (Keeps project in Portfolio CMS)"
-                        className="rounded-xl p-2 text-xs text-ink/40 transition hover:bg-rose-500/10 hover:text-rose-600"
+                        onClick={() => setDeletingId(item.id)}
+                        title="Delete Card"
+                        className="rounded-lg p-1 text-xs text-ink/40 hover:bg-rose-500/10 hover:text-rose-600"
                       >
                         ✕
                       </button>
-                    )}
+                    </div>
                   </div>
                 </div>
               );
@@ -638,28 +749,264 @@ export function CarouselAdmin({ onChanged }: { onChanged?: () => void }) {
         )}
       </div>
 
-      {/* Confirmation Modal: Remove from Carousel */}
-      {confirmRemoveId !== null && (
+      {/* ----------------- CREATE / EDIT MODAL ----------------- */}
+      {modalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-md">
+          <Card className="max-h-[90vh] w-full max-w-2xl overflow-y-auto p-6 md:p-8 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-black/5 pb-4">
+              <div>
+                <h3 className="font-heading text-lg font-bold text-ink">
+                  {editingId ? "Edit Showcase Video Card" : "Add New Showcase Video Card"}
+                </h3>
+                <p className="text-xs text-ink/60">
+                  Provide video file/URL and custom thumbnail for the horizontal carousel.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModalOpen(false)}
+                className="rounded-full p-2 text-ink/40 hover:bg-black/5 hover:text-ink"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={(e) => void saveItem(e)} className="mt-6 space-y-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field label="Card Title" error={fieldErrors.title} hint="e.g. Modern Dining Experience">
+                  <TextInput
+                    value={form.title}
+                    onChange={(val) => setForm({ ...form, title: val })}
+                    placeholder="Enter title…"
+                    required
+                  />
+                </Field>
+
+                <Field label="Category" error={fieldErrors.category} hint="Select or type custom">
+                  <TextInput
+                    value={form.category}
+                    onChange={(val) => setForm({ ...form, category: val })}
+                    placeholder="e.g. Real Estate, Commercial, Social Reel"
+                    required
+                  />
+                </Field>
+              </div>
+
+              {/* Category Presets Chips */}
+              <div className="flex flex-wrap gap-1.5">
+                {CATEGORY_PRESETS.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setForm({ ...form, category: cat })}
+                    className={`rounded-lg px-2.5 py-1 text-[10px] font-medium transition ${
+                      form.category === cat
+                        ? "bg-ink text-white"
+                        : "bg-black/5 text-ink/60 hover:bg-black/10"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+
+              <Field label="Short Description (Optional)" hint="1-2 sentences for overlay or modal preview">
+                <TextArea
+                  rows={2}
+                  value={form.description}
+                  onChange={(val) => setForm({ ...form, description: val })}
+                  placeholder="Describe the cut, pacing, or client project…"
+                />
+              </Field>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field label="Duration" hint="e.g. 0:30, 0:45, 1:00">
+                  <TextInput
+                    value={form.duration}
+                    onChange={(val) => setForm({ ...form, duration: val })}
+                    placeholder="0:30"
+                  />
+                </Field>
+
+                <Field label="Aspect Ratio" hint="Vertical 9:16 matches reference">
+                  <Select
+                    value={form.aspectRatio}
+                    onChange={(val) => setForm({ ...form, aspectRatio: val })}
+                    options={[
+                      { value: "9:16", label: "9:16 (Vertical / Reel / Short)" },
+                      { value: "4:5", label: "4:5 (Portrait Feed)" },
+                      { value: "16:9", label: "16:9 (Landscape)" },
+                      { value: "1:1", label: "1:1 (Square)" },
+                    ]}
+                  />
+                </Field>
+              </div>
+
+              {/* ---------------- VIDEO ASSET ---------------- */}
+              <div className="rounded-2xl border border-black/5 bg-black/[0.02] p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="font-heading text-xs font-bold uppercase tracking-wider text-ink">
+                    Video Media Asset
+                  </span>
+                  <div className="flex rounded-lg bg-black/5 p-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, videoSource: "upload" })}
+                      className={`rounded-md px-2.5 py-1 text-[10px] font-bold transition ${
+                        form.videoSource === "upload"
+                          ? "bg-white text-ink shadow-sm"
+                          : "text-ink/60 hover:text-ink"
+                      }`}
+                    >
+                      File Upload (Direct)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, videoSource: "url" })}
+                      className={`rounded-md px-2.5 py-1 text-[10px] font-bold transition ${
+                        form.videoSource === "url"
+                          ? "bg-white text-ink shadow-sm"
+                          : "text-ink/60 hover:text-ink"
+                      }`}
+                    >
+                      Video URL Link
+                    </button>
+                  </div>
+                </div>
+
+                {form.videoSource === "upload" ? (
+                  <Uploader
+                    kind="video"
+                    onUploaded={(res) => {
+                      setForm((prev) => ({ ...prev, videoUrl: res.url, videoSource: "upload" }));
+                      showToast("Video uploaded and attached to card.");
+                      if (!form.thumbnailUrl) {
+                        void grabFrame(res.url);
+                      }
+                    }}
+                  />
+                ) : (
+                  <Field label="Video Link URL" hint="YouTube Shorts, Instagram Reel, Google Drive, or MP4">
+                    <TextInput
+                      value={form.videoUrl}
+                      onChange={(val) => setForm({ ...form, videoUrl: val })}
+                      placeholder="https://..."
+                    />
+                  </Field>
+                )}
+
+                {/* Video Player Preview inside Modal */}
+                {form.videoUrl && (
+                  <div>
+                    <span className="text-[11px] font-medium text-ink/60">Live Video Preview:</span>
+                    <div className="mt-1.5 overflow-hidden rounded-xl bg-black max-h-48 aspect-video flex items-center justify-center">
+                      {form.videoUrl.endsWith(".mp4") || form.videoUrl.includes("blob") || form.videoUrl.includes("pexels") ? (
+                        <video
+                          src={form.videoUrl}
+                          controls
+                          className="h-full w-full object-contain"
+                        />
+                      ) : (
+                        <iframe
+                          src={parseMediaUrl(form.videoUrl).embedUrl || form.videoUrl}
+                          title="Preview"
+                          className="h-full w-full border-0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        />
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* ---------------- THUMBNAIL ASSET ---------------- */}
+              <div className="rounded-2xl border border-black/5 bg-black/[0.02] p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="font-heading text-xs font-bold uppercase tracking-wider text-ink">
+                    Thumbnail / Poster Image
+                  </span>
+                  {form.videoUrl && (
+                    <Button
+                      variant="ghost"
+                      disabled={grabbingFrame}
+                      onClick={() => void grabFrame()}
+                      className="!px-2.5 !py-1 text-[10px] font-semibold"
+                    >
+                      {grabbingFrame ? "Extracting frame…" : "⚡ Grab Frame from Video"}
+                    </Button>
+                  )}
+                </div>
+
+                <Uploader
+                  kind="image"
+                  onUploaded={(res) => {
+                    setForm((prev) => ({ ...prev, thumbnailUrl: res.url }));
+                    showToast("Thumbnail image attached.");
+                  }}
+                />
+
+                <Field label="Or Custom Thumbnail URL" hint="Direct image link">
+                  <TextInput
+                    value={form.thumbnailUrl}
+                    onChange={(val) => setForm({ ...form, thumbnailUrl: val })}
+                    placeholder="https://images.unsplash.com/..."
+                  />
+                </Field>
+
+                {form.thumbnailUrl && (
+                  <div className="relative h-28 w-20 overflow-hidden rounded-xl border border-black/10">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={form.thumbnailUrl}
+                      alt="Thumbnail preview"
+                      className="h-full w-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, thumbnailUrl: "" })}
+                      className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-[9px] text-white hover:bg-black"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <Toggle
+                label="Published / Visible in Carousel"
+                checked={form.isActive}
+                onChange={(val) => setForm({ ...form, isActive: val })}
+              />
+
+              <div className="flex justify-end gap-3 border-t border-black/5 pt-4">
+                <Button variant="light" onClick={() => setModalOpen(false)}>
+                  Cancel
+                </Button>
+                <Button variant="dark" type="submit" disabled={savingItem}>
+                  {savingItem ? "Saving Card…" : editingId ? "Update Card" : "Create Card"}
+                </Button>
+              </div>
+            </form>
+          </Card>
+        </div>
+      )}
+
+      {/* ----------------- DELETE CONFIRMATION MODAL ----------------- */}
+      {deletingId !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
           <Card className="w-full max-w-md p-6 shadow-2xl">
-            <h4 className="font-heading text-lg font-bold text-ink">
-              Remove from Carousel?
-            </h4>
+            <h4 className="font-heading text-lg font-bold text-ink">Delete Showcase Card?</h4>
             <p className="mt-2 text-xs leading-relaxed text-ink/70">
-              This will hide the project from the homepage showcase.{" "}
-              <strong className="text-emerald-700">
-                The project will remain completely safe in your Portfolio CMS.
-              </strong>
+              Are you sure you want to permanently delete this video card from the showcase
+              carousel? Associated uploaded media will also be cleaned up.
             </p>
             <div className="mt-6 flex justify-end gap-3">
-              <Button variant="light" onClick={() => setConfirmRemoveId(null)}>
+              <Button variant="light" onClick={() => setDeletingId(null)}>
                 Cancel
               </Button>
-              <Button
-                variant="danger"
-                onClick={() => confirmRemoveId && removeFromCarousel(confirmRemoveId)}
-              >
-                Remove from Carousel
+              <Button variant="danger" onClick={() => void deleteItem(deletingId)}>
+                Delete Permanently
               </Button>
             </div>
           </Card>

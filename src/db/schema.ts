@@ -128,10 +128,10 @@ export const projects = pgTable(
 export const carouselGlobalSettings = pgTable("carousel_global_settings", {
   id: integer("id").primaryKey().default(1),
   enabled: boolean("enabled").notNull().default(true),
-  sectionTitle: text("section_title").notNull().default("Selected Works"),
+  sectionTitle: text("section_title").notNull().default("Engage Audiences with Stunning Videos"),
   sectionSubtitle: text("section_subtitle")
     .notNull()
-    .default("A curated showcase of video editing, motion design, and visual storytelling."),
+    .default("Boost your brand with high-impact short videos & cinematic visual storytelling."),
   autoplay: boolean("autoplay").notNull().default(true),
   autoplaySpeed: integer("autoplay_speed").notNull().default(5),
   infiniteLoop: boolean("infinite_loop").notNull().default(true),
@@ -139,6 +139,30 @@ export const carouselGlobalSettings = pgTable("carousel_global_settings", {
   showDots: boolean("show_dots").notNull().default(true),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const carouselItems = pgTable(
+  "carousel_items",
+  {
+    id: serial("id").primaryKey(),
+    title: text("title").notNull(),
+    category: text("category").notNull().default("Video Edit"),
+    description: text("description").notNull().default(""),
+    duration: text("duration").notNull().default(""),
+    videoUrl: text("video_url").notNull().default(""),
+    videoSource: text("video_source").notNull().default("upload"),
+    thumbnailUrl: text("thumbnail_url").notNull().default(""),
+    aspectRatio: text("aspect_ratio").notNull().default("9:16"),
+    isActive: boolean("is_active").notNull().default(true),
+    sortOrder: integer("sort_order").notNull().default(0),
+    projectId: integer("project_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("carousel_items_is_active_idx").on(t.isActive),
+    index("carousel_items_sort_order_idx").on(t.sortOrder),
+  ],
+);
 
 export const mediaFiles = pgTable(
   "media_files",

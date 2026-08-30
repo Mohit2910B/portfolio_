@@ -14,6 +14,7 @@ import {
   workOptions,
   notificationSettings,
   carouselGlobalSettings,
+  carouselItems,
 } from "@/db/schema";
 import { hashPassword } from "@/lib/auth";
 
@@ -329,8 +330,8 @@ const DDL_STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS carousel_global_settings (
     id               INTEGER PRIMARY KEY DEFAULT 1,
     enabled          BOOLEAN NOT NULL DEFAULT true,
-    section_title    TEXT NOT NULL DEFAULT 'Selected Works',
-    section_subtitle TEXT NOT NULL DEFAULT 'A curated showcase of video editing, motion design, and visual storytelling.',
+    section_title    TEXT NOT NULL DEFAULT 'Engage Audiences with Stunning Videos',
+    section_subtitle TEXT NOT NULL DEFAULT 'Boost your brand with high-impact short videos & cinematic visual storytelling.',
     autoplay         BOOLEAN NOT NULL DEFAULT true,
     autoplay_speed   INTEGER NOT NULL DEFAULT 5,
     infinite_loop    BOOLEAN NOT NULL DEFAULT true,
@@ -338,6 +339,24 @@ const DDL_STATEMENTS = [
     show_dots        BOOLEAN NOT NULL DEFAULT true,
     updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
   )`,
+
+  `CREATE TABLE IF NOT EXISTS carousel_items (
+    id            SERIAL PRIMARY KEY,
+    title         TEXT NOT NULL,
+    category      TEXT NOT NULL DEFAULT 'Video Edit',
+    description   TEXT NOT NULL DEFAULT '',
+    duration      TEXT NOT NULL DEFAULT '',
+    video_url     TEXT NOT NULL DEFAULT '',
+    video_source  TEXT NOT NULL DEFAULT 'upload',
+    thumbnail_url TEXT NOT NULL DEFAULT '',
+    aspect_ratio  TEXT NOT NULL DEFAULT '9:16',
+    is_active     BOOLEAN NOT NULL DEFAULT true,
+    sort_order    INTEGER NOT NULL DEFAULT 0,
+    project_id    INTEGER,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS carousel_items_active_idx ON carousel_items (is_active, sort_order)`,
 ];
 
 async function ensureTables(): Promise<void> {
@@ -372,6 +391,7 @@ async function count(table: string): Promise<number> {
     "theme_settings",
     "carousel_settings",
     "carousel_global_settings",
+    "carousel_items",
   ];
 
   if (!allowedTables.includes(table)) {
