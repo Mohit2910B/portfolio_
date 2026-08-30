@@ -1,11 +1,12 @@
 import { getDatabaseResolution, getPool } from "@/db";
 import { ensureDatabase } from "@/lib/bootstrap";
+import { getResendApiKey } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   const resolution = getDatabaseResolution();
-  const hasResend = Boolean(process.env.RESEND_API_KEY?.trim());
+  const hasResend = Boolean(getResendApiKey());
 
   let dbStatus: "connected" | "error" = "error";
   let dbError: string | null = null;

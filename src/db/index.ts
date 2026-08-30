@@ -106,16 +106,37 @@ export type DbResolution =
 export function getDatabaseResolution(): DbResolution {
   const isCloud = isCloudDeployment();
 
-  const candidateUrls = [
+  const explicitUrls = [
     cleanEnvValue(process.env.POSTGRES_URL),
     cleanEnvValue(process.env.POSTGRES_PRISMA_URL),
     cleanEnvValue(process.env.DATABASE_URL),
     cleanEnvValue(process.env.POSTGRES_URL_NON_POOLING),
-    cleanEnvValue(process.env.NEON_URL),
+    cleanEnvValue(process.env.POSTGRES_DATABASE_URL),
+    cleanEnvValue(process.env.POSTGRES_POSTGRES_URL),
     cleanEnvValue(process.env.STORAGE_URL),
+    cleanEnvValue(process.env.STORAGE_DATABASE_URL),
+    cleanEnvValue(process.env.STORAGE_POSTGRES_URL),
+    cleanEnvValue(process.env.NEON_URL),
+    cleanEnvValue(process.env.NEON_DATABASE_URL),
     cleanEnvValue(process.env.DATABASE_URI),
     cleanEnvValue(process.env.DB_URL),
   ].filter(Boolean);
+
+  // Dynamic scan for any env variable containing a PostgreSQL URL
+  const dynamicUrls: string[] = [];
+  for (const [key, value] of Object.entries(process.env)) {
+    if (typeof value === "string") {
+      const v = cleanEnvValue(value);
+      if (
+        (v.startsWith("postgres://") || v.startsWith("postgresql://")) &&
+        !explicitUrls.includes(v)
+      ) {
+        dynamicUrls.push(v);
+      }
+    }
+  }
+
+  const candidateUrls = [...explicitUrls, ...dynamicUrls];
 
   const dbHost = cleanEnvValue(process.env.DB_HOST);
   const dbPort = process.env.DB_PORT ? Number(cleanEnvValue(process.env.DB_PORT)) : 5432;

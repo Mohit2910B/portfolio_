@@ -57,12 +57,23 @@ function cleanEnvValue(value?: string): string {
   return v;
 }
 
+export function getResendApiKey(): string {
+  const direct = cleanEnvValue(process.env.RESEND_API_KEY || process.env.RESEND_KEY || process.env.RESEND_TOKEN);
+  if (direct) return direct;
+  for (const [k, v] of Object.entries(process.env)) {
+    if (typeof v === "string" && v.trim().startsWith("re_")) {
+      return cleanEnvValue(v);
+    }
+  }
+  return "";
+}
+
 export async function sendEmail(
   to: string,
   subject: string,
   html: string,
 ): Promise<SendEmailResult> {
-  const key = cleanEnvValue(process.env.RESEND_API_KEY);
+  const key = getResendApiKey();
   if (!key) {
     console.error(
       "[notifications] sendEmail failed: RESEND_API_KEY is not configured in environment variables.",
