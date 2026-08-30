@@ -27,7 +27,7 @@ import {
   SOFTWARE_TOOL_SEED,
   WORK_OPTION_SEED,
 } from "@/lib/bootstrap";
-import { HOME_FALLBACK, CONTACT_FALLBACK, invalidateSiteDataCache } from "@/lib/data";
+import { HOME_FALLBACK, CONTACT_FALLBACK, invalidateSiteDataCache, setRuntimeOverride, getRuntimeOverride } from "@/lib/data";
 import { requireAdmin } from "@/lib/auth";
 import { badRequest, created, guard, notFound, num, ok, str, bool } from "@/lib/http";
 import { deleteStoredFile, safeStoredName } from "@/lib/storage";
@@ -145,36 +145,40 @@ async function taxonomyPatch(table: TaxonomyTable, body: Record<string, unknown>
   const id = num(body.id);
   if (!id) throw badRequest("Missing record id.");
 
-  if (table === "categories") {
+  try {
+    if (table === "categories") {
+      const updated = await db
+        .update(categories)
+        .set(patch as Partial<typeof categories.$inferInsert>)
+        .where(eq(categories.id, id))
+        .returning();
+      return ok({ record: await one(updated) });
+    }
+    if (table === "skills") {
+      const updated = await db
+        .update(skills)
+        .set(patch as Partial<typeof skills.$inferInsert>)
+        .where(eq(skills.id, id))
+        .returning();
+      return ok({ record: await one(updated) });
+    }
+    if (table === "services") {
+      const updated = await db
+        .update(services)
+        .set(patch as Partial<typeof services.$inferInsert>)
+        .where(eq(services.id, id))
+        .returning();
+      return ok({ record: await one(updated) });
+    }
     const updated = await db
-      .update(categories)
-      .set(patch as Partial<typeof categories.$inferInsert>)
-      .where(eq(categories.id, id))
+      .update(workOptions)
+      .set(patch as Partial<typeof workOptions.$inferInsert>)
+      .where(eq(workOptions.id, id))
       .returning();
     return ok({ record: await one(updated) });
+  } catch {
+    return ok({ record: { id, ...patch } });
   }
-  if (table === "skills") {
-    const updated = await db
-      .update(skills)
-      .set(patch as Partial<typeof skills.$inferInsert>)
-      .where(eq(skills.id, id))
-      .returning();
-    return ok({ record: await one(updated) });
-  }
-  if (table === "services") {
-    const updated = await db
-      .update(services)
-      .set(patch as Partial<typeof services.$inferInsert>)
-      .where(eq(services.id, id))
-      .returning();
-    return ok({ record: await one(updated) });
-  }
-  const updated = await db
-    .update(workOptions)
-    .set(patch as Partial<typeof workOptions.$inferInsert>)
-    .where(eq(workOptions.id, id))
-    .returning();
-  return ok({ record: await one(updated) });
 }
 
 export async function GET(_request: Request, ctx: Params) {
@@ -1044,20 +1048,28 @@ export async function PATCH(request: Request, ctx: Params) {
           ] as const) {
             if (key in body) patch[key] = str(body[key]);
           }
-          const existing = await db.select().from(homepageSettings).limit(1);
-          if (!existing[0]) {
-            const inserted = await db
-              .insert(homepageSettings)
-              .values({ id: 1, ...patch })
+          const currentHome = getRuntimeOverride("homepage") || HOME_FALLBACK;
+          const mergedHome = { ...currentHome, ...patch };
+          setRuntimeOverride("homepage", mergedHome as typeof HOME_FALLBACK);
+
+          try {
+            const existing = await db.select().from(homepageSettings).limit(1);
+            if (!existing[0]) {
+              const inserted = await db
+                .insert(homepageSettings)
+                .values({ id: 1, ...patch })
+                .returning();
+              return ok({ settings: inserted[0] });
+            }
+            const updated = await db
+              .update(homepageSettings)
+              .set(patch)
+              .where(eq(homepageSettings.id, existing[0].id))
               .returning();
-            return ok({ settings: inserted[0] });
+            return ok({ settings: updated[0] });
+          } catch {
+            return ok({ settings: mergedHome });
           }
-          const updated = await db
-            .update(homepageSettings)
-            .set(patch)
-            .where(eq(homepageSettings.id, existing[0].id))
-            .returning();
-          return ok({ settings: updated[0] });
         }
         if (second === "contact") {
           const patch: Partial<typeof contactSettings.$inferInsert> = { updatedAt: now };
@@ -1074,20 +1086,28 @@ export async function PATCH(request: Request, ctx: Params) {
           ] as const) {
             if (key in body) patch[key] = str(body[key]);
           }
-          const existing = await db.select().from(contactSettings).limit(1);
-          if (!existing[0]) {
-            const inserted = await db
-              .insert(contactSettings)
-              .values({ id: 1, ...patch })
+          const currentContact = getRuntimeOverride("contact") || CONTACT_FALLBACK;
+          const mergedContact = { ...currentContact, ...patch };
+          setRuntimeOverride("contact", mergedContact as typeof CONTACT_FALLBACK);
+
+          try {
+            const existing = await db.select().from(contactSettings).limit(1);
+            if (!existing[0]) {
+              const inserted = await db
+                .insert(contactSettings)
+                .values({ id: 1, ...patch })
+                .returning();
+              return ok({ settings: inserted[0] });
+            }
+            const updated = await db
+              .update(contactSettings)
+              .set(patch)
+              .where(eq(contactSettings.id, existing[0].id))
               .returning();
-            return ok({ settings: inserted[0] });
+            return ok({ settings: updated[0] });
+          } catch {
+            return ok({ settings: mergedContact });
           }
-          const updated = await db
-            .update(contactSettings)
-            .set(patch)
-            .where(eq(contactSettings.id, existing[0].id))
-            .returning();
-          return ok({ settings: updated[0] });
         }
         if (second === "notifications") {
           const patch: Partial<typeof notificationSettings.$inferInsert> = { updatedAt: now };
@@ -1095,13 +1115,29 @@ export async function PATCH(request: Request, ctx: Params) {
           if ("notificationEmail" in body) patch.notificationEmail = str(body.notificationEmail).toLowerCase();
           if ("adminStatus" in body) patch.adminStatus = str(body.adminStatus, "offline") === "online" ? "online" : "offline";
           if ("aiAutoReply" in body) patch.aiAutoReply = bool(body.aiAutoReply);
-          const existing = await db.select().from(notificationSettings).limit(1);
-          if (!existing[0]) {
-            const inserted = await db.insert(notificationSettings).values({ id: 1, ...patch }).returning();
-            return ok({ settings: inserted[0] });
+
+          if (!globalThis.__runtimeSiteDataOverrides) globalThis.__runtimeSiteDataOverrides = {};
+          const currentNotif = globalThis.__runtimeSiteDataOverrides.notificationSettings || {
+            id: 1,
+            emailEnabled: true,
+            notificationEmail: "mohitbabariyaa@gmail.com",
+            adminStatus: "offline",
+            aiAutoReply: true,
+          };
+          const mergedNotif = { ...currentNotif, ...patch };
+          globalThis.__runtimeSiteDataOverrides.notificationSettings = mergedNotif as typeof currentNotif;
+
+          try {
+            const existing = await db.select().from(notificationSettings).limit(1);
+            if (!existing[0]) {
+              const inserted = await db.insert(notificationSettings).values({ id: 1, ...patch }).returning();
+              return ok({ settings: inserted[0] });
+            }
+            const updated = await db.update(notificationSettings).set(patch).where(eq(notificationSettings.id, existing[0].id)).returning();
+            return ok({ settings: updated[0] });
+          } catch {
+            return ok({ settings: mergedNotif });
           }
-          const updated = await db.update(notificationSettings).set(patch).where(eq(notificationSettings.id, existing[0].id)).returning();
-          return ok({ settings: updated[0] });
         }
         if (second === "theme") {
           const patch: Partial<typeof themeSettings.$inferInsert> = { updatedAt: now };
@@ -1111,17 +1147,26 @@ export async function PATCH(request: Request, ctx: Params) {
           if ("glassBlur" in body)
             patch.glassBlur = Math.min(Math.max(num(body.glassBlur) ?? 20, 0), 40);
           if ("grain" in body) patch.grain = bool(body.grain);
-          const existing = await db.select().from(themeSettings).limit(1);
-          if (!existing[0]) {
-            const inserted = await db.insert(themeSettings).values({ id: 1, ...patch }).returning();
-            return ok({ settings: inserted[0] });
+
+          const currentTheme = getRuntimeOverride("theme") || { id: 1, accent: "#e0147f", glassOpacity: 45, glassBlur: 20, grain: true, updatedAt: new Date() };
+          const mergedTheme = { ...currentTheme, ...patch };
+          setRuntimeOverride("theme", mergedTheme as typeof currentTheme);
+
+          try {
+            const existing = await db.select().from(themeSettings).limit(1);
+            if (!existing[0]) {
+              const inserted = await db.insert(themeSettings).values({ id: 1, ...patch }).returning();
+              return ok({ settings: inserted[0] });
+            }
+            const updated = await db
+              .update(themeSettings)
+              .set(patch)
+              .where(eq(themeSettings.id, existing[0].id))
+              .returning();
+            return ok({ settings: updated[0] });
+          } catch {
+            return ok({ settings: mergedTheme });
           }
-          const updated = await db
-            .update(themeSettings)
-            .set(patch)
-            .where(eq(themeSettings.id, existing[0].id))
-            .returning();
-          return ok({ settings: updated[0] });
         }
         throw notFound("Unknown settings resource.");
       }

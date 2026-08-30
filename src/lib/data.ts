@@ -273,8 +273,38 @@ export const DEFAULT_CAROUSEL_SETTINGS: CarouselSettingItem[] = DEFAULT_CATEGORI
   updatedAt: new Date(),
 }));
 
+declare global {
+  // eslint-disable-next-line no-var
+  var __runtimeSiteDataOverrides:
+    | (Partial<SiteData> & {
+        notificationSettings?: {
+          id: number;
+          emailEnabled: boolean;
+          notificationEmail: string;
+          adminStatus: "online" | "offline";
+          aiAutoReply: boolean;
+        };
+      })
+    | undefined;
+}
+
+if (!globalThis.__runtimeSiteDataOverrides) {
+  globalThis.__runtimeSiteDataOverrides = {};
+}
+
+export function setRuntimeOverride<K extends keyof SiteData>(key: K, value: SiteData[K]) {
+  if (!globalThis.__runtimeSiteDataOverrides) globalThis.__runtimeSiteDataOverrides = {};
+  globalThis.__runtimeSiteDataOverrides[key] = value;
+  invalidateSiteDataCache();
+}
+
+export function getRuntimeOverride<K extends keyof SiteData>(key: K): SiteData[K] | undefined {
+  return globalThis.__runtimeSiteDataOverrides?.[key] as SiteData[K] | undefined;
+}
+
 function getFallbackSiteData(): SiteData {
-  const theme = {
+  const overrides = globalThis.__runtimeSiteDataOverrides || {};
+  const theme = overrides.theme || {
     id: 1,
     accent: "#e0147f",
     glassOpacity: 45,
@@ -284,17 +314,23 @@ function getFallbackSiteData(): SiteData {
   };
 
   return {
-    homepage: HOME_FALLBACK,
-    contact: CONTACT_FALLBACK,
+    homepage: overrides.homepage || HOME_FALLBACK,
+    contact: overrides.contact || CONTACT_FALLBACK,
     theme,
-    categories: DEFAULT_CATEGORIES.filter((c) => c.isActive),
-    allCategories: DEFAULT_CATEGORIES,
-    projects: DEFAULT_PROJECTS,
-    services: DEFAULT_SERVICES,
-    softwareTools: DEFAULT_SOFTWARE_TOOLS,
-    workOptions: DEFAULT_WORK_OPTIONS,
-    sections: DEFAULT_SECTIONS.filter((section) => (section.sectionKey as string) !== "capabilities"),
-    carouselSettings: DEFAULT_CAROUSEL_SETTINGS,
+    categories: overrides.categories || DEFAULT_CATEGORIES.filter((c) => c.isActive),
+    allCategories: overrides.allCategories || DEFAULT_CATEGORIES,
+    projects: overrides.projects || DEFAULT_PROJECTS,
+    services: overrides.services || DEFAULT_SERVICES,
+    softwareTools: overrides.softwareTools || DEFAULT_SOFTWARE_TOOLS,
+    workOptions: overrides.workOptions || DEFAULT_WORK_OPTIONS,
+    sections:
+      overrides.sections ||
+      DEFAULT_SECTIONS.filter(
+        (section) =>
+          (section.sectionKey as string) !== "capabilities" &&
+          (section.sectionKey as string) !== "work",
+      ),
+    carouselSettings: [],
   };
 }
 

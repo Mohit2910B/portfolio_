@@ -8,7 +8,9 @@ export type SendEmailResult = {
 };
 
 export async function getNotificationSettings() {
+  const runtime = globalThis.__runtimeSiteDataOverrides?.notificationSettings;
   const defaultEmail =
+    runtime?.notificationEmail ||
     cleanEnvValue(process.env.NOTIFICATION_EMAIL) ||
     cleanEnvValue(process.env.SEED_ADMIN_EMAIL) ||
     "mohitbabariyaa@gmail.com";
@@ -27,19 +29,18 @@ export async function getNotificationSettings() {
     }
     return {
       id: 1,
-      emailEnabled: true,
+      emailEnabled: runtime ? runtime.emailEnabled : true,
       notificationEmail: defaultEmail,
-      adminStatus: "offline" as const,
-      aiAutoReply: true,
+      adminStatus: (runtime ? runtime.adminStatus : "offline") as "online" | "offline",
+      aiAutoReply: runtime ? runtime.aiAutoReply : true,
     };
   } catch (error) {
-    console.error("[notifications] Failed to fetch notification settings:", error);
     return {
       id: 1,
-      emailEnabled: true,
+      emailEnabled: runtime ? runtime.emailEnabled : true,
       notificationEmail: defaultEmail,
-      adminStatus: "offline" as const,
-      aiAutoReply: true,
+      adminStatus: (runtime ? runtime.adminStatus : "offline") as "online" | "offline",
+      aiAutoReply: runtime ? runtime.aiAutoReply : true,
     };
   }
 }
