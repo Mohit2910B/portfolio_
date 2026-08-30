@@ -1,6 +1,5 @@
 import SiteNav from "@/components/site/SiteNav";
 import Hero from "@/components/site/Hero";
-import WorkCarousel from "@/components/site/WorkCarousel";
 import ContactSection from "@/components/site/ContactSection";
 import ChatWidget from "@/components/site/ChatWidget";
 import SoftwareTools from "@/components/site/SoftwareTools";
@@ -9,12 +8,12 @@ import { getSiteData, HOME_FALLBACK } from "@/lib/data";
 
 export const revalidate = 60;
 
-const DEFAULT_ORDER = ["hero", "about", "tools", "services", "work", "contact"];
+const DEFAULT_ORDER = ["hero", "about", "tools", "services", "contact"];
 
 export default async function HomePage() {
   const data = await getSiteData();
   const visible = (data?.sections || [])
-    .filter((s) => s.isVisible && (s.sectionKey as string) !== "capabilities")
+    .filter((s) => s.isVisible && (s.sectionKey as string) !== "capabilities" && (s.sectionKey as string) !== "work")
     .map((s) => s.sectionKey);
   const order = visible.length > 0 ? visible : DEFAULT_ORDER;
   const theme = data?.theme || {
@@ -26,7 +25,6 @@ export default async function HomePage() {
     updatedAt: new Date(),
   };
   const homepage = data?.homepage || HOME_FALLBACK;
-
 
   const themeStyle = {
     "--accent": theme.accent || "#e0147f",
@@ -47,8 +45,6 @@ export default async function HomePage() {
         return <SoftwareTools key={key} data={data} />;
       case "services":
         return <Services key={key} data={data} />;
-      case "work":
-        return <WorkCarousel key={key} data={data} />;
       case "contact":
         return <ContactSection key={key} data={data} />;
       default:
@@ -73,7 +69,6 @@ export default async function HomePage() {
           <>
             <Hero data={data} />
             <Marquee text={marqueeText} />
-            <WorkCarousel data={data} />
             <About data={data} />
             <SoftwareTools data={data} />
             <Services data={data} />

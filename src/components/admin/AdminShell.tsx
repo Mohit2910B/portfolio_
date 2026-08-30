@@ -5,7 +5,6 @@ import DashboardAdmin, { type Stats } from "./DashboardAdmin";
 import { MediaAdmin, PortfolioAdmin } from "./PortfolioAdmin";
 import {
   CategoriesAdmin,
-  CarouselAdmin,
   ServicesAdmin,
   SkillsAdmin,
   SoftwareToolsAdmin,
@@ -39,7 +38,6 @@ const NAV: { key: string; label: string; icon: string }[] = [
   { key: "media", label: "Media Library", icon: "▣" },
   { key: "enquiries", label: "Enquiries", icon: "✉" },
   { key: "categories", label: "Categories", icon: "⌗" },
-  { key: "carousel", label: "Carousel Manager", icon: "▭" },
   { key: "services", label: "Services", icon: "✦" },
   { key: "software", label: "Tools & Software", icon: "◌" },
   { key: "skills", label: "Skills", icon: "◈" },
@@ -246,7 +244,6 @@ export default function AdminShell({
           {section === "media" && <MediaAdmin onChanged={refresh} />}
           {section === "enquiries" && <EnquiriesAdmin onChanged={refresh} />}
           {section === "categories" && <CategoriesAdmin onChanged={refresh} />}
-          {section === "carousel" && <CarouselAdmin onChanged={refresh} />}
           {section === "services" && <ServicesAdmin onChanged={refresh} />}
           {section === "software" && <SoftwareToolsAdmin onChanged={refresh} />}
           {section === "skills" && <SkillsAdmin onChanged={refresh} />}

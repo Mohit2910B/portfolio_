@@ -62,18 +62,18 @@ export default function DashboardAdmin({
   }, []);
 
   const tiles = [
-    { label: "Total projects", value: stats.projects.total, target: "portfolio" },
-    { label: "Published", value: stats.projects.published, target: "portfolio" },
-    { label: "Drafts", value: stats.projects.drafts, target: "portfolio" },
-    { label: "Featured", value: stats.projects.featured, target: "carousel" },
-    { label: "Demo projects", value: stats.projects.demo, target: "portfolio" },
-    { label: "Media files", value: stats.mediaFiles, target: "media" },
-    { label: "Enquiries", value: stats.enquiries.total, target: "enquiries" },
-    { label: "Unread enquiries", value: stats.enquiries.unread, target: "enquiries" },
-    { label: "Chat conversations", value: stats.chat.total, target: "chat" },
-    { label: "Unread messages", value: stats.chat.unread, target: "chat" },
-    { label: "Categories", value: stats.categories, target: "categories" },
-    { label: "Skills / Services", value: `${stats.skills} / ${stats.services}`, target: "skills" },
+    { label: "Total projects", value: loading ? "—" : stats.projects.total, target: "portfolio" },
+    { label: "Published", value: loading ? "—" : stats.projects.published, target: "portfolio" },
+    { label: "Drafts", value: loading ? "—" : stats.projects.drafts, target: "portfolio" },
+    { label: "Featured", value: loading ? "—" : stats.projects.featured, target: "portfolio" },
+    { label: "Demo projects", value: loading ? "—" : stats.projects.demo, target: "portfolio" },
+    { label: "Media files", value: loading ? "—" : stats.mediaFiles, target: "media" },
+    { label: "Enquiries", value: loading ? "—" : stats.enquiries.total, target: "enquiries" },
+    { label: "Unread enquiries", value: loading ? "—" : stats.enquiries.unread, target: "enquiries" },
+    { label: "Chat conversations", value: loading ? "—" : stats.chat.total, target: "chat" },
+    { label: "Unread messages", value: loading ? "—" : stats.chat.unread, target: "chat" },
+    { label: "Categories", value: loading ? "—" : stats.categories, target: "categories" },
+    { label: "Skills / Services", value: loading ? "—" : `${stats.skills} / ${stats.services}`, target: "skills" },
   ];
 
   return (
@@ -95,7 +95,7 @@ export default function DashboardAdmin({
 
       {error && <Notice tone="error">{error}</Notice>}
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {tiles.map((tile) => (
           <button
             key={tile.label}
@@ -107,41 +107,38 @@ export default function DashboardAdmin({
               {tile.label}
             </p>
             <p className="mono mt-3 text-3xl text-ink">
-              {loading ? "—" : tile.value}
+              {tile.value}
             </p>
           </button>
         ))}
       </div>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-        <Card className="p-6">
+      <div className="mt-8 grid gap-6 lg:grid-cols-3">
+        <Card className="p-6 lg:col-span-2">
           <p className="text-[0.58rem] font-semibold uppercase tracking-[0.2em] text-ink/40">
-            Quick actions
+            System status
           </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {ACTIONS.map((action) => (
-              <Button key={action.label} variant={action.variant} onClick={() => onNavigate(action.target)}>
-                {action.label}
-              </Button>
-            ))}
-            <Button variant="ghost" onClick={() => window.open("/", "_blank")}>
-              View website
-            </Button>
-          </div>
-          <div className="hairline mt-6 pt-5">
-            <p className="text-[0.58rem] font-semibold uppercase tracking-[0.2em] text-ink/40">
-              System
-            </p>
-            <p className="mt-3 flex items-center gap-2 text-sm text-ink/70">
-              <span
-                className={`h-1.5 w-1.5 rounded-full ${
-                  ping === "ok" ? "bg-emerald-500" : ping === "fail" ? "bg-[#d11a4a]" : "bg-ink/30"
-                }`}
-              />
+          <div className="mt-4 flex flex-wrap items-center gap-4">
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                ping === "ok"
+                  ? "bg-emerald-500/10 text-emerald-600"
+                  : ping === "fail"
+                    ? "bg-rose-500/10 text-rose-600"
+                    : "bg-ink/5 text-ink/60"
+              }`}
+            >
               {ping === "ok"
-                ? "Database connection healthy"
+                ? "Live & connected"
                 : ping === "fail"
-                  ? "Database unreachable — check DATABASE_URL"
+                  ? "Health check degraded"
+                  : "Checking…"}
+            </span>
+            <p className="text-xs text-ink/60">
+              {ping === "ok"
+                ? "Database, API routes and serverless handlers operating normally."
+                : ping === "fail"
+                  ? "Database check returned a degraded status. Data may use fallback stores."
                   : "Checking database…"}
             </p>
           </div>
@@ -156,7 +153,7 @@ export default function DashboardAdmin({
               "Add or upload a project in Portfolio.",
               "Attach a video (upload or URL) and a thumbnail.",
               "Publish it — the website updates immediately.",
-              "Tune the carousel in Carousel Manager.",
+              "Manage services, skills & tools in CMS studio.",
             ].map((step, index) => (
               <li key={step} className="flex gap-3">
                 <span className="mono text-[0.65rem] text-[var(--accent)]">
