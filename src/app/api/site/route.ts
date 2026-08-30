@@ -5,6 +5,8 @@ import { getSiteData } from "@/lib/data";
 import { guard, ok } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 /** Public aggregate payload used by the website and live previews. */
 export async function GET() {

@@ -2,7 +2,9 @@ import { Suspense } from "react";
 import ThemeDispatcher from "@/components/site/themes/ThemeDispatcher";
 import { getSiteData } from "@/lib/data";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 export default async function HomePage() {
   const data = await getSiteData();

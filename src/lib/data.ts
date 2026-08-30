@@ -531,10 +531,6 @@ export function invalidateSiteDataCache() {
 }
 
 export async function getSiteData(): Promise<SiteData> {
-  if (cachedSiteData && Date.now() < cachedSiteData.expiresAt) {
-    return cachedSiteData.data;
-  }
-
   try {
     await ensureDatabase();
 
