@@ -697,23 +697,39 @@ export function WorkOptionsAdmin({ onChanged }: { onChanged: () => void }) {
 
 /* ---------------------------- CAROUSEL ------------------------------ */
 
-type PortfolioAdminProject = { id: number; title: string; categoryId: number | null };
+type PortfolioAdminProject = {
+  id: number;
+  title: string;
+  categoryId: number | null;
+  categoryLabel: string;
+  thumbnailUrl: string;
+  videoUrl: string;
+  aspectRatio: string;
+  durationSeconds: number | null;
+  published: boolean;
+};
 
 export function CarouselAdmin({ onChanged }: { onChanged: () => void }) {
   const { rows, error, setError, load } = useCollection<CarouselRow>("/api/admin/carousel");
   const [projects, setProjects] = useState<PortfolioAdminProject[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [notice, setNotice] = useState("");
 
-  useEffect(() => {
+  const loadProjects = () => {
     api<{ projects: PortfolioAdminProject[] }>("/api/admin/projects")
-      .then((payload) => setProjects(payload.projects))
+      .then((payload) => setProjects(payload.projects || []))
       .catch(() => undefined);
+  };
+
+  useEffect(() => {
+    loadProjects();
   }, []);
 
   const run = async (fn: () => Promise<void>, message?: string) => {
     try {
       await fn();
       await load();
+      loadProjects();
       onChanged();
       if (message) {
         setNotice(message);
@@ -733,12 +749,18 @@ export function CarouselAdmin({ onChanged }: { onChanged: () => void }) {
     }
   };
 
+  // Set default selected category
+  const activeRow = rows.find((r) => r.categoryId === selectedCategory) || rows[0];
+
   return (
     <div>
-      <SectionTitle
-        title="Carousel Manager"
-        subtitle="Control how many slots each category gets, which projects are pinned and the size of the centre card."
-      />
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <SectionTitle
+          title="Carousel Showcase Manager"
+          subtitle="Easily manage which video projects appear in the website's featured carousel for each category."
+        />
+      </div>
+
       {error && <Notice tone="error">{error}</Notice>}
       {notice && (
         <div className="mt-3">
@@ -746,176 +768,261 @@ export function CarouselAdmin({ onChanged }: { onChanged: () => void }) {
         </div>
       )}
 
-      <div className="mt-5 space-y-4">
+      {/* Category Selection Tabs */}
+      <div className="mt-6 flex flex-wrap gap-2 rounded-2xl bg-ink/5 p-2">
         {rows.map((row) => {
-          const ids = parseIds(row.projectIds);
-          const available = projects.filter((p) => row.categoryId === null || p.categoryId === row.categoryId);
+          const isSelected = (activeRow?.id === row.id) || (selectedCategory === row.categoryId);
+          const catProjects = projects.filter((p) => row.categoryId === null || p.categoryId === row.categoryId);
+          const pinnedCount = parseIds(row.projectIds).length;
+
           return (
-            <Card key={row.id} className="p-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-ink">{row.categoryName}</p>
-                  <p className="mono mt-1 text-[0.62rem] text-ink/45">
-                    {available.length} project{available.length === 1 ? "" : "s"} available · order {row.sortOrder}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  <Toggle
-                    checked={row.isActive}
-                    onChange={(value) =>
-                      run(
-                        () =>
-                          api(`/api/admin/carousel/${row.id}`, {
-                            method: "PATCH",
-                            body: JSON.stringify({ isActive: value }),
-                          }),
-                        value ? "Carousel enabled." : "Carousel disabled.",
-                      )
-                    }
-                    label={row.isActive ? "Active" : "Off"}
-                  />
-                  <Button
-                    variant="ghost"
-                    onClick={() =>
-                      run(
-                        () =>
-                          api("/api/admin/carousel/reorder", {
-                            method: "POST",
-                            body: JSON.stringify({ id: row.id, direction: "up" }),
-                          }),
-                        "Moved up.",
-                      )
-                    }
-                  >
-                    ↑
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    onClick={() =>
-                      run(
-                        () =>
-                          api("/api/admin/carousel/reorder", {
-                            method: "POST",
-                            body: JSON.stringify({ id: row.id, direction: "down" }),
-                          }),
-                        "Moved down.",
-                      )
-                    }
-                  >
-                    ↓
-                  </Button>
-                </div>
-              </div>
-
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                <Field label="Slots (1–24)">
-                  <TextInput
-                    value={row.slots}
-                    type="number"
-                    min={1}
-                    max={24}
-                    onChange={(value) =>
-                      run(
-                        () =>
-                          api(`/api/admin/carousel/${row.id}`, {
-                            method: "PATCH",
-                            body: JSON.stringify({ slots: Math.min(Math.max(Number(value) || 1, 1), 24) }),
-                          }),
-                        "Slots updated.",
-                      )
-                    }
-                  />
-                </Field>
-                <Field label="Centre size">
-                  <Select
-                    value={row.centerSize}
-                    onChange={(value) =>
-                      run(
-                        () =>
-                          api(`/api/admin/carousel/${row.id}`, {
-                            method: "PATCH",
-                            body: JSON.stringify({ centerSize: value }),
-                          }),
-                        "Centre size updated.",
-                      )
-                    }
-                    options={["small", "medium", "large"].map((s) => ({ value: s, label: s }))}
-                  />
-                </Field>
-                <Field label="Side size">
-                  <Select
-                    value={row.sideSize}
-                    onChange={(value) =>
-                      run(
-                        () =>
-                          api(`/api/admin/carousel/${row.id}`, {
-                            method: "PATCH",
-                            body: JSON.stringify({ sideSize: value }),
-                          }),
-                        "Side size updated.",
-                      )
-                    }
-                    options={["small", "medium"].map((s) => ({ value: s, label: s }))}
-                  />
-                </Field>
-              </div>
-
-              <div className="mt-4">
-                <p className="label">Pinned projects (shown first)</p>
-                <div className="flex flex-wrap gap-2">
-                  {available.map((project) => {
-                    const active = ids.includes(project.id);
-                    return (
-                      <button
-                        key={project.id}
-                        type="button"
-                        onClick={() => {
-                          const next = active ? ids.filter((id) => id !== project.id) : [...ids, project.id];
-                          void run(
-                            () =>
-                              api(`/api/admin/carousel/${row.id}`, {
-                                method: "PATCH",
-                                body: JSON.stringify({ projectIds: next }),
-                              }),
-                            active ? "Project removed from carousel." : "Project pinned to carousel.",
-                          );
-                        }}
-                        className={`rounded-full border px-3 py-1.5 text-[0.6rem] font-semibold uppercase tracking-[0.12em] ${
-                          active ? "border-ink bg-ink text-white" : "border-ink/12 bg-white/60 text-ink/55"
-                        }`}
-                      >
-                        {project.title}
-                      </button>
-                    );
-                  })}
-                  {available.length === 0 && (
-                    <p className="text-[0.72rem] text-ink/45">
-                      No projects in this category yet.
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="mt-4">
-                <Toggle
-                  checked={row.autoFill}
-                  onChange={(value) =>
-                    run(
-                      () =>
-                        api(`/api/admin/carousel/${row.id}`, {
-                          method: "PATCH",
-                          body: JSON.stringify({ autoFill: value }),
-                        }),
-                      "Auto-fill updated.",
-                    )
-                  }
-                  label="Auto-fill remaining slots"
-                />
-              </div>
-            </Card>
+            <button
+              key={row.id}
+              type="button"
+              onClick={() => setSelectedCategory(row.categoryId)}
+              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-[0.72rem] font-bold transition-all ${
+                isSelected
+                  ? "bg-white text-ink shadow-md shadow-ink/10"
+                  : "text-ink/60 hover:text-ink hover:bg-white/50"
+              }`}
+            >
+              <span>{row.categoryName}</span>
+              <span
+                className={`rounded-full px-2 py-0.5 text-[0.6rem] font-extrabold ${
+                  isSelected ? "bg-ink text-white" : "bg-ink/10 text-ink/70"
+                }`}
+              >
+                {catProjects.length}
+              </span>
+            </button>
           );
         })}
       </div>
+
+      {/* Selected Category Carousel Control Panel */}
+      {activeRow && (() => {
+        const ids = parseIds(activeRow.projectIds);
+        const available = projects.filter(
+          (p) => activeRow.categoryId === null || p.categoryId === activeRow.categoryId
+        );
+
+        // Sort projects: pinned projects in order first, then remaining
+        const orderedProjects = [
+          ...ids.map((id) => available.find((p) => p.id === id)).filter((p): p is PortfolioAdminProject => Boolean(p)),
+          ...available.filter((p) => !ids.includes(p.id)),
+        ];
+
+        return (
+          <div className="mt-6 space-y-6">
+            {/* Category Setting Header Card */}
+            <Card className="p-5 border border-ink/10 bg-white/80 backdrop-blur-md">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-bold text-ink">{activeRow.categoryName} Carousel</h3>
+                    <span className="rounded-full bg-[var(--accent)]/10 text-[var(--accent)] px-2.5 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider">
+                      {ids.length > 0 ? `${ids.length} Pinned Custom Order` : "Showing All Available"}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[0.72rem] text-ink/55">
+                    Click any video card below to toggle it in/out of the carousel, and use the arrow buttons to arrange order.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Toggle
+                    checked={activeRow.isActive}
+                    onChange={(value) =>
+                      run(
+                        () =>
+                          api(`/api/admin/carousel/${activeRow.id}`, {
+                            method: "PATCH",
+                            body: JSON.stringify({ isActive: value }),
+                          }),
+                        value ? "Carousel enabled for this category." : "Carousel disabled.",
+                      )
+                    }
+                    label={activeRow.isActive ? "Category Enabled" : "Category Hidden"}
+                  />
+                </div>
+              </div>
+            </Card>
+
+            {/* Visual Project Cards Grid */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-bold uppercase tracking-wider text-ink/70">
+                  Projects in {activeRow.categoryName} ({available.length})
+                </p>
+                <p className="text-[0.68rem] text-ink/50">
+                  Click a card to toggle showcase visibility · Use arrows to re-order
+                </p>
+              </div>
+
+              {orderedProjects.length === 0 ? (
+                <Card className="p-10 text-center border-dashed border-2 border-ink/15">
+                  <span className="text-3xl">🎬</span>
+                  <p className="mt-2 text-sm font-semibold text-ink">No video projects in this category yet</p>
+                  <p className="mt-1 text-xs text-ink/50">
+                    Go to Portfolio Admin to upload new projects and assign them to {activeRow.categoryName}.
+                  </p>
+                </Card>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {orderedProjects.map((project, idx) => {
+                    const isPinned = ids.includes(project.id);
+                    const isVertical = project.aspectRatio === "9:16";
+
+                    const togglePin = () => {
+                      const next = isPinned
+                        ? ids.filter((id) => id !== project.id)
+                        : [...ids, project.id];
+                      void run(
+                        () =>
+                          api(`/api/admin/carousel/${activeRow.id}`, {
+                            method: "PATCH",
+                            body: JSON.stringify({ projectIds: next }),
+                          }),
+                        isPinned ? `Removed "${project.title}" from carousel.` : `Pinned "${project.title}" to carousel.`
+                      );
+                    };
+
+                    const moveLeft = (e: React.MouseEvent) => {
+                      e.stopPropagation();
+                      const currentIds = ids.length > 0 ? [...ids] : orderedProjects.map((p) => p.id);
+                      const pos = currentIds.indexOf(project.id);
+                      if (pos <= 0) return;
+                      const temp = currentIds[pos - 1];
+                      currentIds[pos - 1] = currentIds[pos];
+                      currentIds[pos] = temp;
+                      void run(
+                        () =>
+                          api(`/api/admin/carousel/${activeRow.id}`, {
+                            method: "PATCH",
+                            body: JSON.stringify({ projectIds: currentIds }),
+                          }),
+                        `Moved "${project.title}" earlier.`
+                      );
+                    };
+
+                    const moveRight = (e: React.MouseEvent) => {
+                      e.stopPropagation();
+                      const currentIds = ids.length > 0 ? [...ids] : orderedProjects.map((p) => p.id);
+                      const pos = currentIds.indexOf(project.id);
+                      if (pos < 0 || pos >= currentIds.length - 1) return;
+                      const temp = currentIds[pos + 1];
+                      currentIds[pos + 1] = currentIds[pos];
+                      currentIds[pos] = temp;
+                      void run(
+                        () =>
+                          api(`/api/admin/carousel/${activeRow.id}`, {
+                            method: "PATCH",
+                            body: JSON.stringify({ projectIds: currentIds }),
+                          }),
+                        `Moved "${project.title}" later.`
+                      );
+                    };
+
+                    return (
+                      <div
+                        key={project.id}
+                        onClick={togglePin}
+                        className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border p-3.5 transition-all cursor-pointer shadow-sm hover:shadow-md ${
+                          isPinned
+                            ? "bg-white border-emerald-500/40 ring-2 ring-emerald-500/20"
+                            : "bg-white/60 border-ink/10 hover:border-ink/20"
+                        }`}
+                      >
+                        {/* Thumbnail & Aspect Badge */}
+                        <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-ink/5">
+                          {project.thumbnailUrl ? (
+                            <img
+                              src={project.thumbnailUrl}
+                              alt={project.title}
+                              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            />
+                          ) : (
+                            <div className="grid h-full w-full place-items-center text-ink/30 text-2xl">
+                              🎬
+                            </div>
+                          )}
+
+                          <span
+                            className={`absolute top-2 left-2 rounded-full px-2.5 py-0.5 text-[0.6rem] font-bold text-white shadow ${
+                              isVertical ? "bg-[var(--accent)]" : "bg-black/70 backdrop-blur-md"
+                            }`}
+                          >
+                            {isVertical ? "9:16 Reel" : "16:9 4K"}
+                          </span>
+
+                          <span
+                            className={`absolute top-2 right-2 rounded-full px-2.5 py-0.5 text-[0.62rem] font-bold shadow ${
+                              isPinned
+                                ? "bg-emerald-600 text-white"
+                                : "bg-black/60 text-white/80"
+                            }`}
+                          >
+                            {isPinned ? "✓ In Carousel" : "○ Auto"}
+                          </span>
+                        </div>
+
+                        {/* Title and Category */}
+                        <div className="mt-3">
+                          <h4 className="text-sm font-bold text-ink line-clamp-1 group-hover:text-[var(--accent)] transition-colors">
+                            {project.title}
+                          </h4>
+                          <p className="text-[0.68rem] text-ink/50 mt-0.5">
+                            Position #{idx + 1}
+                          </p>
+                        </div>
+
+                        {/* Card Footer Actions */}
+                        <div className="mt-3 flex items-center justify-between border-t border-ink/5 pt-2.5">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              togglePin();
+                            }}
+                            className={`rounded-lg px-2.5 py-1 text-[0.65rem] font-bold transition-all ${
+                              isPinned
+                                ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                                : "bg-ink/5 text-ink/65 hover:bg-ink/10"
+                            }`}
+                          >
+                            {isPinned ? "✓ Visible" : "+ Show in Carousel"}
+                          </button>
+
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={moveLeft}
+                              disabled={idx === 0}
+                              title="Move Left (Earlier in Carousel)"
+                              className="grid h-7 w-7 place-items-center rounded-lg bg-ink/5 text-ink text-xs transition-colors hover:bg-ink hover:text-white disabled:opacity-30"
+                            >
+                              ←
+                            </button>
+                            <button
+                              type="button"
+                              onClick={moveRight}
+                              disabled={idx === orderedProjects.length - 1}
+                              title="Move Right (Later in Carousel)"
+                              className="grid h-7 w-7 place-items-center rounded-lg bg-ink/5 text-ink text-xs transition-colors hover:bg-ink hover:text-white disabled:opacity-30"
+                            >
+                              →
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

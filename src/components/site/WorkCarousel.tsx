@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ProjectViewer from "./ProjectViewer";
 import { SectionHeading } from "./Sections";
-import { aspectPadding, buildCarousel, configForCategory, formatDuration } from "@/lib/carousel";
+import { formatDuration } from "@/lib/carousel";
 import type { PublicProject, SiteData } from "@/lib/data";
 
 type Category = { id: number; name: string; slug: string };
@@ -16,369 +16,357 @@ export default function WorkCarousel({ data }: { data: SiteData }) {
     slug: c.slug,
   }));
 
-  const [activeCategory, setActiveCategory] = useState<number | null>(() => {
-    const realEstate = categories.find((category) => category.name.toLowerCase() === "real estate");
-    return realEstate?.id ?? null;
-  });
+  const [activeCategory, setActiveCategory] = useState<number | null>(null);
   const [index, setIndex] = useState(0);
   const [viewer, setViewer] = useState<PublicProject | null>(null);
-  const [vw, setVw] = useState(1280);
-  const [drag, setDrag] = useState(0);
-  const dragState = useRef<{ startX: number; active: boolean }>({ startX: 0, active: false });
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [isAutoPlay, setIsAutoPlay] = useState(false);
+  const trackRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    const onResize = () => setVw(window.innerWidth);
-    const frame = requestAnimationFrame(onResize);
-    window.addEventListener("resize", onResize);
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("resize", onResize);
-    };
-  }, []);
+  // Touch and drag handling
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
-  const config = useMemo(
-    () => configForCategory(data.carouselSettings, activeCategory),
-    [data.carouselSettings, activeCategory],
-  );
+  // Filter projects by category
+  const filteredProjects = useMemo(() => {
+    let list = [...projects];
+    if (activeCategory !== null) {
+      list = list.filter((p) => p.categoryId === activeCategory);
+    }
+    // Check if custom carousel ordering/pinning exists
+    const catSetting = data.carouselSettings.find((s) => s.isActive && s.categoryId === activeCategory);
+    if (catSetting?.projectIds) {
+      try {
+        const pinnedIds = JSON.parse(catSetting.projectIds) as number[];
+        if (Array.isArray(pinnedIds) && pinnedIds.length > 0) {
+          const pinned = pinnedIds
+            .map((id) => list.find((p) => p.id === id))
+            .filter((p): p is PublicProject => Boolean(p));
+          const rest = list.filter((p) => !pinnedIds.includes(p.id));
+          list = [...pinned, ...rest];
+        }
+      } catch {}
+    }
+    return list;
+  }, [projects, activeCategory, data.carouselSettings]);
 
-  const items = useMemo(
-    () => buildCarousel(projects, activeCategory, config),
-    [projects, activeCategory, config],
-  );
-
+  // Reset index when category changes
   useEffect(() => {
     setIndex(0);
   }, [activeCategory]);
 
-  const gap = vw >= 1024 ? 28 : vw >= 640 ? 20 : 14;
-  const dims = useMemo(() => {
-    if (vw >= 1024)
-      return { large: [660, 470], medium: [420, 330], small: [270, 225] } as const;
-    if (vw >= 640) return { large: [480, 380], medium: [330, 275], small: [215, 190] } as const;
-    return { large: [315, 300], medium: [235, 235], small: [155, 165] } as const;
-  }, [vw]);
+  const maxIndex = Math.max(0, filteredProjects.length - 1);
 
-  const sizeOf = useCallback(
-    (size: string) => {
-      const key = (size === "large" || size === "medium" || size === "small" ? size : "medium") as
-        | "large"
-        | "medium"
-        | "small";
-      const [baseW, maxH] = dims[key];
-      return { baseW, maxH };
-    },
-    [dims],
-  );
+  const prev = useCallback(() => {
+    if (filteredProjects.length <= 1) return;
+    setIndex((curr) => (curr > 0 ? curr - 1 : maxIndex));
+  }, [filteredProjects.length, maxIndex]);
 
-  const measured = useMemo(() => {
-    const boxes = items.map((project) => {
-      const { baseW, maxH } = sizeOf(project.displaySize || "medium");
-      const [rw, rh] = (project.aspectRatio || "16:9").split(":").map(Number);
-      const ratio = rw && rh ? rw / rh : 16 / 9;
-      const width = Math.round(Math.min(baseW, maxH * ratio));
-      return { width, height: Math.round(width / ratio) };
-    });
-    return boxes.map((box, index) => ({
-      ...box,
-      offset: boxes.slice(0, index).reduce((sum, item) => sum + item.width + gap, 0),
-    }));
-  }, [items, sizeOf, gap]);
+  const next = useCallback(() => {
+    if (filteredProjects.length <= 1) return;
+    setIndex((curr) => (curr < maxIndex ? curr + 1 : 0));
+  }, [filteredProjects.length, maxIndex]);
 
-  const containerWidth = vw < 1024 ? vw - 32 : Math.min(vw * 0.92, 1400);
-  const centerOffset = measured[index] ? measured[index].offset + measured[index].width / 2 : 0;
-  const translate = containerWidth / 2 - centerOffset + drag;
-
-  const goTo = useCallback(
-    (next: number) => {
-      if (items.length === 0) return;
-      setIndex(((next % items.length) + items.length) % items.length);
-    },
-    [items.length],
-  );
-
+  // Auto-play timer
   useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
+    if (!isAutoPlay || filteredProjects.length <= 1 || viewer) return;
+    const timer = setInterval(() => {
+      next();
+    }, 4500);
+    return () => clearInterval(timer);
+  }, [isAutoPlay, filteredProjects.length, next, viewer]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (viewer) return;
-      const node = containerRef.current;
-      if (!node) return;
-      const rect = node.getBoundingClientRect();
-      const inView = rect.top < window.innerHeight * 0.8 && rect.bottom > window.innerHeight * 0.2;
-      if (!inView) return;
-      if (event.key === "ArrowRight") {
-        event.preventDefault();
-        goTo(index + 1);
-      }
-      if (event.key === "ArrowLeft") {
-        event.preventDefault();
-        goTo(index - 1);
-      }
+      if (e.key === "ArrowLeft") prev();
+      if (e.key === "ArrowRight") next();
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [goTo, index, viewer]);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [prev, next, viewer]);
 
-  const onPointerDown = (event: React.PointerEvent) => {
-    dragState.current = { startX: event.clientX, active: true };
+  // Touch Swipe
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.targetTouches[0].clientX);
+    setTouchEnd(null);
   };
-  const onPointerMove = (event: React.PointerEvent) => {
-    if (!dragState.current.active) return;
-    setDrag(event.clientX - dragState.current.startX);
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
   };
-  const onPointerUp = () => {
-    if (!dragState.current.active) return;
-    const delta = drag;
-    dragState.current.active = false;
-    setDrag(0);
-    if (Math.abs(delta) > 70) {
-      goTo(delta < 0 ? index + 1 : index - 1);
-    }
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    if (distance > 50) next();
+    if (distance < -50) prev();
   };
 
-  const counts = useMemo(() => {
+  // Category counts
+  const categoryCounts = useMemo(() => {
     const map = new Map<number, number>();
     projects.forEach((p) => {
-      if (p.categoryId) map.set(p.categoryId, (map.get(p.categoryId) ?? 0) + 1);
+      if (p.categoryId) {
+        map.set(p.categoryId, (map.get(p.categoryId) ?? 0) + 1);
+      }
     });
     return map;
   }, [projects]);
 
   return (
-    <section id="work" className="relative px-0 py-20 lg:py-28">
-      <div className="px-4 sm:px-6">
-        <div className="mx-auto flex max-w-[1400px] flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+    <section id="work" className="relative px-4 sm:px-6 py-20 lg:py-28 overflow-hidden">
+      {/* Background Decorative Glow */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[800px] h-[450px] bg-[radial-gradient(ellipse_at_center,rgba(224,20,127,0.07),transparent_70%)] blur-3xl"
+      />
+
+      <div className="mx-auto max-w-[1400px]">
+        {/* Header with Navigation Controls */}
+        <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <SectionHeading
-            eyebrow="Selected work"
-            title="The Portfolio"
-            description="Edits, motion pieces and design work — filter by category and open a project to play it full frame."
+            eyebrow="Selected Works"
+            title="Creative Portfolio"
+            description="Explore cinematic edits, vertical reels, brand motion systems, and AI-assisted productions."
           />
-          <div className="flex items-center gap-2">
+
+          <div className="flex items-center gap-3 self-start md:self-auto">
+            {/* Auto Play Toggle */}
             <button
               type="button"
-              onClick={() => goTo(index - 1)}
-              aria-label="Previous project"
-              className="grid h-11 w-11 place-items-center rounded-full border border-ink/15 transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              onClick={() => setIsAutoPlay(!isAutoPlay)}
+              className={`flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[0.68rem] font-semibold tracking-wider uppercase transition-all ${
+                isAutoPlay
+                  ? "bg-[var(--accent)] text-white shadow-md shadow-[var(--accent)]/20"
+                  : "bg-white/70 border border-ink/10 text-ink/60 hover:text-ink hover:bg-white"
+              }`}
+              title={isAutoPlay ? "Pause Auto Slide" : "Start Auto Slide"}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                <path d="M15 5l-7 7 7 7" />
-              </svg>
+              <span>{isAutoPlay ? "⏸ Auto Playing" : "▶ Auto Play"}</span>
             </button>
-            <button
-              type="button"
-              onClick={() => goTo(index + 1)}
-              aria-label="Next project"
-              className="grid h-11 w-11 place-items-center rounded-full border border-ink/15 transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                <path d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
+
+            {/* Slide Counter */}
+            {filteredProjects.length > 0 && (
+              <span className="mono text-[0.72rem] font-bold text-ink/45 px-2">
+                {String(index + 1).padStart(2, "0")} / {String(filteredProjects.length).padStart(2, "0")}
+              </span>
+            )}
+
+            {/* Arrows */}
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={prev}
+                aria-label="Previous project"
+                disabled={filteredProjects.length <= 1}
+                className="grid h-10 w-10 place-items-center rounded-full bg-white/80 border border-ink/10 text-ink shadow-sm transition-all hover:bg-white hover:border-[var(--accent)] hover:text-[var(--accent)] active:scale-95 disabled:opacity-30"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M15 18l-6-6 6-6" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={next}
+                aria-label="Next project"
+                disabled={filteredProjects.length <= 1}
+                className="grid h-10 w-10 place-items-center rounded-full bg-white/80 border border-ink/10 text-ink shadow-sm transition-all hover:bg-white hover:border-[var(--accent)] hover:text-[var(--accent)] active:scale-95 disabled:opacity-30"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* filters */}
-        <div className="mx-auto mt-10 max-w-[1400px]">
+        {/* Category Filter Pills */}
+        <div className="mt-8">
           <div
             role="tablist"
-            aria-label="Portfolio categories"
-            className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0"
+            className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0 sm:flex-wrap"
           >
-            <FilterChip
-              label="All"
-              count={projects.length}
-              active={activeCategory === null}
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeCategory === null}
               onClick={() => setActiveCategory(null)}
-            />
-            {categories.map((category) => (
-              <FilterChip
-                key={category.id}
-                label={category.name}
-                count={counts.get(category.id) ?? 0}
-                active={activeCategory === category.id}
-                onClick={() => setActiveCategory(category.id)}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* carousel */}
-      <div
-        ref={containerRef}
-        className="relative mt-10 select-none overflow-hidden py-6"
-        style={{ cursor: drag !== 0 ? "grabbing" : "grab" }}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerLeave={onPointerUp}
-        aria-roledescription="carousel"
-        aria-label="Portfolio carousel"
-        tabIndex={0}
-      >
-        {items.length === 0 ? (
-          <div className="glass mx-auto max-w-md rounded-3xl p-10 text-center">
-            <p className="text-sm text-ink/60">
-              No published projects in this category yet. Check back soon or view all work.
-            </p>
-            <button type="button" onClick={() => setActiveCategory(null)} className="btn btn-ghost btn-xs mt-5">
-              View all work
+              className={`group flex items-center gap-2 rounded-full px-4 py-2 text-[0.72rem] font-semibold transition-all ${
+                activeCategory === null
+                  ? "bg-ink text-white shadow-md shadow-ink/15"
+                  : "bg-white/70 border border-ink/10 text-ink/65 hover:bg-white hover:text-ink"
+              }`}
+            >
+              <span>All Works</span>
+              <span
+                className={`rounded-full px-1.5 py-0.5 text-[0.62rem] font-bold ${
+                  activeCategory === null ? "bg-white/20 text-white" : "bg-ink/5 text-ink/50"
+                }`}
+              >
+                {projects.length}
+              </span>
             </button>
-          </div>
-        ) : (
-          <div
-            className={`car-track ${drag !== 0 ? "dragging" : ""}`}
-            style={{ transform: `translate3d(${translate}px, 0, 0)`, gap: `${gap}px` }}
-          >
-            {items.map((project, i) => {
-              const box = measured[i];
-              const isCenter = i === index;
-              const distance = Math.abs(i - index);
+
+            {categories.map((cat) => {
+              const count = categoryCounts.get(cat.id) ?? 0;
+              const isSelected = activeCategory === cat.id;
               return (
-                <article
-                  key={project.id}
-                  className={`car-item ${isCenter ? "z-10" : "z-0"}`}
-                  style={{
-                    width: box.width,
-                    opacity: distance > 2 ? 0.35 : 1,
-                    filter: isCenter ? "none" : "saturate(0.35) brightness(1.02)",
-                  }}
-                  aria-hidden={distance > 2}
+                <button
+                  key={cat.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={isSelected}
+                  onClick={() => setActiveCategory(cat.id)}
+                  className={`group flex items-center gap-2 rounded-full px-4 py-2 text-[0.72rem] font-semibold transition-all ${
+                    isSelected
+                      ? "bg-ink text-white shadow-md shadow-ink/15"
+                      : "bg-white/70 border border-ink/10 text-ink/65 hover:bg-white hover:text-ink"
+                  }`}
                 >
-                  <button
-                    type="button"
-                    onClick={() => (isCenter ? setViewer(project) : setIndex(i))}
-                    aria-label={`Open project ${project.title}`}
-                    className="group relative block w-full overflow-hidden rounded-[22px] bg-ink text-left shadow-[0_30px_80px_-50px_rgba(11,11,12,0.85)]"
-                    style={{ height: box.height }}
+                  <span>{cat.name}</span>
+                  <span
+                    className={`rounded-full px-1.5 py-0.5 text-[0.62rem] font-bold ${
+                      isSelected ? "bg-white/20 text-white" : "bg-ink/5 text-ink/50"
+                    }`}
                   >
-                    <span
-                      className="absolute inset-0 block"
-                      style={{ paddingBottom: aspectPadding(project.aspectRatio) }}
-                    />
-                    {project.thumbnailUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={project.thumbnailUrl}
-                        alt={project.title}
-                        loading={distance <= 1 ? "eager" : "lazy"}
-                        decoding="async"
-                        className="absolute inset-0 h-full w-full object-cover transition-transform duration-[900ms] group-hover:scale-[1.04]"
-                      />
-                    ) : (
-                      <span className="absolute inset-0 grid place-items-center bg-gradient-to-br from-ink-2 to-black text-[0.7rem] uppercase tracking-[0.2em] text-white/40">
-                        No thumbnail
-                      </span>
-                    )}
-
-                    <span className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-
-                    <span className="absolute left-3 top-3 flex items-center gap-2">
-                      <span className="rounded-md border border-white/20 bg-black/45 px-2 py-1 text-[0.5rem] font-semibold uppercase tracking-[0.16em] text-white/85 backdrop-blur-md">
-                        {project.aspectRatio}
-                      </span>
-                      {project.durationSeconds ? (
-                        <span className="rounded-md border border-white/20 bg-black/45 px-2 py-1 text-[0.5rem] font-semibold tracking-[0.1em] text-white/85 backdrop-blur-md">
-                          {formatDuration(project.durationSeconds)}
-                        </span>
-                      ) : null}
-                      {project.featured ? (
-                        <span className="rounded-md bg-[var(--accent)] px-2 py-1 text-[0.5rem] font-semibold uppercase tracking-[0.16em] text-white">
-                          Featured
-                        </span>
-                      ) : null}
-                    </span>
-
-                    <span
-                      className={`absolute left-1/2 top-1/2 grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/35 bg-white/12 backdrop-blur-md transition-all duration-500 ${
-                        isCenter ? "h-14 w-14 opacity-100" : "h-10 w-10 opacity-0 group-hover:opacity-100"
-                      }`}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff" aria-hidden="true">
-                        <path d="M8 5v14l11-7z" />
-                      </svg>
-                    </span>
-
-                    <span className="absolute inset-x-3 bottom-3">
-                      <span className="block text-[0.55rem] font-semibold uppercase tracking-[0.2em] text-white/60">
-                        {project.categoryLabel}
-                        {project.year ? ` · ${project.year}` : ""}
-                      </span>
-                      <span
-                        className={`display mt-1.5 block text-white ${
-                          isCenter ? "text-base sm:text-lg" : "text-[0.8rem]"
-                        }`}
-                      >
-                        {project.title}
-                      </span>
-                      {isCenter && project.description && (
-                        <span className="mt-2 line-clamp-2 hidden text-[0.72rem] leading-relaxed text-white/65 sm:block">
-                          {project.description}
-                        </span>
-                      )}
-                    </span>
-                  </button>
-                </article>
+                    {count}
+                  </span>
+                </button>
               );
             })}
           </div>
-        )}
-      </div>
+        </div>
 
-      {/* pagination */}
-      {items.length > 0 && (
-        <div className="mx-auto mt-6 flex max-w-[1400px] flex-col items-center gap-4 px-4 sm:px-6">
-          <div className="flex items-center gap-2">
-            {items.map((project, i) => (
+        {/* Carousel Showcase Track */}
+        <div
+          className="relative mt-8"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          {filteredProjects.length === 0 ? (
+            <div className="glass mx-auto max-w-md rounded-3xl p-10 text-center border border-white/60">
+              <p className="text-sm text-ink/60">No projects available in this category yet.</p>
               <button
-                key={`dot-${project.id}`}
+                type="button"
+                onClick={() => setActiveCategory(null)}
+                className="btn btn-dark btn-xs mt-4"
+              >
+                Show All Works
+              </button>
+            </div>
+          ) : (
+            <div className="relative overflow-hidden py-4">
+              <div
+                ref={trackRef}
+                className="flex items-center gap-5 sm:gap-7 transition-transform duration-500 ease-out"
+                style={{
+                  transform: `translateX(calc(-${index * 100}% - ${index * 24}px))`,
+                }}
+              >
+                {filteredProjects.map((project, i) => {
+                  const isCurrent = i === index;
+                  const isVertical = project.aspectRatio === "9:16";
+
+                  return (
+                    <div
+                      key={project.id}
+                      className="w-full flex-shrink-0 flex justify-center"
+                    >
+                      <article
+                        onClick={() => setViewer(project)}
+                        className={`group relative cursor-pointer overflow-hidden rounded-[28px] border transition-all duration-300 bg-black/5 ${
+                          isVertical ? "max-w-[340px] aspect-[9/16]" : "max-w-[760px] aspect-[16/9]"
+                        } w-full shadow-xl hover:shadow-2xl hover:scale-[1.01] ${
+                          isCurrent ? "border-ink/20 ring-2 ring-[var(--accent)]/30" : "border-ink/10 opacity-90"
+                        }`}
+                      >
+                        {/* Thumbnail Image */}
+                        {project.thumbnailUrl ? (
+                          <img
+                            src={project.thumbnailUrl}
+                            alt={project.title}
+                            className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="grid h-full w-full place-items-center bg-gradient-to-br from-ink/90 to-black text-white/40">
+                            <span className="text-4xl">🎬</span>
+                          </div>
+                        )}
+
+                        {/* Top Badges */}
+                        <div className="absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none z-10">
+                          <span className="rounded-full bg-black/65 backdrop-blur-md px-3 py-1 text-[0.62rem] font-bold uppercase tracking-wider text-white shadow-sm border border-white/10">
+                            {project.categoryLabel || "Video"}
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            {isVertical && (
+                              <span className="rounded-full bg-[var(--accent)] px-2.5 py-0.5 text-[0.58rem] font-bold text-white shadow-sm uppercase tracking-wider">
+                                9:16 Reel
+                              </span>
+                            )}
+                            {project.durationSeconds && project.durationSeconds > 0 && (
+                              <span className="rounded-full bg-black/65 backdrop-blur-md px-2.5 py-0.5 text-[0.62rem] font-mono text-white/90 border border-white/10">
+                                {formatDuration(project.durationSeconds)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Center Play Button Overlay */}
+                        <div className="absolute inset-0 grid place-items-center bg-black/25 opacity-80 group-hover:opacity-100 group-hover:bg-black/35 transition-all duration-300">
+                          <div className="grid h-16 w-16 place-items-center rounded-full bg-white/90 text-ink shadow-2xl backdrop-blur-md transition-all duration-300 group-hover:scale-110 group-hover:bg-[var(--accent)] group-hover:text-white">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" className="ml-1">
+                              <polygon points="5 3 19 12 5 21 5 3" />
+                            </svg>
+                          </div>
+                        </div>
+
+                        {/* Bottom Info Gradient */}
+                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent p-6 pt-16 text-white transition-opacity duration-300">
+                          <h3 className="text-lg sm:text-xl font-bold tracking-tight text-white group-hover:text-[var(--accent)] transition-colors">
+                            {project.title}
+                          </h3>
+                          {project.description && (
+                            <p className="mt-1.5 line-clamp-2 text-[0.78rem] text-white/75 leading-relaxed">
+                              {project.description}
+                            </p>
+                          )}
+                          {project.software && (
+                            <p className="mono mt-3 text-[0.62rem] uppercase tracking-wider text-white/50">
+                              {project.software}
+                            </p>
+                          )}
+                        </div>
+                      </article>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Carousel Pagination Dots */}
+        {filteredProjects.length > 1 && (
+          <div className="mt-6 flex items-center justify-center gap-2">
+            {filteredProjects.map((p, i) => (
+              <button
+                key={p.id}
                 type="button"
                 onClick={() => setIndex(i)}
-                aria-label={`Go to ${project.title}`}
-                aria-current={i === index}
-                className={`h-1.5 rounded-full transition-all duration-500 ${
-                  i === index ? "w-8 bg-[var(--accent)]" : "w-1.5 bg-ink/20 hover:bg-ink/40"
+                aria-label={`Go to slide ${i + 1}`}
+                className={`h-2 rounded-full transition-all duration-300 ${
+                  i === index ? "w-8 bg-[var(--accent)]" : "w-2 bg-ink/20 hover:bg-ink/40"
                 }`}
               />
             ))}
           </div>
-          <p className="mono text-[0.6rem] uppercase tracking-[0.2em] text-ink/40">
-            {String(index + 1).padStart(2, "0")} / {String(items.length).padStart(2, "0")} · drag or use ← →
-          </p>
-        </div>
-      )}
+        )}
+      </div>
 
-      <ProjectViewer project={viewer} onClose={() => setViewer(null)} />
+      {/* Fullframe Universal Video Viewer Modal */}
+      {viewer && <ProjectViewer project={viewer} onClose={() => setViewer(null)} />}
     </section>
-  );
-}
-
-function FilterChip({
-  label,
-  count,
-  active,
-  onClick,
-}: {
-  label: string;
-  count: number;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-      className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-2.5 text-[0.62rem] font-semibold uppercase tracking-[0.16em] transition-all duration-300 ${
-        active
-          ? "border-ink bg-ink text-white"
-          : "border-ink/12 bg-white/50 text-ink/60 hover:border-ink/35 hover:text-ink"
-      }`}
-    >
-      {label}
-      <span className={`mono text-[0.55rem] ${active ? "text-white/60" : "text-ink/30"}`}>
-        {count}
-      </span>
-    </button>
   );
 }
