@@ -21,6 +21,7 @@ export async function GET() {
       workOptions: data.workOptions,
       sections: data.sections,
       carouselSettings: data.carouselSettings,
+      carouselGlobalSettings: data.carouselGlobalSettings,
     });
   });
 }
