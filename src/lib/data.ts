@@ -139,8 +139,10 @@ export type CarouselSettingItem = {
 export type CarouselGlobalSettings = {
   id: number;
   enabled: boolean;
+  sectionBadge: string;
   sectionTitle: string;
   sectionSubtitle: string;
+  textColor: string;
   autoplay: boolean;
   autoplaySpeed: number;
   infiniteLoop: boolean;
@@ -279,7 +281,12 @@ export type SiteData = {
   contact: typeof CONTACT_FALLBACK & { id?: number; [key: string]: unknown };
   theme: {
     id: number;
+    activeTheme: string;
     accent: string;
+    fontPairing: string;
+    borderRadius: string;
+    animationSpeed: string;
+    cursorEffect: boolean;
     glassOpacity: number;
     glassBlur: number;
     grain: boolean;
@@ -378,8 +385,10 @@ export const DEFAULT_PROJECTS: PublicProject[] = PROJECT_SEED.map((p, index) => 
 export const DEFAULT_CAROUSEL_GLOBAL_SETTINGS: CarouselGlobalSettings = {
   id: 1,
   enabled: true,
-  sectionTitle: "Selected Works",
+  sectionBadge: "VIDEO SHOWCASE",
+  sectionTitle: "SELECTED WORKS",
   sectionSubtitle: "A curated showcase of video editing, motion design, and visual storytelling.",
+  textColor: "black",
   autoplay: true,
   autoplaySpeed: 5,
   infiniteLoop: true,
@@ -481,7 +490,12 @@ function getFallbackSiteData(): SiteData {
   const overrides = globalThis.__runtimeSiteDataOverrides || {};
   const theme = overrides.theme || {
     id: 1,
+    activeTheme: "theme01",
     accent: "#e0147f",
+    fontPairing: "default",
+    borderRadius: "rounded",
+    animationSpeed: "normal",
+    cursorEffect: true,
     glassOpacity: 45,
     glassBlur: 20,
     grain: true,
@@ -573,14 +587,33 @@ export async function getSiteData(): Promise<SiteData> {
 
     const homepage = { ...HOME_FALLBACK, ...(homeRows[0] ?? {}) };
     const contact = { ...CONTACT_FALLBACK, ...(contactRows[0] ?? {}) };
-    const theme = themeRows[0] ?? {
-      id: 1,
-      accent: "#e0147f",
-      glassOpacity: 45,
-      glassBlur: 20,
-      grain: true,
-      updatedAt: new Date(),
-    };
+    const theme = themeRows[0]
+      ? {
+          id: themeRows[0].id,
+          activeTheme: themeRows[0].activeTheme || "theme01",
+          accent: themeRows[0].accent || "#e0147f",
+          fontPairing: themeRows[0].fontPairing || "default",
+          borderRadius: themeRows[0].borderRadius || "rounded",
+          animationSpeed: themeRows[0].animationSpeed || "normal",
+          cursorEffect: themeRows[0].cursorEffect !== false,
+          glassOpacity: themeRows[0].glassOpacity ?? 45,
+          glassBlur: themeRows[0].glassBlur ?? 20,
+          grain: themeRows[0].grain !== false,
+          updatedAt: themeRows[0].updatedAt || new Date(),
+        }
+      : {
+          id: 1,
+          activeTheme: "theme01",
+          accent: "#e0147f",
+          fontPairing: "default",
+          borderRadius: "rounded",
+          animationSpeed: "normal",
+          cursorEffect: true,
+          glassOpacity: 45,
+          glassBlur: 20,
+          grain: true,
+          updatedAt: new Date(),
+        };
 
     const sourceProjects = projectRows.length > 0 ? projectRows : DEFAULT_PROJECTS;
     const publicProjects: PublicProject[] = sourceProjects.map((p) => ({
@@ -623,10 +656,12 @@ export async function getSiteData(): Promise<SiteData> {
       ? {
           id: carouselGlobalRows[0].id,
           enabled: carouselGlobalRows[0].enabled !== false,
-          sectionTitle: carouselGlobalRows[0].sectionTitle || "Engage Audiences with Stunning Videos",
+          sectionBadge: carouselGlobalRows[0].sectionBadge || "VIDEO SHOWCASE",
+          sectionTitle: carouselGlobalRows[0].sectionTitle || "SELECTED WORKS",
           sectionSubtitle:
             carouselGlobalRows[0].sectionSubtitle ||
-            "Boost your brand with high-impact short videos & cinematic visual storytelling.",
+            "A curated showcase of video editing, motion design, and visual storytelling.",
+          textColor: carouselGlobalRows[0].textColor || "black",
           autoplay: carouselGlobalRows[0].autoplay !== false,
           autoplaySpeed: carouselGlobalRows[0].autoplaySpeed || 5,
           infiniteLoop: carouselGlobalRows[0].infiniteLoop !== false,

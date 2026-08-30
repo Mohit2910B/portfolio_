@@ -17,8 +17,8 @@ import {
   HomepageAdmin,
   LayoutAdmin,
   RegisterAdmin,
-  ThemeAdmin,
 } from "./SettingsAdmin";
+import { ThemeStudioAdmin } from "./ThemeStudioAdmin";
 import { ChatAdmin, EnquiriesAdmin } from "./InboxAdmin";
 import { CarouselAdmin } from "./CarouselAdmin";
 import { Button, api } from "./ui";
@@ -254,7 +254,7 @@ export default function AdminShell({
           {section === "content" && <WorkOptionsAdmin onChanged={refresh} />}
           {section === "chat" && <ChatAdmin onChanged={refresh} />}
           {section === "layout" && <LayoutAdmin onChanged={refresh} />}
-          {section === "theme" && <ThemeAdmin onChanged={refresh} />}
+          {section === "theme" && <ThemeStudioAdmin onChanged={refresh} />}
           {section === "contact" && <ContactSettingsAdmin onChanged={refresh} />}
           {section === "notifications" && <NotificationSettingsAdmin onChanged={refresh} />}
           {section === "backup" && <BackupAdmin onChanged={refresh} />}

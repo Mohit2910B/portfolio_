@@ -327,10 +327,12 @@ export async function GET(_request: Request, ctx: Params) {
             globalSettings = {
               id: rows[0].id,
               enabled: rows[0].enabled !== false,
-              sectionTitle: rows[0].sectionTitle || "Engage Audiences with Stunning Videos",
+              sectionBadge: rows[0].sectionBadge || "VIDEO SHOWCASE",
+              sectionTitle: rows[0].sectionTitle || "SELECTED WORKS",
               sectionSubtitle:
                 rows[0].sectionSubtitle ||
-                "Boost your brand with high-impact short videos & cinematic visual storytelling.",
+                "A curated showcase of video editing, motion design, and visual storytelling.",
+              textColor: rows[0].textColor || "black",
               autoplay: rows[0].autoplay !== false,
               autoplaySpeed: rows[0].autoplaySpeed || 5,
               infiniteLoop: rows[0].infiniteLoop !== false,
@@ -1162,8 +1164,10 @@ export async function PATCH(request: Request, ctx: Params) {
         if (second === "settings") {
           const patch: Partial<typeof carouselGlobalSettings.$inferInsert> = { updatedAt: new Date() };
           if ("enabled" in body) patch.enabled = bool(body.enabled);
+          if ("sectionBadge" in body) patch.sectionBadge = str(body.sectionBadge);
           if ("sectionTitle" in body) patch.sectionTitle = str(body.sectionTitle);
           if ("sectionSubtitle" in body) patch.sectionSubtitle = str(body.sectionSubtitle);
+          if ("textColor" in body) patch.textColor = str(body.textColor, "black");
           if ("autoplay" in body) patch.autoplay = bool(body.autoplay);
           if ("autoplaySpeed" in body) patch.autoplaySpeed = Math.max(num(body.autoplaySpeed) ?? 5, 1);
           if ("infiniteLoop" in body) patch.infiniteLoop = bool(body.infiniteLoop);
@@ -1378,14 +1382,31 @@ export async function PATCH(request: Request, ctx: Params) {
         }
         if (second === "theme") {
           const patch: Partial<typeof themeSettings.$inferInsert> = { updatedAt: now };
+          if ("activeTheme" in body) patch.activeTheme = str(body.activeTheme, "theme01") || "theme01";
           if ("accent" in body) patch.accent = str(body.accent, "#e0147f") || "#e0147f";
+          if ("fontPairing" in body) patch.fontPairing = str(body.fontPairing, "default") || "default";
+          if ("borderRadius" in body) patch.borderRadius = str(body.borderRadius, "rounded") || "rounded";
+          if ("animationSpeed" in body) patch.animationSpeed = str(body.animationSpeed, "normal") || "normal";
+          if ("cursorEffect" in body) patch.cursorEffect = bool(body.cursorEffect);
           if ("glassOpacity" in body)
             patch.glassOpacity = Math.min(Math.max(num(body.glassOpacity) ?? 45, 0), 100);
           if ("glassBlur" in body)
             patch.glassBlur = Math.min(Math.max(num(body.glassBlur) ?? 20, 0), 40);
           if ("grain" in body) patch.grain = bool(body.grain);
 
-          const currentTheme = getRuntimeOverride("theme") || { id: 1, accent: "#e0147f", glassOpacity: 45, glassBlur: 20, grain: true, updatedAt: new Date() };
+          const currentTheme = getRuntimeOverride("theme") || {
+            id: 1,
+            activeTheme: "theme01",
+            accent: "#e0147f",
+            fontPairing: "default",
+            borderRadius: "rounded",
+            animationSpeed: "normal",
+            cursorEffect: true,
+            glassOpacity: 45,
+            glassBlur: 20,
+            grain: true,
+            updatedAt: new Date(),
+          };
           const mergedTheme = { ...currentTheme, ...patch };
           setRuntimeOverride("theme", mergedTheme as typeof currentTheme);
 

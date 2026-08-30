@@ -1,31 +1,24 @@
-import SiteNav from "@/components/site/SiteNav";
-import Hero from "@/components/site/Hero";
-import WorkCarousel from "@/components/site/WorkCarousel";
-import ContactSection from "@/components/site/ContactSection";
-import ChatWidget from "@/components/site/ChatWidget";
-import SoftwareTools from "@/components/site/SoftwareTools";
-import { About, Footer, Marquee, Services } from "@/components/site/Sections";
-import { getSiteData, HOME_FALLBACK } from "@/lib/data";
+import { Suspense } from "react";
+import ThemeDispatcher from "@/components/site/themes/ThemeDispatcher";
+import { getSiteData } from "@/lib/data";
 
 export const revalidate = 60;
 
-const DEFAULT_ORDER = ["hero", "work", "about", "tools", "services", "contact"];
-
 export default async function HomePage() {
   const data = await getSiteData();
-  const visible = (data?.sections || [])
-    .filter((s) => s.isVisible && (s.sectionKey as string) !== "capabilities")
-    .map((s) => s.sectionKey);
-  const order = visible.length > 0 ? visible : DEFAULT_ORDER;
   const theme = data?.theme || {
     id: 1,
+    activeTheme: "theme01",
     accent: "#e0147f",
+    fontPairing: "default",
+    borderRadius: "rounded",
+    animationSpeed: "normal",
+    cursorEffect: true,
     glassOpacity: 45,
     glassBlur: 20,
     grain: true,
     updatedAt: new Date(),
   };
-  const homepage = data?.homepage || HOME_FALLBACK;
 
   const themeStyle = {
     "--accent": theme.accent || "#e0147f",
@@ -33,54 +26,11 @@ export default async function HomePage() {
     "--glass-blur": `${theme.glassBlur ?? 20}px`,
   } as React.CSSProperties;
 
-  const marqueeText =
-    homepage.heroSubtitle || "VIDEO EDITOR · MOTION GRAPHICS · GRAPHIC DESIGN · AI VIDEO";
-
-  const render = (key: string) => {
-    switch (key) {
-      case "hero":
-        return <Hero key={key} data={data} />;
-      case "work":
-        return <WorkCarousel key={key} data={data} />;
-      case "about":
-        return <About key={key} data={data} />;
-      case "tools":
-        return <SoftwareTools key={key} data={data} />;
-      case "services":
-        return <Services key={key} data={data} />;
-      case "contact":
-        return <ContactSection key={key} data={data} />;
-      default:
-        return null;
-    }
-  };
-
   return (
     <div style={themeStyle} className={theme.grain ? "grain relative" : "relative"}>
-      <SiteNav name={homepage.ownerName} availability={homepage.availabilityLabel} />
-      <main>
-        {order.map((key, index) => (
-          <div key={key}>
-            {render(key)}
-            {key === "hero" && <Marquee text={marqueeText} />}
-            {index === order.length - 1 && key !== "contact" && (
-              <Marquee text={marqueeText} />
-            )}
-          </div>
-        ))}
-        {order.length === 0 && (
-          <>
-            <Hero data={data} />
-            <Marquee text={marqueeText} />
-            <About data={data} />
-            <SoftwareTools data={data} />
-            <Services data={data} />
-            <ContactSection data={data} />
-          </>
-        )}
-      </main>
-      <Footer data={data} />
-      <ChatWidget />
+      <Suspense fallback={<div className="min-h-screen bg-[#0a0a0a]" />}>
+        <ThemeDispatcher data={data} />
+      </Suspense>
     </div>
   );
 }

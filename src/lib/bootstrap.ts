@@ -327,11 +327,21 @@ const DDL_STATEMENTS = [
   `ALTER TABLE projects ADD COLUMN IF NOT EXISTS carousel_order INTEGER NOT NULL DEFAULT 0`,
   `CREATE INDEX IF NOT EXISTS projects_carousel_idx ON projects (carousel_enabled, carousel_pinned, carousel_order)`,
 
+  `ALTER TABLE theme_settings ADD COLUMN IF NOT EXISTS active_theme TEXT NOT NULL DEFAULT 'theme01'`,
+  `ALTER TABLE theme_settings ADD COLUMN IF NOT EXISTS font_pairing TEXT NOT NULL DEFAULT 'default'`,
+  `ALTER TABLE theme_settings ADD COLUMN IF NOT EXISTS border_radius TEXT NOT NULL DEFAULT 'rounded'`,
+  `ALTER TABLE theme_settings ADD COLUMN IF NOT EXISTS animation_speed TEXT NOT NULL DEFAULT 'normal'`,
+  `ALTER TABLE theme_settings ADD COLUMN IF NOT EXISTS cursor_effect BOOLEAN NOT NULL DEFAULT true`,
+
+  `ALTER TABLE carousel_global_settings ADD COLUMN IF NOT EXISTS section_badge TEXT NOT NULL DEFAULT 'VIDEO SHOWCASE'`,
+  `ALTER TABLE carousel_global_settings ADD COLUMN IF NOT EXISTS text_color TEXT NOT NULL DEFAULT 'black'`,
   `CREATE TABLE IF NOT EXISTS carousel_global_settings (
     id               INTEGER PRIMARY KEY DEFAULT 1,
     enabled          BOOLEAN NOT NULL DEFAULT true,
-    section_title    TEXT NOT NULL DEFAULT 'Engage Audiences with Stunning Videos',
-    section_subtitle TEXT NOT NULL DEFAULT 'Boost your brand with high-impact short videos & cinematic visual storytelling.',
+    section_badge    TEXT NOT NULL DEFAULT 'VIDEO SHOWCASE',
+    section_title    TEXT NOT NULL DEFAULT 'SELECTED WORKS',
+    section_subtitle TEXT NOT NULL DEFAULT 'A curated showcase of video editing, motion design, and visual storytelling.',
+    text_color       TEXT NOT NULL DEFAULT 'black',
     autoplay         BOOLEAN NOT NULL DEFAULT true,
     autoplay_speed   INTEGER NOT NULL DEFAULT 5,
     infinite_loop    BOOLEAN NOT NULL DEFAULT true,

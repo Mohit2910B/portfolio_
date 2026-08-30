@@ -21,9 +21,11 @@ import {
 const DEFAULT_GLOBAL: CarouselGlobalSettings = {
   id: 1,
   enabled: true,
-  sectionTitle: "Engage Audiences with Stunning Videos",
+  sectionBadge: "VIDEO SHOWCASE",
+  sectionTitle: "SELECTED WORKS",
   sectionSubtitle:
-    "Boost your brand with high-impact short videos & cinematic visual storytelling.",
+    "A curated showcase of video editing, motion design, and visual storytelling.",
+  textColor: "black",
   autoplay: true,
   autoplaySpeed: 5,
   infiniteLoop: true,
@@ -459,11 +461,19 @@ export function CarouselAdmin({ onChanged }: { onChanged?: () => void }) {
               onChange={(val) => setGlobalSettings({ ...globalSettings, enabled: val })}
             />
 
-            <Field label="Section Title" hint="Heading above the video cards">
+            <Field label="Section Badge Tag" hint="Small pill badge above title (e.g. VIDEO SHOWCASE)">
+              <TextInput
+                value={globalSettings.sectionBadge || ""}
+                onChange={(val) => setGlobalSettings({ ...globalSettings, sectionBadge: val })}
+                placeholder="VIDEO SHOWCASE"
+              />
+            </Field>
+
+            <Field label="Section Title" hint="Heading above the video cards (e.g. SELECTED WORKS)">
               <TextInput
                 value={globalSettings.sectionTitle}
                 onChange={(val) => setGlobalSettings({ ...globalSettings, sectionTitle: val })}
-                placeholder="Engage Audiences with Stunning Videos"
+                placeholder="SELECTED WORKS"
               />
             </Field>
 
@@ -472,7 +482,18 @@ export function CarouselAdmin({ onChanged }: { onChanged?: () => void }) {
                 rows={2}
                 value={globalSettings.sectionSubtitle}
                 onChange={(val) => setGlobalSettings({ ...globalSettings, sectionSubtitle: val })}
-                placeholder="Boost your brand with high-impact short videos & cinematic visual storytelling."
+                placeholder="A curated showcase of video editing, motion design, and visual storytelling."
+              />
+            </Field>
+
+            <Field label="Section Text Color" hint="Select typography tone">
+              <Select
+                value={globalSettings.textColor || "black"}
+                onChange={(val) => setGlobalSettings({ ...globalSettings, textColor: val })}
+                options={[
+                  { value: "black", label: "Black / Dark (Recommended for Clean Look)" },
+                  { value: "white", label: "White / Light" },
+                ]}
               />
             </Field>
           </div>

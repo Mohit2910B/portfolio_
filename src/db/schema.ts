@@ -128,10 +128,12 @@ export const projects = pgTable(
 export const carouselGlobalSettings = pgTable("carousel_global_settings", {
   id: integer("id").primaryKey().default(1),
   enabled: boolean("enabled").notNull().default(true),
-  sectionTitle: text("section_title").notNull().default("Engage Audiences with Stunning Videos"),
+  sectionBadge: text("section_badge").notNull().default("VIDEO SHOWCASE"),
+  sectionTitle: text("section_title").notNull().default("SELECTED WORKS"),
   sectionSubtitle: text("section_subtitle")
     .notNull()
-    .default("Boost your brand with high-impact short videos & cinematic visual storytelling."),
+    .default("A curated showcase of video editing, motion design, and visual storytelling."),
+  textColor: text("text_color").notNull().default("black"),
   autoplay: boolean("autoplay").notNull().default(true),
   autoplaySpeed: integer("autoplay_speed").notNull().default(5),
   infiniteLoop: boolean("infinite_loop").notNull().default(true),
@@ -352,7 +354,12 @@ export const mobileOtpChallenges = pgTable("mobile_otp_challenges", {
 
 export const themeSettings = pgTable("theme_settings", {
   id: integer("id").primaryKey().default(1),
+  activeTheme: text("active_theme").notNull().default("theme01"),
   accent: text("accent").notNull().default("#e0147f"),
+  fontPairing: text("font_pairing").notNull().default("default"),
+  borderRadius: text("border_radius").notNull().default("rounded"),
+  animationSpeed: text("animation_speed").notNull().default("normal"),
+  cursorEffect: boolean("cursor_effect").notNull().default(true),
   glassOpacity: integer("glass_opacity").notNull().default(45),
   glassBlur: integer("glass_blur").notNull().default(20),
   grain: boolean("grain").notNull().default(true),

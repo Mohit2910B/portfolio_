@@ -45,8 +45,8 @@ body {
 }
 
 ::selection {
-  background: var(--accent);
-  color: #fff;
+  background: #000000;
+  color: #ffffff;
 }
 
 /* ---------------------------- typography ---------------------------- */
