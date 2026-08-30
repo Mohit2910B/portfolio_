@@ -20,6 +20,7 @@ import {
   ThemeAdmin,
 } from "./SettingsAdmin";
 import { ChatAdmin, EnquiriesAdmin } from "./InboxAdmin";
+import { CarouselAdmin } from "./CarouselAdmin";
 import { Button, api } from "./ui";
 
 const EMPTY_STATS: Stats = {
@@ -35,6 +36,7 @@ const EMPTY_STATS: Stats = {
 const NAV: { key: string; label: string; icon: string }[] = [
   { key: "dashboard", label: "Dashboard", icon: "◧" },
   { key: "portfolio", label: "Portfolio", icon: "▶" },
+  { key: "carousel", label: "Carousel Manager", icon: "▭" },
   { key: "media", label: "Media Library", icon: "▣" },
   { key: "enquiries", label: "Enquiries", icon: "✉" },
   { key: "categories", label: "Categories", icon: "⌗" },
@@ -241,6 +243,7 @@ export default function AdminShell({
             />
           )}
           {section === "portfolio" && <PortfolioAdmin onChanged={refresh} />}
+          {section === "carousel" && <CarouselAdmin onChanged={refresh} />}
           {section === "media" && <MediaAdmin onChanged={refresh} />}
           {section === "enquiries" && <EnquiriesAdmin onChanged={refresh} />}
           {section === "categories" && <CategoriesAdmin onChanged={refresh} />}

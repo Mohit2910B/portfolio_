@@ -110,6 +110,9 @@ export const projects = pgTable(
     durationSeconds: integer("duration_seconds"),
     featured: boolean("featured").notNull().default(false),
     published: boolean("published").notNull().default(true),
+    carouselEnabled: boolean("carousel_enabled").notNull().default(true),
+    carouselPinned: boolean("carousel_pinned").notNull().default(false),
+    carouselOrder: integer("carousel_order").notNull().default(0),
     demoStatus: text("demo_status").notNull().default("none"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -118,8 +121,24 @@ export const projects = pgTable(
     index("projects_category_id_idx").on(t.categoryId),
     index("projects_published_idx").on(t.published),
     index("projects_sort_order_idx").on(t.sortOrder),
+    index("projects_carousel_idx").on(t.carouselEnabled, t.carouselPinned, t.carouselOrder),
   ],
 );
+
+export const carouselGlobalSettings = pgTable("carousel_global_settings", {
+  id: integer("id").primaryKey().default(1),
+  enabled: boolean("enabled").notNull().default(true),
+  sectionTitle: text("section_title").notNull().default("Selected Works"),
+  sectionSubtitle: text("section_subtitle")
+    .notNull()
+    .default("A curated showcase of video editing, motion design, and visual storytelling."),
+  autoplay: boolean("autoplay").notNull().default(true),
+  autoplaySpeed: integer("autoplay_speed").notNull().default(5),
+  infiniteLoop: boolean("infinite_loop").notNull().default(true),
+  showArrows: boolean("show_arrows").notNull().default(true),
+  showDots: boolean("show_dots").notNull().default(true),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 export const mediaFiles = pgTable(
   "media_files",

@@ -1,6 +1,7 @@
 import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import {
+  carouselGlobalSettings,
   carouselSettings,
   categories,
   contactSettings,
@@ -47,6 +48,9 @@ export type PublicProject = {
   featured: boolean;
   demoStatus: string;
   sortOrder: number;
+  carouselEnabled: boolean;
+  carouselPinned: boolean;
+  carouselOrder: number;
 };
 
 export type CategoryItem = {
@@ -118,6 +122,19 @@ export type CarouselSettingItem = {
   updatedAt: Date;
 };
 
+export type CarouselGlobalSettings = {
+  id: number;
+  enabled: boolean;
+  sectionTitle: string;
+  sectionSubtitle: string;
+  autoplay: boolean;
+  autoplaySpeed: number;
+  infiniteLoop: boolean;
+  showArrows: boolean;
+  showDots: boolean;
+  updatedAt: Date;
+};
+
 export type SiteData = {
   homepage: typeof HOME_FALLBACK & { id?: number; [key: string]: unknown };
   contact: typeof CONTACT_FALLBACK & { id?: number; [key: string]: unknown };
@@ -137,6 +154,7 @@ export type SiteData = {
   workOptions: WorkOptionItem[];
   sections: SectionItem[];
   carouselSettings: CarouselSettingItem[];
+  carouselGlobalSettings: CarouselGlobalSettings;
 };
 
 export const HOME_FALLBACK = {
@@ -211,7 +229,23 @@ export const DEFAULT_PROJECTS: PublicProject[] = PROJECT_SEED.map((p, index) => 
   featured: p.featured,
   demoStatus: p.demoStatus,
   sortOrder: index,
+  carouselEnabled: true,
+  carouselPinned: false,
+  carouselOrder: index,
 }));
+
+export const DEFAULT_CAROUSEL_GLOBAL_SETTINGS: CarouselGlobalSettings = {
+  id: 1,
+  enabled: true,
+  sectionTitle: "Selected Works",
+  sectionSubtitle: "A curated showcase of video editing, motion design, and visual storytelling.",
+  autoplay: true,
+  autoplaySpeed: 5,
+  infiniteLoop: true,
+  showArrows: true,
+  showDots: true,
+  updatedAt: new Date(),
+};
 
 export const DEFAULT_SERVICES: ServiceItem[] = SERVICE_SEED.map((s, index) => ({
   id: index + 1,
@@ -327,10 +361,10 @@ function getFallbackSiteData(): SiteData {
       overrides.sections ||
       DEFAULT_SECTIONS.filter(
         (section) =>
-          (section.sectionKey as string) !== "capabilities" &&
-          (section.sectionKey as string) !== "work",
+          (section.sectionKey as string) !== "capabilities",
       ),
     carouselSettings: [],
+    carouselGlobalSettings: overrides.carouselGlobalSettings || DEFAULT_CAROUSEL_GLOBAL_SETTINGS,
   };
 }
 
@@ -359,6 +393,7 @@ export async function getSiteData(): Promise<SiteData> {
       workRows,
       sectionRows,
       carouselRows,
+      carouselGlobalRows,
     ] = await Promise.all([
       db.select().from(homepageSettings).limit(1),
       db.select().from(contactSettings).limit(1),
@@ -389,6 +424,7 @@ export async function getSiteData(): Promise<SiteData> {
         .from(layoutSections)
         .orderBy(asc(layoutSections.sortOrder), asc(layoutSections.id)),
       db.select().from(carouselSettings).orderBy(asc(carouselSettings.sortOrder), asc(carouselSettings.id)),
+      db.select().from(carouselGlobalSettings).limit(1),
     ]);
 
     const homepage = { ...HOME_FALLBACK, ...(homeRows[0] ?? {}) };
@@ -427,6 +463,9 @@ export async function getSiteData(): Promise<SiteData> {
       featured: p.featured,
       demoStatus: p.demoStatus,
       sortOrder: p.sortOrder,
+      carouselEnabled: p.carouselEnabled !== false,
+      carouselPinned: Boolean(p.carouselPinned),
+      carouselOrder: p.carouselOrder ?? p.sortOrder,
     }));
 
     const finalCategories = categoryRows.length > 0 ? categoryRows : DEFAULT_CATEGORIES;
@@ -435,6 +474,22 @@ export async function getSiteData(): Promise<SiteData> {
     const finalWork = workRows.length > 0 ? workRows : DEFAULT_WORK_OPTIONS;
     const finalSections = sectionRows.length > 0 ? sectionRows : DEFAULT_SECTIONS;
     const finalCarousel = carouselRows.length > 0 ? carouselRows : DEFAULT_CAROUSEL_SETTINGS;
+    const finalCarouselGlobal: CarouselGlobalSettings = carouselGlobalRows[0]
+      ? {
+          id: carouselGlobalRows[0].id,
+          enabled: carouselGlobalRows[0].enabled !== false,
+          sectionTitle: carouselGlobalRows[0].sectionTitle || "Selected Works",
+          sectionSubtitle:
+            carouselGlobalRows[0].sectionSubtitle ||
+            "A curated showcase of video editing, motion design, and visual storytelling.",
+          autoplay: carouselGlobalRows[0].autoplay !== false,
+          autoplaySpeed: carouselGlobalRows[0].autoplaySpeed || 5,
+          infiniteLoop: carouselGlobalRows[0].infiniteLoop !== false,
+          showArrows: carouselGlobalRows[0].showArrows !== false,
+          showDots: carouselGlobalRows[0].showDots !== false,
+          updatedAt: carouselGlobalRows[0].updatedAt || new Date(),
+        }
+      : DEFAULT_CAROUSEL_GLOBAL_SETTINGS;
 
     const result = {
       homepage,
@@ -448,6 +503,7 @@ export async function getSiteData(): Promise<SiteData> {
       workOptions: finalWork,
       sections: finalSections.filter((section) => (section.sectionKey as string) !== "capabilities"),
       carouselSettings: finalCarousel,
+      carouselGlobalSettings: finalCarouselGlobal,
     };
 
     cachedSiteData = { data: result, expiresAt: Date.now() + 30000 };

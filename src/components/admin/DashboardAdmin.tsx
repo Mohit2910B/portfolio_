@@ -25,11 +25,11 @@ const EMPTY: Stats = {
 
 const ACTIONS: { label: string; target: string; variant: "dark" | "ghost" | "accent" }[] = [
   { label: "Add project", target: "portfolio", variant: "dark" },
+  { label: "Carousel Manager", target: "carousel", variant: "accent" },
   { label: "Upload video", target: "media", variant: "ghost" },
   { label: "Add category", target: "categories", variant: "ghost" },
   { label: "Add service", target: "services", variant: "ghost" },
   { label: "Add software", target: "software", variant: "ghost" },
-  { label: "Add skill", target: "skills", variant: "ghost" },
 ];
 
 export default function DashboardAdmin({

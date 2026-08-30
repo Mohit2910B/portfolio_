@@ -13,6 +13,7 @@ import {
   themeSettings,
   workOptions,
   notificationSettings,
+  carouselGlobalSettings,
 } from "@/db/schema";
 import { hashPassword } from "@/lib/auth";
 
@@ -319,6 +320,24 @@ const DDL_STATEMENTS = [
   )`,
   `ALTER TABLE notification_settings ADD COLUMN IF NOT EXISTS admin_status TEXT NOT NULL DEFAULT 'offline'`,
   `ALTER TABLE notification_settings ADD COLUMN IF NOT EXISTS ai_auto_reply BOOLEAN NOT NULL DEFAULT true`,
+
+  `ALTER TABLE projects ADD COLUMN IF NOT EXISTS carousel_enabled BOOLEAN NOT NULL DEFAULT true`,
+  `ALTER TABLE projects ADD COLUMN IF NOT EXISTS carousel_pinned BOOLEAN NOT NULL DEFAULT false`,
+  `ALTER TABLE projects ADD COLUMN IF NOT EXISTS carousel_order INTEGER NOT NULL DEFAULT 0`,
+  `CREATE INDEX IF NOT EXISTS projects_carousel_idx ON projects (carousel_enabled, carousel_pinned, carousel_order)`,
+
+  `CREATE TABLE IF NOT EXISTS carousel_global_settings (
+    id               INTEGER PRIMARY KEY DEFAULT 1,
+    enabled          BOOLEAN NOT NULL DEFAULT true,
+    section_title    TEXT NOT NULL DEFAULT 'Selected Works',
+    section_subtitle TEXT NOT NULL DEFAULT 'A curated showcase of video editing, motion design, and visual storytelling.',
+    autoplay         BOOLEAN NOT NULL DEFAULT true,
+    autoplay_speed   INTEGER NOT NULL DEFAULT 5,
+    infinite_loop    BOOLEAN NOT NULL DEFAULT true,
+    show_arrows      BOOLEAN NOT NULL DEFAULT true,
+    show_dots        BOOLEAN NOT NULL DEFAULT true,
+    updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
 ];
 
 async function ensureTables(): Promise<void> {
@@ -352,6 +371,7 @@ async function count(table: string): Promise<number> {
     "contact_settings",
     "theme_settings",
     "carousel_settings",
+    "carousel_global_settings",
   ];
 
   if (!allowedTables.includes(table)) {
@@ -841,19 +861,18 @@ async function seedContent() {
       await db.insert(themeSettings).values({ id: 1 }).onConflictDoNothing();
     }
 
-    if ((await count("carousel_settings")) === 0 && categoryRows.length > 0) {
-      await db.insert(carouselSettings).values(
-        categoryRows.map((category, index) => ({
-          categoryId: category.id,
-          slots: index === 0 ? 7 : 5,
-          centerSize: "large",
-          sideSize: "small",
-          autoFill: true,
-          projectIds: "[]",
-          sortOrder: index,
-          isActive: true,
-        })),
-      ).onConflictDoNothing();
+    if ((await count("carousel_global_settings")) === 0) {
+      await db.insert(carouselGlobalSettings).values({
+        id: 1,
+        enabled: true,
+        sectionTitle: "Selected Works",
+        sectionSubtitle: "A curated showcase of video editing, motion design, and visual storytelling.",
+        autoplay: true,
+        autoplaySpeed: 5,
+        infiniteLoop: true,
+        showArrows: true,
+        showDots: true,
+      }).onConflictDoNothing();
     }
   } catch (err) {
     console.warn("[bootstrap] seedContent notice:", err);

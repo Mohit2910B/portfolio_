@@ -18,6 +18,7 @@ import {
   softwareTools,
   themeSettings,
   workOptions,
+  carouselGlobalSettings,
 } from "@/db/schema";
 import {
   ensureDatabase,
@@ -27,7 +28,15 @@ import {
   SOFTWARE_TOOL_SEED,
   WORK_OPTION_SEED,
 } from "@/lib/bootstrap";
-import { HOME_FALLBACK, CONTACT_FALLBACK, invalidateSiteDataCache, setRuntimeOverride, getRuntimeOverride } from "@/lib/data";
+import {
+  HOME_FALLBACK,
+  CONTACT_FALLBACK,
+  DEFAULT_CAROUSEL_GLOBAL_SETTINGS,
+  DEFAULT_PROJECTS,
+  invalidateSiteDataCache,
+  setRuntimeOverride,
+  getRuntimeOverride,
+} from "@/lib/data";
 import { requireAdmin } from "@/lib/auth";
 import { badRequest, created, guard, notFound, num, ok, str, bool } from "@/lib/http";
 import { deleteStoredFile, safeStoredName } from "@/lib/storage";
@@ -98,6 +107,9 @@ function parseProjectBody(body: Record<string, unknown>): Partial<ProjectInsert>
   if ("durationSeconds" in body) patch.durationSeconds = num(body.durationSeconds);
   if ("featured" in body) patch.featured = bool(body.featured);
   if ("published" in body) patch.published = bool(body.published);
+  if ("carouselEnabled" in body) patch.carouselEnabled = bool(body.carouselEnabled);
+  if ("carouselPinned" in body) patch.carouselPinned = bool(body.carouselPinned);
+  if ("carouselOrder" in body) patch.carouselOrder = num(body.carouselOrder) ?? 0;
   return patch;
 }
 
@@ -306,13 +318,53 @@ export async function GET(_request: Request, ctx: Params) {
         return ok({ media: await db.select().from(mediaFiles).orderBy(desc(mediaFiles.id)) });
 
       case "carousel": {
-        const rows = await db
-          .select({ setting: carouselSettings, categoryName: categories.name })
-          .from(carouselSettings)
-          .leftJoin(categories, eq(categories.id, carouselSettings.categoryId))
-          .orderBy(asc(carouselSettings.sortOrder), asc(carouselSettings.id));
+        let globalSettings = getRuntimeOverride("carouselGlobalSettings") || DEFAULT_CAROUSEL_GLOBAL_SETTINGS;
+        try {
+          const rows = await db.select().from(carouselGlobalSettings).limit(1);
+          if (rows[0]) {
+            globalSettings = {
+              id: rows[0].id,
+              enabled: rows[0].enabled !== false,
+              sectionTitle: rows[0].sectionTitle || "Selected Works",
+              sectionSubtitle:
+                rows[0].sectionSubtitle ||
+                "A curated showcase of video editing, motion design, and visual storytelling.",
+              autoplay: rows[0].autoplay !== false,
+              autoplaySpeed: rows[0].autoplaySpeed || 5,
+              infiniteLoop: rows[0].infiniteLoop !== false,
+              showArrows: rows[0].showArrows !== false,
+              showDots: rows[0].showDots !== false,
+              updatedAt: rows[0].updatedAt || new Date(),
+            };
+          }
+        } catch {}
+
+        let projectList: any[] = [];
+        try {
+          const rows = await db
+            .select({ project: projects, categoryName: categories.name })
+            .from(projects)
+            .leftJoin(categories, eq(categories.id, projects.categoryId))
+            .orderBy(
+              desc(projects.carouselPinned),
+              asc(projects.carouselOrder),
+              asc(projects.sortOrder),
+              desc(projects.id),
+            );
+          projectList = rows.map((r) => ({
+            ...r.project,
+            categoryName: r.categoryName ?? "",
+            carouselEnabled: r.project.carouselEnabled !== false,
+            carouselPinned: Boolean(r.project.carouselPinned),
+            carouselOrder: r.project.carouselOrder ?? r.project.sortOrder,
+          }));
+        } catch {
+          projectList = DEFAULT_PROJECTS;
+        }
+
         return ok({
-          carousel: rows.map((r) => ({ ...r.setting, categoryName: r.categoryName ?? "All" })),
+          globalSettings,
+          projects: projectList,
         });
       }
 
@@ -990,25 +1042,108 @@ export async function PATCH(request: Request, ctx: Params) {
       }
 
       case "carousel": {
-        const patch: Partial<typeof carouselSettings.$inferInsert> = { updatedAt: new Date() };
-        if ("categoryId" in body) patch.categoryId = num(body.categoryId);
-        if ("slots" in body) patch.slots = Math.min(Math.max(num(body.slots) ?? 5, 1), 24);
-        if ("centerSize" in body) patch.centerSize = str(body.centerSize, "large");
-        if ("sideSize" in body) patch.sideSize = str(body.sideSize, "small");
-        if ("autoFill" in body) patch.autoFill = bool(body.autoFill);
-        if ("isActive" in body) patch.isActive = bool(body.isActive);
-        if ("sortOrder" in body) patch.sortOrder = num(body.sortOrder) ?? 0;
-        if ("projectIds" in body) {
-          patch.projectIds = JSON.stringify(
-            Array.isArray(body.projectIds) ? body.projectIds.map((v) => Number(v)) : [],
+        if (second === "settings") {
+          const patch: Partial<typeof carouselGlobalSettings.$inferInsert> = { updatedAt: new Date() };
+          if ("enabled" in body) patch.enabled = bool(body.enabled);
+          if ("sectionTitle" in body) patch.sectionTitle = str(body.sectionTitle);
+          if ("sectionSubtitle" in body) patch.sectionSubtitle = str(body.sectionSubtitle);
+          if ("autoplay" in body) patch.autoplay = bool(body.autoplay);
+          if ("autoplaySpeed" in body) patch.autoplaySpeed = Math.max(num(body.autoplaySpeed) ?? 5, 1);
+          if ("infiniteLoop" in body) patch.infiniteLoop = bool(body.infiniteLoop);
+          if ("showArrows" in body) patch.showArrows = bool(body.showArrows);
+          if ("showDots" in body) patch.showDots = bool(body.showDots);
+
+          const currentOverride =
+            getRuntimeOverride("carouselGlobalSettings") || DEFAULT_CAROUSEL_GLOBAL_SETTINGS;
+          const merged = { ...currentOverride, ...patch };
+          setRuntimeOverride(
+            "carouselGlobalSettings",
+            merged as typeof DEFAULT_CAROUSEL_GLOBAL_SETTINGS,
           );
+
+          try {
+            const existing = await db.select().from(carouselGlobalSettings).limit(1);
+            if (!existing[0]) {
+              const inserted = await db
+                .insert(carouselGlobalSettings)
+                .values({ id: 1, ...patch })
+                .returning();
+              return ok({ globalSettings: inserted[0] });
+            }
+            const updated = await db
+              .update(carouselGlobalSettings)
+              .set(patch)
+              .where(eq(carouselGlobalSettings.id, existing[0].id))
+              .returning();
+            return ok({ globalSettings: updated[0] });
+          } catch {
+            return ok({ globalSettings: merged });
+          }
         }
-        const updated = await db
-          .update(carouselSettings)
-          .set(patch)
-          .where(eq(carouselSettings.id, Number(second)))
-          .returning();
-        return ok({ setting: await one(updated) });
+
+        if (second === "reorder") {
+          const items = Array.isArray(body.items)
+            ? (body.items as {
+                id: number;
+                carouselOrder?: number;
+                carouselPinned?: boolean;
+                carouselEnabled?: boolean;
+              }[])
+            : [];
+
+          try {
+            for (const item of items) {
+              const id = Number(item.id);
+              if (Number.isInteger(id)) {
+                const patch: Partial<ProjectInsert> = { updatedAt: new Date() };
+                if ("carouselOrder" in item) patch.carouselOrder = num(item.carouselOrder) ?? 0;
+                if ("carouselPinned" in item) patch.carouselPinned = bool(item.carouselPinned);
+                if ("carouselEnabled" in item) patch.carouselEnabled = bool(item.carouselEnabled);
+                await db.update(projects).set(patch).where(eq(projects.id, id));
+              }
+            }
+          } catch {}
+          return ok({ success: true, count: items.length });
+        }
+
+        if (second === "project" && third) {
+          const id = Number(third);
+          if (!Number.isInteger(id)) return badRequest("Invalid project id.");
+          const patch: Partial<ProjectInsert> = { updatedAt: new Date() };
+          if ("carouselEnabled" in body) patch.carouselEnabled = bool(body.carouselEnabled);
+          if ("carouselPinned" in body) patch.carouselPinned = bool(body.carouselPinned);
+          if ("carouselOrder" in body) patch.carouselOrder = num(body.carouselOrder) ?? 0;
+          try {
+            const updated = await db
+              .update(projects)
+              .set(patch)
+              .where(eq(projects.id, id))
+              .returning();
+            return ok({ project: updated[0] });
+          } catch {
+            return ok({ project: { id, ...patch } });
+          }
+        }
+
+        const id = Number(second);
+        if (Number.isInteger(id)) {
+          const patch: Partial<ProjectInsert> = { updatedAt: new Date() };
+          if ("carouselEnabled" in body) patch.carouselEnabled = bool(body.carouselEnabled);
+          if ("carouselPinned" in body) patch.carouselPinned = bool(body.carouselPinned);
+          if ("carouselOrder" in body) patch.carouselOrder = num(body.carouselOrder) ?? 0;
+          try {
+            const updated = await db
+              .update(projects)
+              .set(patch)
+              .where(eq(projects.id, id))
+              .returning();
+            return ok({ project: updated[0] });
+          } catch {
+            return ok({ project: { id, ...patch } });
+          }
+        }
+
+        return badRequest("Unknown carousel action.");
       }
 
       case "layout": {
