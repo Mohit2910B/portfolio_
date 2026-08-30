@@ -103,6 +103,7 @@ function PanoramicVideoCarousel({
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [selectedReel, setSelectedReel] = useState<CarouselItem | null>(null);
   const touchStartX = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
 
@@ -131,39 +132,37 @@ function PanoramicVideoCarousel({
     });
   }, [count, infiniteLoop]);
 
-  const selectCard = (index: number) => {
-    if (index === activeIndex) {
-      // Toggle play state on center card
-      setIsPlaying((p) => !p);
+  const selectCard = (index: number, item?: CarouselItem) => {
+    if (index === activeIndex && item) {
+      setSelectedReel(item);
     } else {
-      setIsPlaying(false);
       setActiveIndex(index);
+      if (item) setSelectedReel(item);
     }
   };
 
-  // Autoplay loop (pause when video is actively playing or user hovers)
+  // Autoplay loop (pause when video is actively playing, user hovers, or modal is open)
   useEffect(() => {
-    if (!autoplay || isHovered || isPlaying || count <= 1) return;
+    if (!autoplay || isHovered || isPlaying || selectedReel || count <= 1) return;
     const intervalMs = Math.max(autoplaySpeed, 2) * 1000;
     const timer = setInterval(() => {
       next();
     }, intervalMs);
     return () => clearInterval(timer);
-  }, [autoplay, autoplaySpeed, isHovered, isPlaying, count, next]);
+  }, [autoplay, autoplaySpeed, isHovered, isPlaying, selectedReel, count, next]);
 
-  // Keyboard navigation
+  // Keyboard navigation & Escape to close modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft") prev();
-      if (e.key === "ArrowRight") next();
-      if (e.key === " " && document.activeElement === document.body) {
-        e.preventDefault();
-        setIsPlaying((p) => !p);
+      if (e.key === "Escape") setSelectedReel(null);
+      if (!selectedReel) {
+        if (e.key === "ArrowLeft") prev();
+        if (e.key === "ArrowRight") next();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [prev, next]);
+  }, [prev, next, selectedReel]);
 
   // Touch handlers
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -236,7 +235,7 @@ function PanoramicVideoCarousel({
           return (
             <div
               key={`${item.id}-${offset}`}
-              onClick={() => selectCard(index)}
+              onClick={() => selectCard(index, item)}
               style={{
                 transform: `translateX(${translateX}px) scale(${scale})`,
                 zIndex,
@@ -271,20 +270,18 @@ function PanoramicVideoCarousel({
                   )}
                 </div>
 
-                {/* Center Play Button Overlay (when not playing) */}
-                {(!isCenter || !isPlaying) && (
-                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                    <div
-                      className={`flex items-center justify-center rounded-full text-white backdrop-blur-md transition-all duration-300 ${
-                        isCenter
-                          ? "h-16 w-16 bg-white/30 text-2xl shadow-[0_0_25px_rgba(255,255,255,0.4)] group-hover:scale-110 group-hover:bg-white/40"
-                          : "h-11 w-11 bg-white/20 text-lg opacity-70 group-hover:opacity-100"
-                      }`}
-                    >
-                      ▶
-                    </div>
+                {/* Center Play Button Overlay */}
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                  <div
+                    className={`flex items-center justify-center rounded-full text-white backdrop-blur-md transition-all duration-300 ${
+                      isCenter
+                        ? "h-16 w-16 bg-white/30 text-2xl shadow-[0_0_25px_rgba(255,255,255,0.4)] group-hover:scale-110 group-hover:bg-white/40"
+                        : "h-11 w-11 bg-white/20 text-lg opacity-70 group-hover:opacity-100"
+                    }`}
+                  >
+                    ▶
                   </div>
-                )}
+                </div>
 
                 {/* Bottom Details Overlay */}
                 <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-4">
@@ -321,7 +318,7 @@ function PanoramicVideoCarousel({
               <button
                 key={it.id}
                 type="button"
-                onClick={() => selectCard(idx)}
+                onClick={() => selectCard(idx, it)}
                 aria-label={`Go to video card ${idx + 1}`}
                 className={`h-2 rounded-full transition-all duration-300 ${
                   idx === activeIndex
@@ -371,6 +368,135 @@ function PanoramicVideoCarousel({
             </button>
           </div>
         )}
+      </div>
+
+      {/* ----------------- INTERACTIVE REEL POP-UP MODAL ----------------- */}
+      {selectedReel && (
+        <ReelPopupModal
+          reel={selectedReel}
+          onClose={() => setSelectedReel(null)}
+          onNext={() => {
+            const curIdx = items.findIndex((it) => it.id === selectedReel.id);
+            const nextIdx = (curIdx + 1) % items.length;
+            setSelectedReel(items[nextIdx]);
+            setActiveIndex(nextIdx);
+          }}
+          onPrev={() => {
+            const curIdx = items.findIndex((it) => it.id === selectedReel.id);
+            const prevIdx = (curIdx - 1 + items.length) % items.length;
+            setSelectedReel(items[prevIdx]);
+            setActiveIndex(prevIdx);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+/** Full-Screen Interactive Pop-up Reel Modal Player */
+function ReelPopupModal({
+  reel,
+  onClose,
+  onNext,
+  onPrev,
+}: {
+  reel: CarouselItem;
+  onClose: () => void;
+  onNext: () => void;
+  onPrev: () => void;
+}) {
+  const media = parseMediaUrl(reel.videoUrl);
+  const isDirectVideo =
+    reel.videoUrl &&
+    (reel.videoUrl.endsWith(".mp4") ||
+      reel.videoUrl.includes("blob") ||
+      reel.videoUrl.includes("pexels") ||
+      reel.videoSource === "upload" ||
+      media.streamUrl);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 sm:p-6 backdrop-blur-2xl"
+      onClick={onClose}
+    >
+      <div
+        className="relative flex flex-col items-center max-h-[95vh] w-full max-w-md sm:max-w-lg rounded-3xl border border-white/20 bg-neutral-950 p-4 sm:p-6 shadow-[0_0_80px_rgba(0,0,0,0.9)]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header with Category, Title, & Close */}
+        <div className="flex w-full items-center justify-between border-b border-white/10 pb-3">
+          <div className="flex items-center gap-2 min-w-0 pr-3">
+            <span className="shrink-0 rounded-full bg-[var(--accent,#e0147f)] px-2.5 py-0.5 font-mono text-[10px] font-bold uppercase text-white">
+              {reel.category || "Reel"}
+            </span>
+            <h3 className="font-heading text-sm font-bold uppercase tracking-tight text-white truncate">
+              {reel.title}
+            </h3>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 text-sm font-bold text-white transition hover:bg-white hover:text-black"
+            aria-label="Close Reel Modal"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* 9:16 Vertical Reel Player */}
+        <div className="relative mt-4 aspect-[9/16] w-full max-h-[66vh] overflow-hidden rounded-2xl border border-white/15 bg-black shadow-2xl">
+          {isDirectVideo ? (
+            <video
+              src={media.streamUrl || reel.videoUrl}
+              poster={reel.thumbnailUrl || undefined}
+              controls
+              autoPlay
+              playsInline
+              preload="auto"
+              className="h-full w-full object-contain bg-black"
+            />
+          ) : media.embedUrl ? (
+            <iframe
+              src={`${media.embedUrl}?autoplay=1`}
+              title={reel.title}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              className="h-full w-full border-0"
+            />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={reel.thumbnailUrl}
+              alt={reel.title}
+              className="h-full w-full object-cover"
+            />
+          )}
+        </div>
+
+        {/* Footer info & Prev/Next buttons */}
+        <div className="mt-3 flex w-full items-center justify-between pt-2">
+          <p className="text-xs text-white/60 line-clamp-1 max-w-[60%]">
+            {reel.description || "Video Showcase Reel"}
+          </p>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onPrev}
+              className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-semibold text-white/80 transition hover:bg-white/20 hover:text-white"
+            >
+              ← Prev
+            </button>
+            <button
+              type="button"
+              onClick={onNext}
+              className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-semibold text-white/80 transition hover:bg-white/20 hover:text-white"
+            >
+              Next →
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
