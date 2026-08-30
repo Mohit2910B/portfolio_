@@ -45,7 +45,12 @@ function isInvalidOrPlaceholderHost(host: string): boolean {
     h === "your-database-host" ||
     h === "example.com" ||
     h === "your-db-host" ||
-    h === "dbname"
+    h === "dbname" ||
+    h.includes("xyz") ||
+    h.includes("placeholder") ||
+    h.includes("your-") ||
+    h.includes("dummy") ||
+    h.startsWith("ep-xyz")
   );
 }
 
