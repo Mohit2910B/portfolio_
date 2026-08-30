@@ -1,13 +1,13 @@
 -- ==========================================================
 -- MOHIT BABARIYA - PORTFOLIO DATABASE BACKUP
--- Export Date: 2026-08-30T09:02:32.950Z
+-- Export Date: 2026-08-30T09:06:40.960Z
 -- Database Engine: PostgreSQL / Neon / Vercel Postgres
 -- ==========================================================
 
 -- ----------------------------------------------------------
 -- Data for Table: admins (1 rows)
 -- ----------------------------------------------------------
-INSERT INTO admins (id, name, email, username, password_hash, role, last_login_at, created_at, updated_at) VALUES (1, 'MOHIT BABARIYA', 'mohitbabariyaa@gmail.com', 'mohit', 'scrypt:a331fd70ae0394d14af6afa5e61fef60:628b94affa81042918fb020794235153bb99788b17198e29848d39a48f0e607395143e9799d5931d1e6f2a74ea3afa85587d677895dcb0abf84aca12de969965', 'owner', '2026-08-27T11:16:49.760Z', '2026-08-27T10:47:10.878Z', '2026-08-27T10:47:10.878Z') ON CONFLICT DO NOTHING;
+INSERT INTO admins (id, name, email, username, password_hash, role, last_login_at, created_at, updated_at) VALUES (1, 'MOHIT BABARIYA', 'mohitbabariyaa@gmail.com', 'mohit', 'scrypt:f08bd503e73ca1a4a6c9f9c881573e63:ecc4e65f6eed804bbddf56f49bb63c86ea43499e582d263d0303e1f0063ae7b131b8166bcaf11b7254ce675178e5b57afc39de44554209159542f47ce603b68f', 'owner', '2026-08-27T11:16:49.760Z', '2026-08-27T10:47:10.878Z', '2026-08-27T10:47:10.878Z') ON CONFLICT DO NOTHING;
 
 -- ----------------------------------------------------------
 -- Data for Table: categories (9 rows)
