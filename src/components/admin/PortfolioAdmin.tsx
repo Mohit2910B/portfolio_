@@ -1027,7 +1027,7 @@ export function MediaAdmin({ onChanged }: { onChanged: () => void }) {
       <div className="mt-5 grid gap-4 lg:grid-cols-3">
         <Card className="p-5">
           <p className="mb-3 text-[0.58rem] font-semibold uppercase tracking-[0.2em] text-ink/45">
-            Upload video (under 4.5MB)
+            Upload Video (MP4, WebM or MOV · max 300MB)
           </p>
           <Uploader
             kind="video"

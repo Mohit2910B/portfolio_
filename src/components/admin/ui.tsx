@@ -320,63 +320,112 @@ export function Uploader({
         }
       } catch (blobErr) {
         console.warn("[uploader] Vercel Blob upload attempt:", blobErr);
-      }
+        // 2. Chunked upload protocol for files > 3.5MB (supports files up to 300MB without hitting 4.5MB serverless limit)
+        if (file.size > 3.5 * 1024 * 1024) {
+          try {
+            const CHUNK_SIZE = 2.5 * 1024 * 1024; // 2.5MB per chunk (well within Vercel's limit)
+            const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+            const uploadId = `upload_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 
-      // 2. Fallback to standard server-side upload for files <= 4.5MB
-      if (file.size > 4.5 * 1024 * 1024) {
-        setStatus("error");
-        setMessage(
-          kind === "video"
-            ? "Direct upload over 4.5MB requires Vercel Blob Storage. Please connect Blob in Vercel Storage or paste the Video URL (YouTube, Vimeo, CDN) below."
-            : "Image exceeds 4.5MB. Please compress the image to under 4.5MB."
-        );
-        setProgress(null);
-        return;
-      }
+            for (let i = 0; i < totalChunks; i++) {
+              const start = i * CHUNK_SIZE;
+              const end = Math.min(file.size, start + CHUNK_SIZE);
+              const chunk = file.slice(start, end);
 
-      const form = new FormData();
-      form.append("file", file);
-      form.append("kind", kind);
-      if (projectId) form.append("projectId", String(projectId));
+              const form = new FormData();
+              form.append("chunk", chunk, file.name);
+              form.append("uploadId", uploadId);
+              form.append("chunkIndex", String(i));
+              form.append("totalChunks", String(totalChunks));
+              form.append("filename", file.name);
+              form.append("kind", kind);
+              if (projectId) form.append("projectId", String(projectId));
 
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", "/api/admin/upload");
-      xhr.upload.onprogress = (event) => {
-        if (event.lengthComputable) setProgress(Math.round((event.loaded / event.total) * 100));
-      };
-      xhr.upload.onload = () => {
-        setProgress(100);
-        setMessage("Processing file…");
-      };
-      xhr.onload = () => {
-        try {
-          const payload = JSON.parse(xhr.responseText || "{}");
-          if (xhr.status >= 200 && xhr.status < 300) {
-            setProgress(100);
-            setStatus("done");
-            setMessage("Upload complete");
-            onUploaded(payload as UploadResult);
-            window.setTimeout(() => {
-              setStatus("idle");
+              const res = await fetch("/api/admin/upload/chunk", {
+                method: "POST",
+                body: form,
+              });
+
+              if (!res.ok) {
+                const err = (await res.json().catch(() => ({}))) as { error?: string };
+                throw new Error(err.error || `Chunk ${i + 1}/${totalChunks} failed`);
+              }
+
+              const data = (await res.json()) as {
+                done: boolean;
+                url?: string;
+                media?: { id: number; filename: string; size: number };
+              };
+              const pct = Math.round(((i + 1) / totalChunks) * 100);
+              setProgress(pct);
+              setMessage(data.done ? "Finalizing media…" : `Uploading ${pct}% (${i + 1}/${totalChunks})`);
+
+              if (data.done && data.url) {
+                setProgress(100);
+                setStatus("done");
+                setMessage("Upload complete");
+                onUploaded({
+                  url: data.url,
+                  kind,
+                  media: data.media || { id: Date.now(), filename: file.name, size: file.size },
+                });
+                window.setTimeout(() => {
+                  setStatus("idle");
+                  setProgress(null);
+                }, 1400);
+                return;
+              }
+            }
+          } catch (chunkErr) {
+            console.warn("[uploader] Chunked upload fallback to standard upload:", chunkErr);
+          }
+        }
+
+        // 3. Standard upload for files <= 3.5MB
+        const form = new FormData();
+        form.append("file", file);
+        form.append("kind", kind);
+        if (projectId) form.append("projectId", String(projectId));
+
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "/api/admin/upload");
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) setProgress(Math.round((event.loaded / event.total) * 100));
+        };
+        xhr.upload.onload = () => {
+          setProgress(100);
+          setMessage("Processing file…");
+        };
+        xhr.onload = () => {
+          try {
+            const payload = JSON.parse(xhr.responseText || "{}");
+            if (xhr.status >= 200 && xhr.status < 300) {
+              setProgress(100);
+              setStatus("done");
+              setMessage("Upload complete");
+              onUploaded(payload as UploadResult);
+              window.setTimeout(() => {
+                setStatus("idle");
+                setProgress(null);
+              }, 1400);
+            } else {
+              setStatus("error");
+              setMessage(payload.error || "Upload failed.");
               setProgress(null);
-            }, 1400);
-          } else {
+            }
+          } catch {
             setStatus("error");
-            setMessage(payload.error || "Upload failed.");
+            setMessage("Upload failed: unreadable server response.");
             setProgress(null);
           }
-        } catch {
+        };
+        xhr.onerror = () => {
           setStatus("error");
-          setMessage("Upload failed: unreadable server response.");
+          setMessage("Upload failed: network error.");
           setProgress(null);
-        }
-      };
-      xhr.onerror = () => {
-        setStatus("error");
-        setMessage("Network error during upload.");
-        setProgress(null);
-      };
-      xhr.send(form);
+        };
+        xhr.send(form);
+      }
     },
     [kind, projectId, onUploaded],
   );
@@ -486,7 +535,43 @@ export async function uploadBlob(
     console.warn("[uploadBlob] Vercel Blob fallback:", blobErr);
   }
 
-  // 2. Fallback to /api/admin/upload
+  // 2. Chunked upload for blobs > 3.5MB
+  if (blob.size > 3.5 * 1024 * 1024) {
+    const CHUNK_SIZE = 2.5 * 1024 * 1024;
+    const totalChunks = Math.ceil(blob.size / CHUNK_SIZE);
+    const uploadId = `upload_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+
+    for (let i = 0; i < totalChunks; i++) {
+      const start = i * CHUNK_SIZE;
+      const end = Math.min(blob.size, start + CHUNK_SIZE);
+      const chunk = blob.slice(start, end);
+
+      const form = new FormData();
+      form.append("chunk", chunk, filename);
+      form.append("uploadId", uploadId);
+      form.append("chunkIndex", String(i));
+      form.append("totalChunks", String(totalChunks));
+      form.append("filename", filename);
+      form.append("kind", kind);
+      if (projectId) form.append("projectId", String(projectId));
+
+      const res = await fetch("/api/admin/upload/chunk", { method: "POST", body: form });
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(err.error || `Upload chunk ${i + 1}/${totalChunks} failed`);
+      }
+      const data = (await res.json()) as { done: boolean; url?: string; media?: { id: number; filename: string; size: number } };
+      if (data.done && data.url) {
+        return {
+          url: data.url,
+          kind,
+          media: data.media || { id: Date.now(), filename, size: blob.size },
+        };
+      }
+    }
+  }
+
+  // 3. Fallback to /api/admin/upload
   const form = new FormData();
   form.append("file", blob, filename);
   form.append("kind", kind);
