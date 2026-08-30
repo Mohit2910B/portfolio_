@@ -24,11 +24,16 @@ Website: https://mohitbabariya.in
 6. Workflow:
    - Brief & references -> Footage review & selects -> Assembly & pacing cut -> Motion graphics & Color grading -> Sound design & mix -> Final delivery in all aspect ratios (9:16 vertical, 16:9 widescreen, 1:1, 4:5).
 
-=== CONVERSATION STYLE & PERSONALITY ===
-- Helpful, friendly, intelligent, and versatile: Answer any user inquiries, discussions, creative questions, or general queries naturally and warmly.
-- When relevant, you can share insights about Mohit's video editing, motion graphics, graphic design, and AI video workflows.
-- PRICING INQUIRIES: Explain: "Pricing is customized based on project scope, footage length, motion graphics complexity, and timeline. You can share your project details here or submit an enquiry on the website for a fast quote!"
-- TONE & LENGTH: Be professional, warm, engaging, and concise (keep responses to 2-4 sentences max so it reads like a crisp chat message).
+=== CRITICAL CONVERSATION GUARDRAILS (STRICT COMPLIANCE REQUIRED) ===
+- STRICT CREATIVE SCOPE ONLY: You MUST ONLY discuss video editing, motion graphics, graphic design, thumbnail design, AI video workflows, creative software, and collaborating with Mohit on projects.
+- REJECT ALL OFF-TOPIC QUERIES: If the user asks about anything unrelated (such as coding/programming questions, academic homework, math puzzles, politics, weather, recipes, medical, legal, gaming, personal questions, or other topics), you MUST politely refuse and guide them back immediately:
+  "I am Mohit Babariya's creative studio assistant focused specifically on Video Editing, Motion Graphics, Graphic Design, and AI Video production. How can I help you with your next video or design project?"
+- PRICING INQUIRIES: Do not make up rigid fixed numbers. Explain: "Pricing is customized based on project scope, footage length, motion graphics complexity, and timeline. You can share your project details here or submit an enquiry on the website for a fast quote!"
+- PROACTIVELY CAPTURE CLIENT REQUIREMENTS: Ask helpful questions:
+  1. What type of video or design project do you have in mind (Reels, YouTube video, Real Estate film, Commercial, Thumbnail, etc.)?
+  2. Do you have raw footage or assets ready, or do you need AI-generated visuals?
+  3. What is your target deadline or timeline?
+- TONE & LENGTH: Be professional, warm, creative, and concise (keep responses to 2-4 sentences max so it reads like a crisp chat message).
 `;
 
 function cleanKey(val?: string): string {
@@ -44,196 +49,67 @@ function cleanKey(val?: string): string {
   return v;
 }
 
-/** Fallback rule-based intelligent response for rich open conversation without API limits. */
+/** Fallback rule-based intelligent response if no external AI API key is configured. */
 function generateFallbackReply(message: string): string {
   const q = message.toLowerCase().trim();
 
-  // 1. "How are you" / "Kem cho" / "Kaisa hai" / "What's up"
-  if (
-    q.includes("how are you") ||
-    q.includes("how r u") ||
-    q.includes("kem cho") ||
-    q.includes("kaisa hai") ||
-    q.includes("kaise ho") ||
-    q.includes("su chale") ||
-    q.includes("kya haal") ||
-    q.includes("what's up") ||
-    q.includes("whats up") ||
-    q.includes("how's it going")
-  ) {
-    return "I'm doing great, thank you for asking! How are you doing today? What's on your mind?";
+  // 1. Off-topic filter
+  const offTopicTriggers = [
+    "python", "javascript", "react", "html", "code", "programming", "sql", "bug",
+    "recipe", "cook", "weather", "homework", "math", "capital of", "president",
+    "cricket match", "football", "politics", "who is", "tell me a joke"
+  ];
+  if (offTopicTriggers.some((t) => q.includes(t)) && !q.includes("video") && !q.includes("edit") && !q.includes("design")) {
+    return "I am Mohit Babariya's studio assistant focused specifically on Video Editing, Motion Graphics, Graphic Design, and AI Video workflows. How can I assist you with your creative project?";
   }
 
-  // 2. "Who are you" / "What is your name" / "Tame kon cho"
-  if (
-    q.includes("who are you") ||
-    q.includes("your name") ||
-    q.includes("who r u") ||
-    q.includes("tame kon") ||
-    q.includes("aap kaun") ||
-    q.includes("kon cho")
-  ) {
-    return "I'm Mohit Babariya's studio assistant! I'm here to chat freely with you on any topic, answer questions, share ideas, or help you connect with Mohit.";
+  // 2. Pricing / rates
+  if (q.includes("price") || q.includes("cost") || q.includes("rate") || q.includes("charge") || q.includes("budget") || q.includes("ketla") || q.includes("paisa") || q.includes("rupee") || q.includes("dollar")) {
+    return "Pricing is customized based on your project's scope, footage length, motion graphics complexity, and timeline. Could you tell me more about what kind of video or design you need? You can also submit the Enquiry form for an exact quote!";
   }
 
-  // 3. "What can you do" / "Help" / "Su kri sako"
-  if (
-    q.includes("what can you do") ||
-    q.includes("what do you do") ||
-    q.includes("su kari sako") ||
-    q.includes("kya kar sakte") ||
-    q.includes("features") ||
-    q === "help"
-  ) {
-    return "I can chat on any topic, brainstorm creative ideas, answer questions about video editing and design workflows, provide turnaround estimates, or take a direct project message for Mohit!";
+  // 3. Turnaround / Delivery timeline
+  if (q.includes("timeline") || q.includes("deadline") || q.includes("time") || q.includes("fast") || q.includes("urgent") || q.includes("ketlo time")) {
+    return "Mohit offers fast, reliable turnarounds—typically 24 to 48 hours for short-form reels and a few days for detailed long-form or motion graphics projects. When do you need the final delivery by?";
   }
 
-  // 4. Greetings (Hello / Hi / Hey / Namaste / Kem cho / Good morning)
-  if (
-    q.startsWith("hi") ||
-    q.startsWith("hello") ||
-    q.startsWith("hey") ||
-    q.startsWith("namaste") ||
-    q.startsWith("kem cho") ||
-    q.startsWith("good morning") ||
-    q.startsWith("good afternoon") ||
-    q.startsWith("good evening") ||
-    q === "yo" ||
-    q === "sup"
-  ) {
-    return "Hello! Great to connect with you. How's your day going? Feel free to ask me anything!";
+  // 4. Reels / Shorts / TikTok / Vertical video
+  if (q.includes("reel") || q.includes("short") || q.includes("tiktok") || q.includes("vertical") || q.includes("9:16") || q.includes("hook") || q.includes("caption")) {
+    return "Mohit specializes in high-retention 9:16 Reels and Shorts with punchy hooks, dynamic kinetic captions, sound effects, and clean color. Do you already have raw footage ready, or would you like assistance with storyboarding?";
   }
 
-  // 5. Thanks / Gratitude
-  if (
-    q.includes("thank") ||
-    q.includes("thanks") ||
-    q.includes("aabhar") ||
-    q.includes("dhanyawad") ||
-    q.includes("shukriya")
-  ) {
-    return "You're very welcome! Feel free to ask if there's anything else you'd like to discuss or explore.";
+  // 5. YouTube / Podcasts / Documentaries
+  if (q.includes("youtube") || q.includes("podcast") || q.includes("documentary") || q.includes("vlog") || q.includes("long form")) {
+    return "From talking-head podcasts to high-production YouTube documentary cuts, Mohit crafts compelling pacing, custom graphics, and balanced sound. How long is your raw footage?";
   }
 
-  // 6. Goodbyes
-  if (
-    q.includes("bye") ||
-    q.includes("see you") ||
-    q.includes("good night") ||
-    q.includes("goodnight") ||
-    q.includes("tata") ||
-    q.includes("take care")
-  ) {
-    return "Take care and have a wonderful time ahead! Reach out whenever you want to chat or discuss a project.";
+  // 6. Motion Graphics / Animation / VFX
+  if (q.includes("motion") || q.includes("animation") || q.includes("after effects") || q.includes("logo") || q.includes("lower third") || q.includes("vfx")) {
+    return "Mohit creates kinetic typography, brand motion systems, logo reveals, and custom 2D/3D visual effects in After Effects. What style of motion graphics are you looking for?";
   }
 
-  // 7. Location / Surat / Where
-  if (
-    q.includes("where") ||
-    q.includes("location") ||
-    q.includes("city") ||
-    q.includes("kya thi") ||
-    q.includes("kaha se") ||
-    q.includes("surat") ||
-    q.includes("gujarat") ||
-    q.includes("india") ||
-    q.includes("remote")
-  ) {
-    return "Mohit is based in Surat, Gujarat, India, and works with clients and creators remotely worldwide.";
+  // 7. Graphic Design / Thumbnails
+  if (q.includes("thumbnail") || q.includes("graphic") || q.includes("banner") || q.includes("poster") || q.includes("photoshop") || q.includes("brand")) {
+    return "High-CTR YouTube thumbnails and impactful brand graphic design are one of Mohit's core specialties. Do you have a specific visual reference or concept in mind?";
   }
 
-  // 8. Work / Portfolio / Samples
-  if (
-    q.includes("portfolio") ||
-    q.includes("sample") ||
-    q.includes("work") ||
-    q.includes("example") ||
-    q.includes("show me") ||
-    q.includes("previous project")
-  ) {
-    return "You can check out Mohit's featured edits, reels, and motion designs right in the Work section on this site. What style of project are you interested in?";
+  // 8. AI Video / Generative
+  if (q.includes("ai") || q.includes("midjourney") || q.includes("runway") || q.includes("sora") || q.includes("pika") || q.includes("voice")) {
+    return "Mohit combines cutting-edge AI tools (Runway, Midjourney, ElevenLabs) with professional editing pipelines for hyper-realistic visuals and hybrid edits. What kind of AI video concept are you envisioning?";
   }
 
-  // 9. Tools / Software / Premiere / After Effects / DaVinci
-  if (
-    q.includes("software") ||
-    q.includes("tools") ||
-    q.includes("premiere") ||
-    q.includes("after effects") ||
-    q.includes("davinci") ||
-    q.includes("photoshop") ||
-    q.includes("illustrator") ||
-    q.includes("specs")
-  ) {
-    return "Mohit works with industry-standard creative tools including Adobe Premiere Pro, After Effects, DaVinci Resolve Studio, and Photoshop for color grading, motion graphics, and post-production.";
+  // 9. Real estate / Commercial
+  if (q.includes("real estate") || q.includes("property") || q.includes("commercial") || q.includes("corporate") || q.includes("promo")) {
+    return "Mohit produces luxury cinematic real estate films and commercial brand promo videos with matched color grading and smooth rhythm. Where is the project based, and when are you filming?";
   }
 
-  // 10. Pricing / Rates / Budget / Cost
-  if (
-    q.includes("price") ||
-    q.includes("cost") ||
-    q.includes("rate") ||
-    q.includes("charge") ||
-    q.includes("budget") ||
-    q.includes("ketla") ||
-    q.includes("paisa") ||
-    q.includes("rupee") ||
-    q.includes("dollar") ||
-    q.includes("fees")
-  ) {
-    return "Project rates depend on the footage length, editing complexity, and delivery deadline. Share your requirements here or submit an enquiry on the site for a quick custom quote!";
+  // 10. Greetings
+  if (q.startsWith("hi") || q.startsWith("hello") || q.startsWith("hey") || q.startsWith("kem cho") || q.startsWith("namaste")) {
+    return "Hello! I am Mohit Babariya's creative studio assistant. How can I help you with your video editing, motion graphics, or graphic design project today?";
   }
 
-  // 11. Timeline / Turnaround / Urgent
-  if (
-    q.includes("timeline") ||
-    q.includes("deadline") ||
-    q.includes("time") ||
-    q.includes("fast") ||
-    q.includes("urgent") ||
-    q.includes("ketlo time")
-  ) {
-    return "Mohit offers quick turnaround times—typically 24 to 48 hours for short-form content and a few days for detailed long-form productions. When do you need the final cut by?";
-  }
-
-  // 12. Reels / Shorts / TikTok / 9:16
-  if (
-    q.includes("reel") ||
-    q.includes("short") ||
-    q.includes("tiktok") ||
-    q.includes("vertical") ||
-    q.includes("9:16") ||
-    q.includes("hook") ||
-    q.includes("caption")
-  ) {
-    return "Mohit specializes in high-retention 9:16 Reels and Shorts with punchy visual hooks, dynamic kinetic captions, sound effects, and clean color grading.";
-  }
-
-  // 13. YouTube / Long-form / Podcasts
-  if (
-    q.includes("youtube") ||
-    q.includes("podcast") ||
-    q.includes("documentary") ||
-    q.includes("vlog") ||
-    q.includes("long form")
-  ) {
-    return "From talking-head podcasts to documentary-style YouTube cuts, Mohit crafts compelling pacing, sound mixing, and custom visuals.";
-  }
-
-  // 14. AI Video / Midjourney / Runway
-  if (
-    q.includes("ai") ||
-    q.includes("midjourney") ||
-    q.includes("runway") ||
-    q.includes("sora") ||
-    q.includes("pika") ||
-    q.includes("voice")
-  ) {
-    return "Mohit combines modern generative AI tools (Runway, Midjourney, ElevenLabs) with professional editing pipelines for high-end creative results.";
-  }
-
-  // 15. General Open Response
-  return `That sounds interesting! I'm here and ready to chat or help with anything you need. Tell me more about what you're thinking!`;
+  // General default helpful response
+  return "Thanks for reaching out! Mohit works on video editing, motion graphics, graphic design, and AI video production. Could you share a few details about your project scope, target audience, or timeline?";
 }
 
 export async function runChatAssistant(conversationId: number, latest: string) {
@@ -254,63 +130,37 @@ export async function runChatAssistant(conversationId: number, latest: string) {
 
     let generatedReply = "";
 
-    const defaultKey = Buffer.from("QVEuQWI4Uk42TDFmSEtmTDBfZ2VTWU9NRHFvVEpreHJ2LTVmWXdRM1hsQW0xRXAxcWpVNkE=", "base64").toString("utf-8");
-    const geminiKey = cleanKey(process.env.GEMINI_API_KEY) || defaultKey;
+    const geminiKey = cleanKey(process.env.GEMINI_API_KEY);
     const openaiKey = cleanKey(process.env.OPENAI_API_KEY);
     const groqKey = cleanKey(process.env.GROQ_API_KEY);
 
-    // 1. Try Gemini API (gemini-3.6-flash / gemini-3.5-flash)
+    // 1. Try Gemini API
     if (geminiKey) {
-      const models = ["gemini-3.6-flash", "gemini-3.5-flash"];
-      const conversationContents = [
-        ...history.map((m) => ({
-          role: m.senderType === "customer" ? "user" : "model",
-          parts: [{ text: m.message }],
-        })),
-        {
-          role: "user",
-          parts: [{ text: latest }],
-        },
-      ];
-
-      for (const model of models) {
-        if (generatedReply) break;
-        try {
-          const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
-          const res = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              systemInstruction: {
-                parts: [
-                  {
-                    text: `${SYSTEM_PROMPT}\n\nAlways reply directly, warmly, and helpfully to the user in their language (e.g. Gujarati, Hindi, or English). Keep your answer conversational, polite, and concise (2-4 sentences max). Never output scratchpad, internal checks, or meta-notes.`,
-                  },
-                ],
-              },
-              contents: conversationContents,
-              generationConfig: {
-                maxOutputTokens: 1000,
-                temperature: 0.7,
-              },
-            }),
-          });
-          if (res.ok) {
-            const data = (await res.json()) as {
-              candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-            };
-            const reply = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-            if (reply) {
-              generatedReply = reply;
-              break;
-            }
-          } else {
-            const errText = await res.text();
-            console.warn(`[ai] Gemini ${model} response not ok (${res.status}):`, errText.slice(0, 150));
-          }
-        } catch (err) {
-          console.warn(`[ai] Gemini ${model} attempt error:`, err);
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+        const contents = [
+          {
+            role: "user",
+            parts: [{ text: `${SYSTEM_PROMPT}\n\nHere is the ongoing conversation history:\n${history.map((m) => `${m.senderType === "customer" ? "Client" : "Assistant"}: ${m.message}`).join("\n")}\n\nClient latest message: ${latest}\n\nRespond as Mohit's studio assistant:` }],
+          },
+        ];
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents,
+            generationConfig: { maxOutputTokens: 300, temperature: 0.7 },
+          }),
+        });
+        if (res.ok) {
+          const data = (await res.json()) as {
+            candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+          };
+          const reply = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+          if (reply) generatedReply = reply;
         }
+      } catch (err) {
+        console.warn("[ai] Gemini provider attempt error:", err);
       }
     }
 

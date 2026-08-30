@@ -17,39 +17,36 @@ export default function SoftwareTools({ data }: { data: SiteData }) {
         <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {data.softwareTools.map((tool, index) => (
             <Reveal key={tool.id} delay={index * 35}>
-              <article className="neo-tactile-card group h-full rounded-3xl p-5 sm:p-6">
+              <article className="glass group h-full rounded-3xl p-5 transition-transform duration-500 hover:-translate-y-1 sm:p-6">
                 <div className="flex items-start justify-between gap-4">
-                  <span className="neo-tactile-btn grid h-12 w-12 shrink-0 place-items-center rounded-2xl text-ink transition-transform duration-300 group-hover:scale-105">
+                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-ink/10 bg-white/55 text-ink shadow-[0_18px_40px_-30px_rgba(11,11,12,0.5)] transition-transform duration-500 group-hover:scale-105">
                     <ToolIcon icon={tool.icon} />
                   </span>
-                  <span className="mono text-[0.58rem] font-bold text-ink/35">
+                  <span className="mono text-[0.58rem] text-ink/25">
                     {String(index + 1).padStart(2, "0")}
                   </span>
                 </div>
 
                 <div className="mt-5">
-                  <p className="mono text-[0.58rem] font-semibold uppercase tracking-[0.2em] text-ink/45">
+                  <p className="mono text-[0.58rem] uppercase tracking-[0.2em] text-ink/40">
                     {tool.category || "Creative tool"}
                   </p>
-                  <h3 className="mt-1.5 text-base font-bold tracking-tight text-ink">
+                  <h3 className="mt-2 text-base font-semibold tracking-tight text-ink">
                     {tool.name}
                   </h3>
                 </div>
 
                 {typeof tool.proficiency === "number" && (
                   <div className="mt-6">
-                    <div className="neo-tactile-groove h-2 w-full overflow-hidden p-0.5">
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-ink/10">
                       <span
-                        className="block h-full rounded-full bg-[var(--accent)] transition-all duration-700 shadow-sm"
+                        className="block h-full rounded-full bg-ink transition-all duration-700 group-hover:bg-[var(--accent)]"
                         style={{ width: `${Math.min(Math.max(tool.proficiency, 0), 100)}%` }}
                       />
                     </div>
-                    <div className="mt-2 flex items-center justify-between">
-                      <span className="mono text-[0.6rem] font-medium text-ink/50">
-                        {tool.proficiency}% proficiency
-                      </span>
-                      <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
-                    </div>
+                    <p className="mono mt-2 text-[0.6rem] text-ink/45">
+                      {tool.proficiency}% proficiency
+                    </p>
                   </div>
                 )}
               </article>

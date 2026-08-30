@@ -27,6 +27,7 @@ export default async function HomePage() {
   };
   const homepage = data?.homepage || HOME_FALLBACK;
 
+
   const themeStyle = {
     "--accent": theme.accent || "#e0147f",
     "--glass-alpha": String((theme.glassOpacity ?? 45) / 100),
@@ -55,18 +56,8 @@ export default async function HomePage() {
     }
   };
 
-  const isDarkClay = theme.preset === "dark-clay" || theme.preset === "3d-dark";
-  const is3dEmboss = theme.preset === "3d-emboss";
-  const wrapperClass = [
-    isDarkClay ? "theme-dark-clay" : is3dEmboss ? "theme-3d-emboss" : "",
-    theme.grain ? "grain" : "",
-    "relative min-h-screen",
-  ]
-    .filter(Boolean)
-    .join(" ");
-
   return (
-    <div style={themeStyle} className={wrapperClass}>
+    <div style={themeStyle} className={theme.grain ? "grain relative" : "relative"}>
       <SiteNav name={homepage.ownerName} availability={homepage.availabilityLabel} />
       <main>
         {order.map((key, index) => (

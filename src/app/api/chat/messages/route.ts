@@ -82,11 +82,17 @@ export async function POST(request: Request) {
       </div>
     `;
 
-    // Asynchronously dispatch background tasks (AI reply + admin notification) so HTTP response returns in < 30ms
-    Promise.allSettled([
-      sendAdminNotification(chatSubject, chatHtml),
-      runChatAssistant(conversation.id, message),
-    ]).catch((err) => console.warn("[chat] Background worker error:", err));
+    try {
+      await sendAdminNotification(chatSubject, chatHtml);
+    } catch (notifyErr) {
+      console.warn("[chat] Error dispatching admin chat notification email:", notifyErr);
+    }
+
+    try {
+      await runChatAssistant(conversation.id, message);
+    } catch (aiErr) {
+      console.warn("[chat] AI assistant error:", aiErr);
+    }
 
     return ok({ message: inserted[0] });
   });

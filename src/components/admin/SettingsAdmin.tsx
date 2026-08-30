@@ -285,21 +285,7 @@ function ContactForm({
   );
 }
 
-type ThemeSettings = {
-  preset?: string;
-  accent: string;
-  glassOpacity: number;
-  glassBlur: number;
-  grain: boolean;
-};
-
-const DEFAULT_THEME: ThemeSettings = {
-  preset: "3d-neo",
-  accent: "#e0147f",
-  glassOpacity: 45,
-  glassBlur: 20,
-  grain: true,
-};
+type ThemeSettings = { accent: string; glassOpacity: number; glassBlur: number; grain: boolean };
 
 export function ThemeAdmin({ onChanged }: { onChanged: () => void }) {
   const { settings, error, notice, saving, save } = useSettings<ThemeSettings>("theme");
@@ -308,7 +294,7 @@ export function ThemeAdmin({ onChanged }: { onChanged: () => void }) {
     <div>
       <SectionTitle
         title="Theme Studio"
-        subtitle="Customise your website's 3D UI depth, glassmorphism transparency, and blur strength."
+        subtitle="Accent colour and glass treatment for the whole site. The design system stays monochrome."
       />
       {error && <Notice tone="error">{error}</Notice>}
       {notice && (
@@ -337,139 +323,50 @@ function ThemeForm({
   saving: boolean;
   onSave: (draft: ThemeSettings) => void;
 }) {
-  const [draft, setDraft] = useState<ThemeSettings>({
-    preset: initial.preset || DEFAULT_THEME.preset,
-    accent: initial.accent || DEFAULT_THEME.accent,
-    glassOpacity: initial.glassOpacity ?? DEFAULT_THEME.glassOpacity,
-    glassBlur: initial.glassBlur ?? DEFAULT_THEME.glassBlur,
-    grain: initial.grain ?? DEFAULT_THEME.grain,
-  });
-
-  const is3dActive = draft.preset === "3d-neo" || draft.preset === "vision-clay" || !draft.preset;
-
+  const [draft, setDraft] = useState<ThemeSettings>(initial);
   return (
-    <div className="mt-5 space-y-6">
-      {/* Theme Style Selection: Dark Clay vs Light Clay vs Glass */}
-      <Card className="p-6">
-        <h3 className="text-sm font-bold text-ink">3D Theme Style (Apple Clay & Tactile UI)</h3>
-        <p className="text-xs text-ink/55 mt-0.5 max-w-xl leading-relaxed">
-          Select your desired theme mode. Dark Apple Clay applies deep dark tactile depth with crisp white text.
-        </p>
-
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <button
-            type="button"
-            onClick={() => setDraft({ ...draft, preset: "dark-clay" })}
-            className={`flex flex-col text-left rounded-2xl p-4 transition-all duration-300 cursor-pointer ${
-              draft.preset === "dark-clay"
-                ? "bg-[#0b0d13] text-white ring-2 ring-emerald-400 shadow-xl scale-[1.02]"
-                : "border border-ink/15 bg-[#12151c] text-white/70 hover:text-white"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-white">🌙 Dark Apple Clay</span>
-              {draft.preset === "dark-clay" && (
-                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              )}
-            </div>
-            <p className="mt-2 text-[0.65rem] text-white/60 leading-relaxed">
-              Deep dark tactile clay background, embossed 3D cards & glowing accents.
-            </p>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setDraft({ ...draft, preset: "3d-emboss" })}
-            className={`flex flex-col text-left rounded-2xl p-4 transition-all duration-300 cursor-pointer ${
-              draft.preset === "3d-emboss"
-                ? "bg-[#eef2f7] text-[#111827] ring-2 ring-blue-500 shadow-xl scale-[1.02]"
-                : "border border-ink/15 bg-[#eef2f7]/70 text-ink/75 hover:text-ink"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[#111827]">💎 3D Emboss Clay</span>
-              {draft.preset === "3d-emboss" && (
-                <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
-              )}
-            </div>
-            <p className="mt-2 text-[0.65rem] text-ink/60 leading-relaxed">
-              Dual-shadow concave & convex grooves, embossed pill buttons & depth.
-            </p>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setDraft({ ...draft, preset: "3d-neo" })}
-            className={`flex flex-col text-left rounded-2xl p-4 transition-all duration-300 cursor-pointer ${
-              draft.preset === "3d-neo" || (!draft.preset && draft.preset !== "dark-clay" && draft.preset !== "3d-emboss")
-                ? "bg-white text-ink ring-2 ring-ink shadow-xl scale-[1.02]"
-                : "border border-ink/15 bg-white/60 text-ink/70 hover:text-ink"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-ink">☀️ Light Apple Clay</span>
-              {(draft.preset === "3d-neo" || !draft.preset) && (
-                <span className="h-2 w-2 rounded-full bg-ink" />
-              )}
-            </div>
-            <p className="mt-2 text-[0.65rem] text-ink/60 leading-relaxed">
-              Porcelain clay background, soft dual-shadow 3D embossed cards.
-            </p>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setDraft({ ...draft, preset: "glass-flat" })}
-            className={`flex flex-col text-left rounded-2xl p-4 transition-all duration-300 cursor-pointer ${
-              draft.preset === "glass-flat"
-                ? "bg-ink text-white ring-2 ring-ink shadow-xl scale-[1.02]"
-                : "border border-ink/15 bg-white/40 text-ink/70 hover:text-ink"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold">🖤 Signature Glass</span>
-              {draft.preset === "glass-flat" && (
-                <span className="h-2 w-2 rounded-full bg-[var(--accent)]" />
-              )}
-            </div>
-            <p className="mt-2 text-[0.65rem] opacity-60 leading-relaxed">
-              Classic high-contrast editorial monochrome with frosted glass.
-            </p>
-          </button>
-        </div>
-      </Card>
-
-      {/* Glass Transparency & Blur */}
-      <Card className="grid gap-6 p-6 sm:grid-cols-2">
-        <Field
-          label={`Glass Opacity — ${draft.glassOpacity}%`}
-          hint="Controls the background opacity of frosted cards across the site (0% - 100%)."
-        >
+    <div>
+      <Card className="mt-5 grid gap-5 p-6 sm:grid-cols-2">
+        <Field label="Accent colour" hint="Used sparingly — active nav, highlights, indicators.">
+          <div className="flex items-center gap-3">
+            <input
+              type="color"
+              value={draft.accent}
+              onChange={(event) => setDraft({ ...draft, accent: event.target.value })}
+              className="h-11 w-16 cursor-pointer rounded-xl border border-ink/12 bg-transparent"
+              aria-label="Accent colour"
+            />
+            <TextInput value={draft.accent} onChange={(value) => setDraft({ ...draft, accent: value })} />
+          </div>
+        </Field>
+        <Field label={`Glass opacity — ${draft.glassOpacity}%`}>
           <input
             type="range"
             min={0}
             max={100}
             value={draft.glassOpacity}
             onChange={(event) => setDraft({ ...draft, glassOpacity: Number(event.target.value) })}
-            className="w-full accent-ink cursor-pointer"
+            className="w-full accent-[var(--accent)]"
           />
         </Field>
-
-        <Field
-          label={`Glass Blur Filter — ${draft.glassBlur}px`}
-          hint="Controls the backdrop blur filter behind glass panels (0px - 40px)."
-        >
+        <Field label={`Glass blur — ${draft.glassBlur}px`}>
           <input
             type="range"
             min={0}
             max={40}
             value={draft.glassBlur}
             onChange={(event) => setDraft({ ...draft, glassBlur: Number(event.target.value) })}
-            className="w-full accent-ink cursor-pointer"
+            className="w-full accent-[var(--accent)]"
           />
         </Field>
+        <div className="flex items-end">
+          <Toggle
+            checked={draft.grain}
+            onChange={(value) => setDraft({ ...draft, grain: value })}
+            label="Film grain overlay"
+          />
+        </div>
       </Card>
-
       <SaveRow saving={saving} onClick={() => onSave(draft)} />
     </div>
   );

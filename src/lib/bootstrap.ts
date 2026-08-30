@@ -319,7 +319,6 @@ const DDL_STATEMENTS = [
   )`,
   `ALTER TABLE notification_settings ADD COLUMN IF NOT EXISTS admin_status TEXT NOT NULL DEFAULT 'offline'`,
   `ALTER TABLE notification_settings ADD COLUMN IF NOT EXISTS ai_auto_reply BOOLEAN NOT NULL DEFAULT true`,
-  `ALTER TABLE theme_settings ADD COLUMN IF NOT EXISTS preset TEXT NOT NULL DEFAULT 'glass-luxe'`,
 ];
 
 async function ensureTables(): Promise<void> {

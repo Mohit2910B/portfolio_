@@ -48,20 +48,20 @@ export default function SiteNav({ name, availability }: { name: string; availabi
     <header className="fixed inset-x-0 top-0 z-50 px-4 pt-4 sm:px-6">
       <nav
         aria-label="Primary"
-        className={`mx-auto flex max-w-[1400px] items-center justify-between gap-4 rounded-full px-4 py-2.5 transition-all duration-500 sm:px-6 ${
-          scrolled ? "glass-vision shadow-lg" : "border border-transparent bg-white/30 backdrop-blur-md"
+        className={`mx-auto flex max-w-[1400px] items-center justify-between gap-4 rounded-full px-4 py-3 transition-all duration-500 sm:px-6 ${
+          scrolled ? "glass" : "border border-transparent"
         }`}
       >
         <button
           type="button"
           onClick={() => go("hero")}
-          className="flex items-center gap-3 text-left group"
+          className="flex items-center gap-3 text-left"
           aria-label={`${name} — back to top`}
         >
-          <span className="grid h-9 w-9 place-items-center rounded-full bg-ink text-[0.7rem] font-bold tracking-tight text-white shadow-sm transition-transform duration-300 group-hover:scale-105">
+          <span className="grid h-9 w-9 place-items-center rounded-full bg-ink text-[0.7rem] font-bold tracking-tight text-white">
             MB
           </span>
-          <span className="hidden text-[0.7rem] font-bold uppercase tracking-[0.22em] text-ink sm:block">
+          <span className="hidden text-[0.7rem] font-semibold uppercase tracking-[0.22em] sm:block">
             {name}
           </span>
         </button>
@@ -75,13 +75,13 @@ export default function SiteNav({ name, availability }: { name: string; availabi
                   type="button"
                   onClick={() => go(link.id)}
                   aria-current={isActive ? "true" : undefined}
-                  className={`relative rounded-full px-4 py-2 text-[0.7rem] font-bold uppercase tracking-[0.16em] transition-all duration-300 ${
-                    isActive ? "text-[var(--accent)] bg-black/5" : "text-ink/65 hover:text-ink hover:bg-black/5"
+                  className={`relative rounded-full px-4 py-2 text-[0.7rem] font-semibold uppercase tracking-[0.16em] transition-colors ${
+                    isActive ? "text-[var(--accent)]" : "text-ink/60 hover:text-ink"
                   }`}
                 >
                   {link.label}
                   <span
-                    className={`absolute inset-x-4 -bottom-0.5 h-0.5 rounded-full bg-[var(--accent)] transition-transform duration-300 ${
+                    className={`absolute inset-x-4 -bottom-0.5 h-px bg-[var(--accent)] transition-transform duration-300 ${
                       isActive ? "scale-x-100" : "scale-x-0"
                     }`}
                   />
@@ -92,14 +92,14 @@ export default function SiteNav({ name, availability }: { name: string; availabi
         </ul>
 
         <div className="flex items-center gap-2">
-          <span className="hidden items-center gap-2 rounded-full border border-ink/10 bg-white/40 px-3.5 py-1.5 text-[0.62rem] font-bold uppercase tracking-[0.16em] text-ink/75 backdrop-blur-sm md:flex shadow-sm">
+          <span className="hidden items-center gap-2 rounded-full border border-ink/10 px-3 py-2 text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-ink/70 md:flex">
             <span className="pulse-dot h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
             {availability}
           </span>
           <button
             type="button"
             onClick={() => go("contact")}
-            className="btn btn-dark btn-xs hidden sm:inline-flex shadow-md hover:scale-105 active:scale-95"
+            className="btn btn-dark btn-xs hidden sm:inline-flex"
           >
             Start project
           </button>
@@ -108,7 +108,7 @@ export default function SiteNav({ name, availability }: { name: string; availabi
             onClick={() => setOpen((v) => !v)}
             aria-expanded={open}
             aria-label="Toggle navigation menu"
-            className="grid h-9 w-9 place-items-center rounded-full border border-ink/15 bg-white/50 backdrop-blur-md lg:hidden"
+            className="grid h-9 w-9 place-items-center rounded-full border border-ink/15 lg:hidden"
           >
             <span className="relative block h-2.5 w-4">
               <span
@@ -127,7 +127,7 @@ export default function SiteNav({ name, availability }: { name: string; availabi
       </nav>
 
       {open && (
-        <div className="glass-vision fade-in mx-auto mt-2 max-w-[1400px] overflow-hidden rounded-3xl p-3 shadow-xl lg:hidden">
+        <div className="glass fade-in mx-auto mt-2 max-w-[1400px] overflow-hidden rounded-3xl p-3 lg:hidden">
           <ul className="grid gap-1">
             {LINKS.map((link) => (
               <li key={link.id}>

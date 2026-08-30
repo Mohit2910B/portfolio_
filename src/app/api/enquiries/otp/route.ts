@@ -58,11 +58,12 @@ export async function POST(request: Request) {
 
     const result = await sendEnquiryOtpEmail(email, otp);
     if (!result.ok) {
-      console.warn(`[otp] Resend delivery error for ${email}: ${result.error}`);
-      return badRequest(
-        `Could not send verification email (${result.error}). Please verify your Resend API key.`,
-        { email: `Email delivery failed: ${result.error}` },
-      );
+      const err = result.error || "";
+      console.error(`[otp] Failed to send OTP to ${email}:`, err);
+      if (!process.env.RESEND_API_KEY) {
+        return badRequest("Email service is temporarily unavailable. Please try again later.");
+      }
+      return badRequest("Unable to send OTP right now. Please check your email address and try again.");
     }
 
     const jar = await cookies();
@@ -204,7 +205,7 @@ export async function PUT(request: Request) {
       maxAge: 60 * 30,
     });
 
-    return ok({ verified: true, verifiedToken, message: "Email verified successfully." });
+    return ok({ verified: true, message: "Email verified successfully." });
   });
 }
 

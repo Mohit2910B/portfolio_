@@ -62,8 +62,7 @@ export async function sendEmail(
   subject: string,
   html: string,
 ): Promise<SendEmailResult> {
-  const defaultKey = Buffer.from("cmVfOE41QzU3UjhfRk5mR1cxNXEycWVXVmtHR21iQkRYeVlG", "base64").toString("utf-8");
-  const key = cleanEnvValue(process.env.RESEND_API_KEY) || defaultKey;
+  const key = cleanEnvValue(process.env.RESEND_API_KEY);
   if (!key) {
     console.error(
       "[notifications] sendEmail failed: RESEND_API_KEY is not configured in environment variables.",
@@ -93,7 +92,7 @@ export async function sendEmail(
   }
 
   try {
-    let response = await fetch("https://api.resend.com/emails", {
+    const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${key}`,
@@ -107,37 +106,12 @@ export async function sendEmail(
       }),
     });
 
-    let text = await response.text();
+    const text = await response.text();
     let data: Record<string, unknown> | null = null;
     try {
       data = JSON.parse(text);
     } catch {
       data = null;
-    }
-
-    // If custom domain is not verified yet in Resend, automatically fallback to onboarding@resend.dev
-    if (!response.ok && (text.includes("domain") || text.includes("not verified") || response.status === 403)) {
-      console.warn(`[notifications] Retrying with onboarding@resend.dev fallback for ${recipient}...`);
-      const fallbackFrom = "Mohit Babariya <onboarding@resend.dev>";
-      response = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${key}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: fallbackFrom,
-          to: [recipient],
-          subject,
-          html,
-        }),
-      });
-      text = await response.text();
-      try {
-        data = JSON.parse(text);
-      } catch {
-        data = null;
-      }
     }
 
     if (!response.ok) {

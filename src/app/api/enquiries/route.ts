@@ -91,44 +91,46 @@ export async function POST(request: Request) {
       return badRequest("Please fix the highlighted fields.", errors);
     }
 
-    // Enforce Email OTP verification
     const jar = await cookies();
-    const verifiedSession =
-      jar.get("enquiry_otp_verified_token")?.value ||
-      jar.get("enquiry_otp_verified")?.value;
-    const isSessionValid = Boolean(
-      verifiedSession && verifyVerifiedSession(verifiedSession, values.email),
-    );
+    const verifiedValue = jar.get("enquiry_otp_verified")?.value || "";
+    const verifiedToken = jar.get("enquiry_otp_verified_token")?.value || "";
 
-    let isDbValid = false;
-    if (!isSessionValid) {
-      try {
-        await ensureDatabase();
-        const verifiedChallenge = (
-          await db
-            .select()
-            .from(emailOtpChallenges)
-            .where(
-              and(
-                eq(emailOtpChallenges.email, values.email),
-                sql`${emailOtpChallenges.verifiedAt} IS NOT NULL`,
-                sql`${emailOtpChallenges.verifiedAt} > NOW() - INTERVAL '30 minutes'`,
-              ),
-            )
-            .orderBy(desc(emailOtpChallenges.verifiedAt))
-            .limit(1)
-        )[0];
-        if (verifiedChallenge) {
-          isDbValid = true;
-        }
-      } catch {}
+    let isVerified = false;
+
+    // Check signed cryptographic session token
+    if (
+      verifyVerifiedSession(verifiedValue, values.email) ||
+      verifyVerifiedSession(verifiedToken, values.email)
+    ) {
+      isVerified = true;
     }
 
-    if (!isSessionValid && !isDbValid) {
-      return badRequest(
-        "Please verify your email with the 6-digit OTP code before submitting.",
-        { otp: "Please verify your email with the 6-digit OTP code first." },
-      );
+    // Also check database challenge record if numeric ID
+    const verifiedId = Number(verifiedValue);
+    if (!isVerified && Number.isInteger(verifiedId) && verifiedId > 0) {
+      try {
+        await ensureDatabase();
+        const verified = await db
+          .select({
+            id: emailOtpChallenges.id,
+            email: emailOtpChallenges.email,
+            verifiedAt: emailOtpChallenges.verifiedAt,
+          })
+          .from(emailOtpChallenges)
+          .where(eq(emailOtpChallenges.id, verifiedId))
+          .limit(1);
+        if (verified[0]?.verifiedAt && verified[0].email === values.email) {
+          isVerified = true;
+        }
+      } catch {
+        // DB check skipped
+      }
+    }
+
+    if (!isVerified) {
+      return badRequest("Please verify your email address with OTP first.", {
+        email: "Email OTP verification is required.",
+      });
     }
 
     let insertedRecord = null;
@@ -189,20 +191,15 @@ export async function POST(request: Request) {
       </div>
     `;
 
-    // Clear OTP verification session cookies so every new submission requires fresh verification
-    jar.delete("enquiry_otp_verified");
-    jar.delete("enquiry_otp_verified_token");
-    jar.delete("enquiry_otp_challenge");
-    jar.delete("enquiry_otp_challenge_id");
-
-    // Asynchronously dispatch admin notification email so client response returns in < 30ms without loading delay
-    Promise.resolve()
-      .then(() => sendAdminNotification(emailSubject, emailHtml))
-      .catch((err) => console.warn("[enquiries] Background admin notification error:", err));
+    try {
+      await sendAdminNotification(emailSubject, emailHtml);
+    } catch (notifyErr) {
+      console.error("[enquiries] Error dispatching admin notification email:", notifyErr);
+    }
 
     return created({
       enquiry: insertedRecord || { id: Date.now(), ...values },
-      message: "Enquiry received. Mohit will reply to your email shortly.",
+      message: "Enquiry received. I will reply shortly.",
     });
   });
 }

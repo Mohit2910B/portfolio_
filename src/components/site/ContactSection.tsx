@@ -83,7 +83,7 @@ export default function ContactSection({ data }: { data: SiteData }) {
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState("");
   const [otpBusy, setOtpBusy] = useState(false);
-  const [countdown, setCountdown] = useState(0);
+  const [otpVerified, setOtpVerified] = useState(false);
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -137,119 +137,39 @@ export default function ContactSection({ data }: { data: SiteData }) {
     return Object.keys(next).length === 0;
   };
 
-  const startCountdown = () => {
-    setCountdown(60);
-    const interval = window.setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          window.clearInterval(interval);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  };
-
-  /** Step 1: Send 6-Digit OTP to Client's Email */
-  const requestOtp = async (event: React.FormEvent) => {
+  const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setMessage("");
-    if (!validate()) {
-      setMessage("Please fix the highlighted fields.");
-      return;
-    }
+    if (!validate()) { setMessage("Please fix the highlighted fields."); return; }
     const countryCode = (form.countryCode || "+91").split(" ")[0] || "+91";
-
-    setOtpBusy(true);
-    try {
-      const response = await fetch("/api/enquiries/otp", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          email: form.email,
-          countryCode,
-          phoneNumber: form.phoneNumber,
-        }),
-      });
-      const payload = (await response.json()) as {
-        error?: string;
-        details?: Record<string, string>;
-        message?: string;
-      };
-      if (!response.ok) {
-        setErrors(payload.details ?? {});
-        setMessage(payload.error ?? "Failed to send OTP. Please check your email.");
-        setOtpBusy(false);
-        return;
-      }
-      setOtpSent(true);
-      setMessage(payload.message ?? `6-digit verification code sent to ${form.email}`);
-      startCountdown();
-    } catch {
-      setMessage("Network error. Could not send OTP.");
-    } finally {
-      setOtpBusy(false);
-    }
-  };
-
-  /** Step 2: Verify 6-Digit OTP and submit the full project brief */
-  const verifyAndSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setMessage("");
-    if (!/^\d{6}$/.test(otp.trim())) {
-      setMessage("Please enter the 6-digit OTP code.");
+    if (!otpSent) {
+      setOtpBusy(true);
+      try {
+        const response = await fetch("/api/enquiries/otp", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: form.email, countryCode, phoneNumber: form.phoneNumber }) });
+        const payload = await response.json() as { error?: string; message?: string; details?: Record<string,string> };
+        if (!response.ok) { setErrors(payload.details ?? {}); setMessage(payload.error ?? "Could not send OTP."); return; }
+        setOtpSent(true); setMessage(payload.message ?? "OTP sent to your email.");
+      } catch { setMessage("Network error. Could not send OTP."); } finally { setOtpBusy(false); }
       return;
     }
-
-    setOtpBusy(true);
-    try {
-      const verifyRes = await fetch("/api/enquiries/otp", {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email: form.email, otp: otp.trim() }),
-      });
-      const verifyPayload = (await verifyRes.json()) as {
-        error?: string;
-        message?: string;
-      };
-      if (!verifyRes.ok) {
-        setMessage(verifyPayload.error ?? "Incorrect OTP code. Please check and try again.");
-        setOtpBusy(false);
-        return;
-      }
-
-      // OTP Verified successfully! Now submit the enquiry
-      setStatus("sending");
-      const countryCode = (form.countryCode || "+91").split(" ")[0] || "+91";
-      const submitRes = await fetch("/api/enquiries", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...form, countryCode }),
-      });
-      const submitPayload = (await submitRes.json()) as {
-        error?: string;
-        details?: Record<string, string>;
-        message?: string;
-      };
-      if (!submitRes.ok) {
-        setErrors(submitPayload.details ?? {});
-        setMessage(submitPayload.error ?? "Submission failed. Please try again.");
-        setStatus("idle");
-        setOtpBusy(false);
-        return;
-      }
-
-      setStatus("sent");
-      setMessage(submitPayload.message ?? "Enquiry received! Mohit will review and respond shortly.");
-      setForm(EMPTY);
-      setOtp("");
-      setOtpSent(false);
-    } catch {
-      setMessage("Network error during submission. Please try again.");
-    } finally {
-      setOtpBusy(false);
-      setStatus((current) => (current === "sending" ? "idle" : current));
+    if (!otpVerified) {
+      if (!/^\d{6}$/.test(otp)) { setMessage("Enter the 6-digit OTP."); return; }
+      setOtpBusy(true);
+      try {
+        const response = await fetch("/api/enquiries/otp", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: form.email, otp }) });
+        const payload = await response.json() as { error?: string };
+        if (!response.ok) { setMessage(payload.error ?? "OTP verification failed."); return; }
+        setOtpVerified(true); setMessage("Email verified. Sending your enquiry…");
+      } catch { setMessage("Network error. OTP verification failed."); return; } finally { setOtpBusy(false); }
     }
+    setStatus("sending");
+    try {
+      const response = await fetch("/api/enquiries", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...form, countryCode }) });
+      const payload = await response.json() as { error?: string; details?: Record<string, string>; message?: string };
+      if (!response.ok) { setErrors(payload.details ?? {}); setMessage(payload.error ?? "Submission failed. Please try again."); setStatus("idle"); return; }
+      setStatus("sent"); setMessage(payload.message ?? "Enquiry received."); setForm(EMPTY); setOtp(""); setOtpSent(false); setOtpVerified(false);
+    } catch { setStatus("idle"); setMessage("Network error. Please check your connection and try again."); }
+    finally { setStatus((current) => current === "sending" ? "idle" : current); }
   };
 
   const { contact } = data;
@@ -265,7 +185,7 @@ export default function ContactSection({ data }: { data: SiteData }) {
 
         <div className="mt-12 grid gap-6 lg:grid-cols-[1.5fr_1fr]">
           <Reveal>
-            <form onSubmit={otpSent ? verifyAndSubmit : requestOtp} noValidate className="glass rounded-[28px] p-6 sm:p-8">
+            <form onSubmit={submit} noValidate className="glass rounded-[28px] p-6 sm:p-8">
               {status === "sent" ? (
                 <div className="fade-in py-10 text-center">
                   <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[var(--accent)]/10">
@@ -280,9 +200,6 @@ export default function ContactSection({ data }: { data: SiteData }) {
                     onClick={() => {
                       setStatus("idle");
                       setMessage("");
-                      setForm(EMPTY);
-                      setOtpSent(false);
-                      setOtp("");
                     }}
                     className="btn btn-ghost btn-xs mt-6"
                   >
@@ -338,6 +255,18 @@ export default function ContactSection({ data }: { data: SiteData }) {
                       required
                     />
                   </Field>
+
+                  {otpSent && (
+                    <div className="sm:col-span-2 rounded-2xl border border-ink/10 bg-white/40 p-4">
+                      <div className="flex flex-wrap items-end gap-3">
+                        <Field label="Email OTP *" error={!otpVerified && message.includes("OTP") ? message : undefined} className="flex-1">
+                          <input className="field" inputMode="numeric" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} placeholder="6-digit OTP" disabled={otpVerified} />
+                        </Field>
+                        <button type="button" className="btn btn-ghost btn-xs" disabled={otpBusy} onClick={() => { setOtpSent(false); setOtpVerified(false); setOtp(""); }}>Change email / details</button>
+                      </div>
+                      {otpVerified && <p className="mt-2 text-xs text-green-700">✓ Email verified</p>}
+                    </div>
+                  )}
 
                   <Field label="Company / Brand">
                     <input
@@ -416,86 +345,17 @@ export default function ContactSection({ data }: { data: SiteData }) {
                     </select>
                   </Field>
 
-                  {/* Step 2: OTP Verification Box if OTP was dispatched */}
-                  {otpSent ? (
-                    <div className="sm:col-span-2 rounded-2xl border border-[var(--accent)]/30 bg-[var(--accent)]/5 p-6 text-center space-y-4 animate-fade-in shadow-lg">
-                      <div className="flex items-center justify-center gap-2">
-                        <span className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--accent)]/15 text-[var(--accent)]">
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                            <polyline points="22,6 12,13 2,6" />
-                          </svg>
-                        </span>
-                      </div>
-                      <div>
-                        <h4 className="text-base font-bold text-ink">Enter 6-Digit Email Code</h4>
-                        <p className="mt-1 text-xs text-ink/70">
-                          A 6-digit verification code was sent to{" "}
-                          <strong className="text-ink font-semibold">{form.email}</strong>{" "}
-                          <button
-                            type="button"
-                            onClick={() => setOtpSent(false)}
-                            className="text-[var(--accent)] underline hover:opacity-80 ml-1 text-xs font-bold"
-                          >
-                            (Edit email)
-                          </button>
-                        </p>
-                      </div>
-
-                      <div className="max-w-xs mx-auto">
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          maxLength={6}
-                          value={otp}
-                          autoFocus
-                          onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
-                          placeholder="••••••"
-                          className="field text-center font-mono text-2xl tracking-[0.3em] font-bold py-3 bg-white shadow-inner"
-                        />
-                      </div>
-
-                      {message && <ErrorText text={message} />}
-
-                      <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-                        <button
-                          type="button"
-                          onClick={verifyAndSubmit}
-                          disabled={otpBusy || otp.trim().length !== 6 || status === "sending"}
-                          className="btn btn-dark shadow-xl px-8"
-                        >
-                          {otpBusy || status === "sending" ? "Verifying & Sending…" : "Verify & Submit Project Brief"}
-                        </button>
-
-                        <button
-                          type="button"
-                          disabled={otpBusy || countdown > 0}
-                          onClick={requestOtp}
-                          className="btn btn-ghost text-xs text-ink/70 hover:text-ink font-medium"
-                        >
-                          {countdown > 0 ? `Resend code in ${countdown}s` : "Resend code"}
-                        </button>
-                      </div>
+                  <div className="sm:col-span-2">
+                    {message && <ErrorText text={message} />}
+                    <div className="mt-2 flex flex-wrap items-center gap-4">
+                      <button type="submit" className="btn btn-dark" disabled={status === "sending"}>
+                        {status === "sending" ? "Sending…" : otpVerified ? "Send enquiry" : otpSent ? "Verify OTP" : "Send OTP"}
+                      </button>
+                      <p className="text-[0.65rem] uppercase tracking-[0.16em] text-ink/40">
+                        {contact.responseTime || "Replies within 24 hours"}
+                      </p>
                     </div>
-                  ) : (
-                    <div className="sm:col-span-2">
-                      {message && <ErrorText text={message} />}
-                      <div className="mt-2 flex flex-wrap items-center gap-4">
-                        <button
-                          type="submit"
-                          onClick={requestOtp}
-                          className="btn btn-dark shadow-xl hover:scale-105 active:scale-95 transition-transform"
-                          disabled={otpBusy}
-                        >
-                          {otpBusy ? "Sending verification code…" : "Verify Email & Send Project Brief"}
-                        </button>
-                        <p className="text-[0.65rem] uppercase tracking-[0.16em] text-ink/40">
-                          {contact.responseTime || "Replies within 24 hours"}
-                        </p>
-                      </div>
-                    </div>
-                  )}
+                  </div>
                 </div>
               )}
             </form>

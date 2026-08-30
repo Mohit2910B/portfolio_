@@ -1105,7 +1105,6 @@ export async function PATCH(request: Request, ctx: Params) {
         }
         if (second === "theme") {
           const patch: Partial<typeof themeSettings.$inferInsert> = { updatedAt: now };
-          if ("preset" in body) patch.preset = str(body.preset, "glass-luxe") || "glass-luxe";
           if ("accent" in body) patch.accent = str(body.accent, "#e0147f") || "#e0147f";
           if ("glassOpacity" in body)
             patch.glassOpacity = Math.min(Math.max(num(body.glassOpacity) ?? 45, 0), 100);
