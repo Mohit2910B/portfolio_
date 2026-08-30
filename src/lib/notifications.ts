@@ -133,6 +133,36 @@ export async function sendEmail(
     }
 
     if (!response.ok) {
+      // If 403 occurs because Resend is in sandbox mode (can only send to verified owner email)
+      if (response.status === 403 && recipient !== "mohitbabariyaa@gmail.com") {
+        try {
+          const sandboxRes = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${key}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              from: "Mohit Studio <onboarding@resend.dev>",
+              to: ["mohitbabariyaa@gmail.com"],
+              subject: `[Client Enquiry: ${recipient}] ${subject}`,
+              html: `
+                <div style="font-family:sans-serif;padding:20px;border:1px solid #eee;border-radius:12px;">
+                  <p style="color:#e0147f;font-weight:bold;font-size:12px;text-transform:uppercase;">Notice: Resend Sandbox Mode Active</p>
+                  <p style="font-size:13px;color:#555;">This email was requested for client: <strong>${recipient}</strong>.</p>
+                  <hr style="border:none;border-top:1px solid #eee;margin:16px 0;" />
+                  ${html}
+                </div>
+              `,
+            }),
+          });
+          if (sandboxRes.ok) {
+            console.log(`[notifications] Resend sandbox mode: forwarded client email (${recipient}) to verified owner.`);
+            return { ok: true };
+          }
+        } catch {}
+      }
+
       // If custom domain fails, retry once with onboarding@resend.dev
       if (from !== "Mohit Studio <onboarding@resend.dev>") {
         try {
