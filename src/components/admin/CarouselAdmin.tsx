@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { parseMediaUrl } from "@/lib/media-urls";
-import type { CarouselItem, CarouselGlobalSettings } from "@/lib/data";
+import type { CarouselItem, CarouselGlobalSettings } from "@/lib/constants";
+import { DEFAULT_CAROUSEL_ITEMS } from "@/lib/constants";
 import {
   Button,
   Card,
@@ -71,8 +72,8 @@ const CATEGORY_PRESETS = [
 
 export function CarouselAdmin({ onChanged }: { onChanged?: () => void }) {
   const [globalSettings, setGlobalSettings] = useState<CarouselGlobalSettings>(DEFAULT_GLOBAL);
-  const [items, setItems] = useState<CarouselItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState<CarouselItem[]>(DEFAULT_CAROUSEL_ITEMS);
+  const [loading, setLoading] = useState(false);
   const [savingGlobal, setSavingGlobal] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");

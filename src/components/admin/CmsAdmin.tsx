@@ -51,19 +51,33 @@ type CarouselRow = {
   isActive: boolean;
 };
 
-function useCollection<T>(path: string) {
-  const [rows, setRows] = useState<T[]>([]);
+import {
+  DEFAULT_CATEGORIES,
+  DEFAULT_SERVICES,
+  DEFAULT_SOFTWARE_TOOLS,
+  DEFAULT_WORK_OPTIONS,
+} from "@/lib/constants";
+
+function useCollection<T>(path: string, initialFallback?: T[]) {
+  const [rows, setRows] = useState<T[]>(initialFallback || []);
   const [error, setError] = useState("");
   const load = useCallback(async () => {
     try {
       const payload = await api<{ [key: string]: T[] }>(path);
       const firstKey = Object.keys(payload)[0];
-      setRows((payload[firstKey] ?? []) as T[]);
+      if (Array.isArray(payload[firstKey]) && payload[firstKey].length > 0) {
+        setRows(payload[firstKey] as T[]);
+      } else if (initialFallback && initialFallback.length > 0) {
+        setRows(initialFallback);
+      }
       setError("");
     } catch (caught) {
+      if (initialFallback && initialFallback.length > 0) {
+        setRows(initialFallback);
+      }
       setError(caught instanceof Error ? caught.message : "Could not load data.");
     }
-  }, [path]);
+  }, [path, initialFallback]);
   useEffect(() => {
     void load();
   }, [load]);
@@ -73,7 +87,10 @@ function useCollection<T>(path: string) {
 /* ---------------------------- CATEGORIES ---------------------------- */
 
 export function CategoriesAdmin({ onChanged }: { onChanged: () => void }) {
-  const { rows, error, setError, load } = useCollection<AdminCategory>("/api/admin/categories");
+  const { rows, error, setError, load } = useCollection<AdminCategory>(
+    "/api/admin/categories",
+    DEFAULT_CATEGORIES.map((c) => ({ ...c, projectCount: 0 })),
+  );
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [editing, setEditing] = useState<AdminCategory | null>(null);
@@ -419,7 +436,14 @@ export function SkillsAdmin({ onChanged }: { onChanged: () => void }) {
 /* ----------------------------- SERVICES ----------------------------- */
 
 export function ServicesAdmin({ onChanged }: { onChanged: () => void }) {
-  const { rows, error, setError, load } = useCollection<Service>("/api/admin/services");
+  const { rows, error, setError, load } = useCollection<Service>(
+    "/api/admin/services",
+    DEFAULT_SERVICES.map((s) => ({
+      ...s,
+      deliverables: typeof s.deliverables === "string" ? s.deliverables : JSON.stringify(s.deliverables || []),
+      priceFrom: "",
+    })),
+  );
   const [draft, setDraft] = useState({ title: "", description: "", deliverables: "", icon: "cut", priceFrom: "" });
   const [editing, setEditing] = useState<Service | null>(null);
   const [notice, setNotice] = useState("");
@@ -595,7 +619,13 @@ export function ServicesAdmin({ onChanged }: { onChanged: () => void }) {
 /* --------------------------- WORK OPTIONS --------------------------- */
 
 export function WorkOptionsAdmin({ onChanged }: { onChanged: () => void }) {
-  const { rows, error, setError, load } = useCollection<WorkOption>("/api/admin/work-options");
+  const { rows, error, setError, load } = useCollection<WorkOption>(
+    "/api/admin/work-options",
+    DEFAULT_WORK_OPTIONS.map((w) => ({
+      ...w,
+      isActive: Boolean(w.isActive),
+    })),
+  );
   const [label, setLabel] = useState("");
   const [notice, setNotice] = useState("");
 

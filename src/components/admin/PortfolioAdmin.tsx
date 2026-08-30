@@ -108,10 +108,27 @@ const EMPTY_FORM: FormState = {
 const RATIOS = ["16:9", "9:16", "1:1", "4:5", "4:3", "21:9"];
 const SIZES = ["small", "medium", "large"];
 
+import { DEFAULT_PROJECTS, DEFAULT_CATEGORIES } from "@/lib/constants";
+
 export function PortfolioAdmin({ onChanged }: { onChanged: () => void }) {
-  const [projects, setProjects] = useState<AdminProject[]>([]);
-  const [categories, setCategories] = useState<AdminCategory[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [projects, setProjects] = useState<AdminProject[]>(
+    DEFAULT_PROJECTS.map((p) => ({
+      ...p,
+      categoryName: p.categoryLabel,
+      displayWidth: p.displayWidth ?? null,
+      displayHeight: p.displayHeight ?? null,
+      width: p.width ?? null,
+      height: p.height ?? null,
+      durationSeconds: p.durationSeconds ?? null,
+    })),
+  );
+  const [categories, setCategories] = useState<AdminCategory[]>(
+    DEFAULT_CATEGORIES.map((c) => ({
+      ...c,
+      projectCount: 0,
+    })),
+  );
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 

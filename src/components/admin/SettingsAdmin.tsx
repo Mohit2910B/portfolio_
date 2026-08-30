@@ -51,8 +51,10 @@ const HOME_FIELDS: { key: keyof HomeSettings; label: string; long?: boolean; hin
   { key: "footerNote", label: "Footer note" },
 ];
 
-function useSettings<T>(key: string) {
-  const [settings, setSettings] = useState<T | null>(null);
+import { HOME_FALLBACK, CONTACT_FALLBACK } from "@/lib/constants";
+
+function useSettings<T>(key: string, initialFallback?: T) {
+  const [settings, setSettings] = useState<T | null>(initialFallback || null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
@@ -60,12 +62,19 @@ function useSettings<T>(key: string) {
   const load = useCallback(async () => {
     try {
       const payload = await api<{ settings: T | null }>(`/api/admin/settings/${key}`);
-      setSettings(payload.settings);
+      if (payload.settings) {
+        setSettings(payload.settings);
+      } else if (initialFallback) {
+        setSettings(initialFallback);
+      }
       setError("");
     } catch (caught) {
+      if (initialFallback) {
+        setSettings(initialFallback);
+      }
       setError(caught instanceof Error ? caught.message : "Could not load settings.");
     }
-  }, [key]);
+  }, [key, initialFallback]);
 
   useEffect(() => {
     void load();
@@ -112,7 +121,7 @@ function SaveRow({ saving, onClick }: { saving: boolean; onClick: () => void }) 
 }
 
 export function HomepageAdmin({ onChanged }: { onChanged: () => void }) {
-  const { settings, error, notice, saving, save } = useSettings<HomeSettings>("homepage");
+  const { settings, error, notice, saving, save } = useSettings<HomeSettings>("homepage", HOME_FALLBACK);
   if (!settings) return <SettingsLoader title="Homepage" error={error} />;
   return (
     <div>

@@ -61,7 +61,7 @@ export default function AdminShell({
   const [section, setSection] = useState("dashboard");
   const [drawer, setDrawer] = useState(false);
   const [stats, setStats] = useState<Stats>(EMPTY_STATS);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const refresh = useCallback(async () => {

@@ -34,7 +34,12 @@ import {
   CONTACT_FALLBACK,
   DEFAULT_CAROUSEL_GLOBAL_SETTINGS,
   DEFAULT_CAROUSEL_ITEMS,
+  DEFAULT_CATEGORIES,
   DEFAULT_PROJECTS,
+  DEFAULT_SERVICES,
+  DEFAULT_SOFTWARE_TOOLS,
+  DEFAULT_WORK_OPTIONS,
+  DEFAULT_SECTIONS,
   invalidateSiteDataCache,
   setRuntimeOverride,
   getRuntimeOverride,
@@ -554,37 +559,22 @@ export async function GET(_request: Request, ctx: Params) {
             mediaFiles: 0,
             enquiries: { total: 0, unread: 0 },
             chat: { total: 0, unread: 0 },
-            categories: CATEGORY_SEED.length,
+            categories: DEFAULT_CATEGORIES.length,
             skills: SKILL_SEED.length,
-            services: SERVICE_SEED.length,
-            softwareTools: SOFTWARE_TOOL_SEED.length,
+            services: DEFAULT_SERVICES.length,
+            softwareTools: DEFAULT_SOFTWARE_TOOLS.length,
           });
         case "projects":
-          return ok({ projects: [] });
+          return ok({ projects: getRuntimeOverride("projects") || DEFAULT_PROJECTS });
         case "categories":
           return ok({
-            categories: CATEGORY_SEED.map(([name, description], i) => ({
-              id: i + 1,
-              name,
-              slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-              description,
-              sortOrder: i,
-              isActive: true,
+            categories: (getRuntimeOverride("allCategories") || DEFAULT_CATEGORIES).map((c, i) => ({
+              ...c,
               projectCount: 0,
             })),
           });
         case "services":
-          return ok({
-            services: SERVICE_SEED.map((s, i) => ({
-              id: i + 1,
-              title: s.title,
-              description: s.description,
-              deliverables: s.deliverables,
-              icon: s.icon,
-              sortOrder: i,
-              isActive: true,
-            })),
-          });
+          return ok({ services: getRuntimeOverride("services") || DEFAULT_SERVICES });
         case "skills":
           return ok({
             skills: SKILL_SEED.map(([name, category, description, level], i) => ({
@@ -598,47 +588,57 @@ export async function GET(_request: Request, ctx: Params) {
             })),
           });
         case "software-tools":
-          return ok({
-            softwareTools: SOFTWARE_TOOL_SEED.map(([name, category, icon, level], i) => ({
-              id: i + 1,
-              name,
-              category,
-              icon,
-              level,
-              sortOrder: i,
-              isActive: true,
-            })),
-          });
+          return ok({ softwareTools: getRuntimeOverride("softwareTools") || DEFAULT_SOFTWARE_TOOLS });
         case "work-options":
-          return ok({
-            workOptions: WORK_OPTION_SEED.map((label, i) => ({
-              id: i + 1,
-              label,
-              value: label.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-              sortOrder: i,
-              isActive: true,
-            })),
-          });
+          return ok({ workOptions: getRuntimeOverride("workOptions") || DEFAULT_WORK_OPTIONS });
         case "media":
           return ok({ media: [] });
         case "carousel":
-          return ok({ carousel: [] });
+          return ok({
+            globalSettings: getRuntimeOverride("carouselGlobalSettings") || DEFAULT_CAROUSEL_GLOBAL_SETTINGS,
+            items: getRuntimeOverride("carouselItems") || DEFAULT_CAROUSEL_ITEMS,
+          });
         case "settings":
+          if (second === "homepage") {
+            return ok({ settings: getRuntimeOverride("homepage") || HOME_FALLBACK });
+          }
+          if (second === "theme") {
+            return ok({
+              settings: getRuntimeOverride("theme") || {
+                id: 1,
+                activeTheme: "theme01",
+                accent: "#e0147f",
+                fontPairing: "default",
+                borderRadius: "rounded",
+                animationSpeed: "normal",
+                cursorEffect: true,
+                glassOpacity: 45,
+                glassBlur: 20,
+                grain: true,
+                updatedAt: new Date(),
+              },
+            });
+          }
+          if (second === "contact") {
+            return ok({ settings: getRuntimeOverride("contact") || CONTACT_FALLBACK });
+          }
           if (second === "notifications") {
             return ok({
-              settings: {
+              settings: globalThis.__runtimeSiteDataOverrides?.notificationSettings || {
                 id: 1,
                 emailEnabled: true,
                 notificationEmail:
                   process.env.NOTIFICATION_EMAIL ||
                   process.env.SEED_ADMIN_EMAIL ||
                   "mohitbabariyaa@gmail.com",
+                adminStatus: "offline",
+                aiAutoReply: true,
               },
             });
           }
-          return ok({ settings: null });
+          return ok({ settings: {} });
         case "layout":
-          return ok({ sections: [] });
+          return ok({ sections: getRuntimeOverride("sections") || DEFAULT_SECTIONS });
         case "enquiries":
           return ok({ enquiries: [], unread: 0 });
         case "chat":

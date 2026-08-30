@@ -50,7 +50,7 @@ const ACCENT_PRESETS = [
 
 export function ThemeStudioAdmin({ onChanged }: { onChanged?: () => void }) {
   const [settings, setSettings] = useState<ThemeSettingsState>(DEFAULT_THEME_SETTINGS);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
