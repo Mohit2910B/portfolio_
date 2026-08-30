@@ -43,19 +43,28 @@ export default function WorkCarousel({ data }: { data: SiteData }) {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="mb-12 text-center md:mb-16 space-y-3">
-          <div className="inline-flex items-center gap-2 rounded-full border border-black/15 bg-black/[0.04] px-4 py-1.5 backdrop-blur-md dark:border-white/15 dark:bg-white/[0.04]">
-            <span className="h-2 w-2 rounded-full bg-black dark:bg-white shadow-sm" />
-            <span className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#0b0b0c] dark:text-white">
+          <div className="inline-flex items-center gap-2 rounded-full border border-black/20 bg-black/[0.05] px-4 py-1.5 backdrop-blur-md">
+            <span className="h-2 w-2 rounded-full bg-black shadow-sm" />
+            <span
+              style={{ color: "#000000" }}
+              className="text-[11px] font-bold uppercase tracking-[0.25em] !text-black"
+            >
               {global.sectionBadge || "VIDEO SHOWCASE"}
             </span>
           </div>
 
-          <h2 className="mt-3 font-heading text-3xl font-black uppercase tracking-tight text-[#0b0b0c] dark:text-white sm:text-4xl md:text-5xl lg:text-6xl leading-none">
+          <h2
+            style={{ color: "#000000" }}
+            className="mt-3 font-heading text-3xl font-black uppercase tracking-tight !text-black sm:text-4xl md:text-5xl lg:text-6xl leading-none"
+          >
             {global.sectionTitle || "SELECTED WORKS"}
           </h2>
 
           {global.sectionSubtitle && (
-            <p className="mx-auto max-w-2xl text-sm leading-relaxed text-[#0b0b0c]/75 dark:text-white/70 sm:text-base">
+            <p
+              style={{ color: "#000000" }}
+              className="mx-auto max-w-2xl text-sm leading-relaxed !text-black opacity-90 sm:text-base font-medium"
+            >
               {global.sectionSubtitle}
             </p>
           )}
