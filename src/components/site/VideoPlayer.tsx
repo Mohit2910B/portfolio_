@@ -101,8 +101,14 @@ export default function VideoPlayer({
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
     const onError = () => {
-      setLoading(false);
-      setFailed(true);
+      const video = videoRef.current;
+      const errCode = (video?.error?.code ?? 0);
+      // MEDIA_ERR_SRC_NOT_SUPPORTED (4) or MEDIA_ERR_NETWORK (2)
+      // Only set failed for definitive errors, not for initial loading retries
+      if (errCode === 4 || errCode === 2 || errCode === 1) {
+        setLoading(false);
+        setFailed(true);
+      }
     };
     const onWaiting = () => setLoading(true);
     const onPlaying = () => setLoading(false);
@@ -164,7 +170,6 @@ export default function VideoPlayer({
         poster={poster || undefined}
         className="absolute inset-0 h-full w-full bg-black object-contain"
         playsInline
-        controls
         preload="auto"
         autoPlay={autoPlay}
         tabIndex={0}
@@ -180,32 +185,53 @@ export default function VideoPlayer({
       )}
 
       {failed && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/85 p-6 text-center">
-          <p className="text-xs font-semibold text-white">Playback error</p>
-          <p className="text-[0.68rem] text-white/60">The video could not be loaded directly.</p>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setFailed(false);
-                setLoading(true);
-                setAttempt((a) => a + 1);
-              }}
-              className="btn btn-accent btn-xs"
-            >
-              Retry
-            </button>
-            <a
-              href={src}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="btn btn-ghost btn-xs text-white"
-            >
-              Open source link
-            </a>
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/90 p-6 text-center">
+          {/* Show thumbnail if available */}
+          {poster && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={poster}
+              alt="Video thumbnail"
+              className="absolute inset-0 h-full w-full object-cover opacity-20"
+            />
+          )}
+          <div className="relative z-10 flex flex-col items-center gap-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-white/10 text-2xl backdrop-blur-md">
+              🎬
+            </div>
+            <div>
+              <p className="text-sm font-bold text-white">Video cannot play inline</p>
+              <p className="mt-1 text-[0.68rem] leading-relaxed text-white/50">
+                {src.startsWith("/api/files/")
+                  ? "This video was uploaded locally. Re-upload via Admin to use cloud storage (Vercel Blob)."
+                  : "Try opening in a new tab or use a supported browser."}
+              </p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setFailed(false);
+                  setLoading(true);
+                  setAttempt((a) => a + 1);
+                }}
+                className="btn btn-accent btn-xs"
+              >
+                🔄 Retry
+              </button>
+              <a
+                href={src}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="btn btn-ghost btn-xs text-white border-white/20"
+              >
+                🔗 Open in Tab
+              </a>
+            </div>
           </div>
         </div>
       )}
+
 
       {/* Hover Controls */}
       <div
