@@ -940,10 +940,12 @@ export function CarouselAdmin({ onChanged }: { onChanged?: () => void }) {
                     onFileSelected={(_file, localUrl) => {
                       setForm((prev) => ({ ...prev, videoUrl: localUrl, videoSource: "upload" }));
                       autoDetectDuration(localUrl);
+                      if (!form.thumbnailUrl) void grabFrame(localUrl);
                     }}
                     onUploaded={(res) => {
                       setForm((prev) => ({ ...prev, videoUrl: res.url, videoSource: "upload" }));
                       autoDetectDuration(res.url);
+                      if (!form.thumbnailUrl) void grabFrame(res.url);
                       showToast("Video uploaded and attached to card.");
                     }}
                   />

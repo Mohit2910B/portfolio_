@@ -117,6 +117,14 @@ export default function Theme01Editorial({ data }: { data: SiteData }) {
                         loading="lazy"
                         className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
                       />
+                    ) : project.videoUrl ? (
+                      <video
+                        src={project.videoUrl}
+                        muted
+                        playsInline
+                        preload="metadata"
+                        className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
+                      />
                     ) : (
                       <div className="grid h-full place-items-center text-[0.65rem] uppercase tracking-[0.2em] text-ink/35">
                         🎬 Video Project

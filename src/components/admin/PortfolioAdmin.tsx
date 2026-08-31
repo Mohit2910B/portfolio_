@@ -623,11 +623,13 @@ export function PortfolioAdmin({ onChanged }: { onChanged: () => void }) {
                     patch("videoUrl", localUrl);
                     patch("videoSource", "upload");
                     autoDetectDuration(localUrl);
+                    if (!form.thumbnailUrl) void grabFrame(localUrl);
                   }}
                   onUploaded={(result) => {
                     patch("videoUrl", result.url);
                     patch("videoSource", "upload");
                     autoDetectDuration(result.url);
+                    if (!form.thumbnailUrl) void grabFrame(result.url);
                     setNotice("Video uploaded and attached to this project.");
                   }}
                 />

@@ -114,10 +114,9 @@ export function parseMediaUrl(inputUrl: string): ParsedMediaUrl {
     };
   }
 
-  // 5. DIRECT VIDEO STREAM (MP4, WebM, MOV, Vercel Blob, etc.)
-  const isDirect = /\.(mp4|webm|mov|m4v|ogg)(\?.*)?$/i.test(url) || /vercel-storage\.com|blob\.vercel-storage|cloudinary|bunny/i.test(url);
+  // 5. DIRECT VIDEO STREAM (MP4, WebM, MOV, Vercel Blob, /api/files/, etc.)
   return {
-    type: isDirect ? "direct" : "unknown",
+    type: "direct",
     originalUrl: url,
     streamUrl: url,
     embedUrl: null,
