@@ -611,66 +611,124 @@ export async function getSiteData(): Promise<SiteData> {
           updatedAt: new Date(),
         };
 
-    const sourceProjects = projectRows.length > 0 ? projectRows : DEFAULT_PROJECTS;
-    const publicProjects: PublicProject[] = sourceProjects.map((p) => ({
-      id: p.id,
-      title: p.title,
-      description: p.description,
-      categoryId: p.categoryId,
-      categoryLabel: p.categoryLabel,
-      aiLabType: p.aiLabType,
-      year: p.year,
-      software: p.software,
-      tags: p.tags,
-      externalLink: p.externalLink,
-      videoUrl: p.videoUrl,
-      videoSource: p.videoSource,
-      thumbnailUrl: p.thumbnailUrl,
-      aspectRatio: p.aspectRatio,
-      displaySize: p.displaySize,
-      displayWidth: p.displayWidth,
-      displayHeight: p.displayHeight,
-      width: p.width,
-      height: p.height,
-      durationSeconds: p.durationSeconds,
-      featured: p.featured,
-      published: p.published,
-      demoStatus: p.demoStatus ?? "none",
-      sortOrder: p.sortOrder,
-      carouselEnabled: p.carouselEnabled !== false,
-      carouselPinned: Boolean(p.carouselPinned),
-      carouselOrder: p.carouselOrder ?? p.sortOrder,
-    }));
+    const overrides = globalThis.__runtimeSiteDataOverrides || {};
 
-    const finalCategories = categoryRows.length > 0 ? categoryRows : DEFAULT_CATEGORIES;
-    const finalServices = serviceRows.length > 0 ? serviceRows : DEFAULT_SERVICES;
-    const finalTools = softwareToolRows.length > 0 ? softwareToolRows : DEFAULT_SOFTWARE_TOOLS;
-    const finalWork = workRows.length > 0 ? workRows : DEFAULT_WORK_OPTIONS;
-    const finalSections = sectionRows.length > 0 ? sectionRows : DEFAULT_SECTIONS;
-    const finalCarousel = carouselRows.length > 0 ? carouselRows : DEFAULT_CAROUSEL_SETTINGS;
-    const finalCarouselGlobal: CarouselGlobalSettings = carouselGlobalRows[0]
-      ? {
-          id: carouselGlobalRows[0].id,
-          enabled: carouselGlobalRows[0].enabled !== false,
-          sectionBadge: carouselGlobalRows[0].sectionBadge || "VIDEO SHOWCASE",
-          sectionTitle: carouselGlobalRows[0].sectionTitle || "SELECTED WORKS",
-          sectionSubtitle:
-            carouselGlobalRows[0].sectionSubtitle ||
-            "A curated showcase of video editing, motion design, and visual storytelling.",
-          textColor: carouselGlobalRows[0].textColor || "black",
-          autoplay: carouselGlobalRows[0].autoplay !== false,
-          autoplaySpeed: carouselGlobalRows[0].autoplaySpeed || 5,
-          infiniteLoop: carouselGlobalRows[0].infiniteLoop !== false,
-          showArrows: carouselGlobalRows[0].showArrows !== false,
-          showDots: carouselGlobalRows[0].showDots !== false,
-          updatedAt: carouselGlobalRows[0].updatedAt || new Date(),
-        }
-      : DEFAULT_CAROUSEL_GLOBAL_SETTINGS;
+    // Prioritize runtime overrides if modified by admin in this session
+    const sourceProjects =
+      overrides.projects && overrides.projects.length > 0
+        ? overrides.projects
+        : projectRows.length > 0
+          ? projectRows
+          : DEFAULT_PROJECTS;
 
-    const finalCarouselItems: CarouselItem[] =
-      carouselItemRows && carouselItemRows.length > 0
-        ? carouselItemRows
-        : DEFAULT_CAROUSEL_ITEMS;
+    const publicProjects: PublicProject[] = sourceProjects
+      .filter((p) => p.published !== false)
+      .map((p) => ({
+        id: p.id,
+        title: p.title,
+        description: p.description,
+        categoryId: p.categoryId,
+        categoryLabel: p.categoryLabel,
+        aiLabType: p.aiLabType,
+        year: p.year,
+        software: p.software,
+        tags: p.tags,
+        externalLink: p.externalLink,
+        videoUrl: p.videoUrl,
+        videoSource: p.videoSource,
+        thumbnailUrl: p.thumbnailUrl,
+        aspectRatio: p.aspectRatio,
+        displaySize: p.displaySize,
+        displayWidth: p.displayWidth,
+        displayHeight: p.displayHeight,
+        width: p.width,
+        height: p.height,
+        durationSeconds: p.durationSeconds,
+        featured: p.featured,
+        published: p.published,
+        demoStatus: p.demoStatus ?? "none",
+        sortOrder: p.sortOrder,
+        carouselEnabled: p.carouselEnabled !== false,
+        carouselPinned: Boolean(p.carouselPinned),
+        carouselOrder: p.carouselOrder ?? p.sortOrder,
+      }));
+
+    const finalCategories =
+      overrides.allCategories ||
+      (categoryRows.length > 0 ? categoryRows : DEFAULT_CATEGORIES);
+    const finalServices =
+      overrides.services ||
+      (serviceRows.length > 0 ? serviceRows : DEFAULT_SERVICES);
+    const finalTools =
+      overrides.softwareTools ||
+      (softwareToolRows.length > 0 ? softwareToolRows : DEFAULT_SOFTWARE_TOOLS);
+    const finalWork =
+      overrides.workOptions ||
+      (workRows.length > 0 ? workRows : DEFAULT_WORK_OPTIONS);
+    const finalSections =
+      overrides.sections ||
+      (sectionRows.length > 0 ? sectionRows : DEFAULT_SECTIONS);
+    const finalCarousel =
+      overrides.carouselSettings ||
+      (carouselRows.length > 0 ? carouselRows : DEFAULT_CAROUSEL_SETTINGS);
+
+    const finalCarouselGlobal: CarouselGlobalSettings =
+      overrides.carouselGlobalSettings ||
+      (carouselGlobalRows[0]
+        ? {
+            id: carouselGlobalRows[0].id,
+            enabled: carouselGlobalRows[0].enabled !== false,
+            sectionBadge: carouselGlobalRows[0].sectionBadge || "VIDEO SHOWCASE",
+            sectionTitle: carouselGlobalRows[0].sectionTitle || "SELECTED WORKS",
+            sectionSubtitle:
+              carouselGlobalRows[0].sectionSubtitle ||
+              "A curated showcase of video editing, motion design, and visual storytelling.",
+            textColor: carouselGlobalRows[0].textColor || "black",
+            autoplay: carouselGlobalRows[0].autoplay !== false,
+            autoplaySpeed: carouselGlobalRows[0].autoplaySpeed || 5,
+            infiniteLoop: carouselGlobalRows[0].infiniteLoop !== false,
+            showArrows: carouselGlobalRows[0].showArrows !== false,
+            showDots: carouselGlobalRows[0].showDots !== false,
+            updatedAt: carouselGlobalRows[0].updatedAt || new Date(),
+          }
+        : DEFAULT_CAROUSEL_GLOBAL_SETTINGS);
+
+    // Build rich carousel items (from carousel admin + active video projects)
+    let finalCarouselItems: CarouselItem[] =
+      overrides.carouselItems && overrides.carouselItems.length > 0
+        ? overrides.carouselItems
+        : carouselItemRows && carouselItemRows.length > 0
+          ? carouselItemRows
+          : DEFAULT_CAROUSEL_ITEMS;
+
+    // If active projects exist that have video URLs, ensure they are seamlessly available
+    if (publicProjects.some((p) => p.videoUrl && p.videoUrl.trim())) {
+      const projectCarouselCards: CarouselItem[] = publicProjects
+        .filter((p) => p.videoUrl && p.videoUrl.trim() && p.carouselEnabled !== false)
+        .map((p, idx) => ({
+          id: p.id + 10000,
+          title: p.title,
+          category: p.categoryLabel || "Video Project",
+          description: p.description || "",
+          videoUrl: p.videoUrl,
+          videoSource: (p.videoSource as "upload" | "url") || "upload",
+          thumbnailUrl: p.thumbnailUrl || "",
+          duration: p.durationSeconds ? `${Math.floor(p.durationSeconds / 60)}:${(p.durationSeconds % 60).toString().padStart(2, "0")}` : "0:45",
+          aspectRatio: (p.aspectRatio as "9:16" | "4:5" | "16:9" | "1:1") || "9:16",
+          sortOrder: p.sortOrder ?? idx,
+          isActive: true,
+          badgeText: p.featured ? "FEATURED" : undefined,
+          clientName: undefined,
+          actionUrl: undefined,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }));
+
+      // Combine dedicated carousel items with project videos without duplicate URLs
+      const existingUrls = new Set(finalCarouselItems.map((c) => c.videoUrl));
+      const newFromProjects = projectCarouselCards.filter((p) => !existingUrls.has(p.videoUrl));
+      finalCarouselItems = [...finalCarouselItems, ...newFromProjects];
+    }
 
     const result = {
       homepage,
@@ -688,10 +746,9 @@ export async function getSiteData(): Promise<SiteData> {
       carouselItems: finalCarouselItems,
     };
 
-    cachedSiteData = { data: result, expiresAt: Date.now() + 30000 };
     return result;
   } catch (error) {
-    console.error("[getSiteData] Database fetch failed, serving default site data:", error);
+    console.error("[getSiteData] Database fetch notice, serving fallback site data:", error);
     return getFallbackSiteData();
   }
 }
