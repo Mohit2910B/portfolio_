@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 const LINKS = [
+  { id: "portfolio", label: "Work" },
   { id: "about", label: "About" },
   { id: "tools", label: "Tools" },
   { id: "services", label: "Services" },

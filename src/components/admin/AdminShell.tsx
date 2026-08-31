@@ -35,8 +35,7 @@ const EMPTY_STATS: Stats = {
 
 const NAV: { key: string; label: string; icon: string }[] = [
   { key: "dashboard", label: "Dashboard", icon: "◧" },
-  { key: "portfolio", label: "Portfolio", icon: "▶" },
-  { key: "carousel", label: "Carousel Manager", icon: "▭" },
+  { key: "portfolio", label: "Portfolio & Works", icon: "▶" },
   { key: "media", label: "Media Library", icon: "▣" },
   { key: "enquiries", label: "Enquiries", icon: "✉" },
   { key: "categories", label: "Categories", icon: "⌗" },
