@@ -17,9 +17,14 @@ export default function Theme01Editorial({ data }: { data: SiteData }) {
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [selectedProject, setSelectedProject] = useState<PublicProject | null>(null);
 
-  // Filter only published projects and category
+  // Active categories only
+  const activeCategories = categories.filter((c) => c.isActive !== false);
+  const activeCatIds = new Set(activeCategories.map((c) => c.id));
+
+  // Filter only published projects and active categories
   const filteredProjects = projects.filter((p) => {
     if (!p.published) return false;
+    if (p.categoryId && !activeCatIds.has(p.categoryId)) return false;
     if (activeCategory === "all") return true;
     return (
       String(p.categoryId) === activeCategory ||
@@ -78,7 +83,7 @@ export default function Theme01Editorial({ data }: { data: SiteData }) {
               >
                 All Works ({projects.filter((p) => p.published).length})
               </button>
-              {categories.map((cat) => (
+              {activeCategories.map((cat) => (
                 <button
                   key={cat.id}
                   type="button"

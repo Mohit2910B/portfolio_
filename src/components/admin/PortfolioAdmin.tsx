@@ -311,6 +311,23 @@ export function PortfolioAdmin({ onChanged }: { onChanged: () => void }) {
       project.featured ? "Project removed from featured." : "Project marked as featured.",
     );
 
+  const toggleCategory = async (cat: AdminCategory) => {
+    const nextActive = cat.isActive === false ? true : false;
+    setCategories((prev) => prev.map((c) => (c.id === cat.id ? { ...c, isActive: nextActive } : c)));
+    try {
+      await api(`/api/admin/categories/${cat.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ isActive: nextActive }),
+      });
+      setNotice(nextActive ? `Category "${cat.name}" is now visible on website.` : `Category "${cat.name}" is now hidden from website.`);
+      window.setTimeout(() => setNotice(""), 3500);
+      onChanged();
+    } catch {
+      await load();
+      setError("Failed to update category visibility.");
+    }
+  };
+
   const remove = (project: AdminProject) => {
     if (!window.confirm(`Delete “${project.title}”? This cannot be undone.`)) return;
     void action(
@@ -723,7 +740,58 @@ export function PortfolioAdmin({ onChanged }: { onChanged: () => void }) {
         </Card>
       )}
 
-      <Card className="p-4 sm:p-6">
+      <Card className="p-4 sm:p-6 space-y-6">
+        {/* Category Visibility Manager */}
+        <div className="rounded-2xl border border-black/8 bg-black/[0.02] p-4 sm:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-black/5">
+            <div>
+              <h3 className="font-heading text-xs font-bold uppercase tracking-wider text-ink">
+                Category Visibility Manager (Hide / Show by Category)
+              </h3>
+              <p className="text-[11px] text-ink/55">
+                Click any category button to hide or show that entire category from website filters and portfolio.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-2.5">
+            {categories.map((cat) => {
+              const isCatActive = cat.isActive !== false;
+              return (
+                <div
+                  key={cat.id}
+                  className={`flex items-center gap-2.5 rounded-xl border px-3.5 py-2 transition ${
+                    isCatActive
+                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-950"
+                      : "border-amber-500/30 bg-amber-500/10 text-amber-950 opacity-80"
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={`h-2 w-2 rounded-full ${
+                        isCatActive ? "bg-emerald-500" : "bg-amber-500"
+                      }`}
+                    />
+                    <span className="text-xs font-bold">{cat.name}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleCategory(cat)}
+                    className={`rounded-lg px-2.5 py-1 text-[10px] font-bold shadow-sm transition ${
+                      isCatActive
+                        ? "bg-emerald-600 text-white hover:bg-amber-600"
+                        : "bg-amber-600 text-white hover:bg-emerald-600"
+                    }`}
+                    title={isCatActive ? "Click to Hide this Category from website" : "Click to Show this Category on website"}
+                  >
+                    {isCatActive ? "👁️ Visible (Hide)" : "🚫 Hidden (Show)"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
         <div className="grid gap-3 sm:grid-cols-4">
           <Field label="Search">
             <TextInput value={search} onChange={setSearch} placeholder="Title, category, tag…" />

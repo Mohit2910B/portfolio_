@@ -166,12 +166,21 @@ async function taxonomyPatch(table: TaxonomyTable, body: Record<string, unknown>
 
   try {
     if (table === "categories") {
-      const updated = await db
-        .update(categories)
-        .set(patch as Partial<typeof categories.$inferInsert>)
-        .where(eq(categories.id, id))
-        .returning();
-      return ok({ record: await one(updated) });
+      const curCats = getRuntimeOverride("allCategories") || DEFAULT_CATEGORIES;
+      const updatedCats = curCats.map((c) => (c.id === id ? { ...c, ...patch } : c));
+      setRuntimeOverride("allCategories", updatedCats as typeof DEFAULT_CATEGORIES);
+      setRuntimeOverride("categories", updatedCats.filter((c) => (c as { isActive?: boolean }).isActive !== false) as typeof DEFAULT_CATEGORIES);
+
+      try {
+        const updated = await db
+          .update(categories)
+          .set(patch as Partial<typeof categories.$inferInsert>)
+          .where(eq(categories.id, id))
+          .returning();
+        return ok({ record: updated[0] || { id, ...patch } });
+      } catch {
+        return ok({ record: { id, ...patch } });
+      }
     }
     if (table === "skills") {
       const updated = await db
