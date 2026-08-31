@@ -8,18 +8,13 @@ const zipPath = path.join(rootDir, zipName);
 
 console.log(`📦 Packaging complete project backup to: ${zipName}...`);
 
-// Use PowerShell Compress-Archive to generate standard zip excluding .git, node_modules, .next
-const psCommand = `
-$exclude = @('.git', 'node_modules', '.next', '${zipName}')
-$items = Get-ChildItem -Path . | Where-Object { $exclude -notcontains $_.Name } | Select-Object -ExpandProperty FullName
-Compress-Archive -Path $items -DestinationPath '${zipName}' -Force
-`;
+const psCommand = "$exclude = @('.git', 'node_modules', '.next', 'mohit-portfolio-complete-backup.zip'); $items = Get-ChildItem -Path . | Where-Object { $exclude -notcontains $_.Name } | Select-Object -ExpandProperty FullName; Compress-Archive -Path $items -DestinationPath 'mohit-portfolio-complete-backup.zip' -Force";
 
 try {
   if (fs.existsSync(zipPath)) {
     fs.unlinkSync(zipPath);
   }
-  execSync(`powershell -Command "${psCommand.replace(/\n/g, ' ')}"`, { cwd: rootDir, stdio: 'inherit' });
+  execSync(`powershell -Command "${psCommand}"`, { cwd: rootDir, stdio: 'inherit' });
   const stats = fs.statSync(zipPath);
   console.log(`🎉 ZIP backup successfully created!`);
   console.log(`📁 File: ${zipName}`);
