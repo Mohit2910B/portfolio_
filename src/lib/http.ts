@@ -50,7 +50,7 @@ function extractErrorMessage(error: unknown): string {
   return msg;
 }
 
-/** Wraps a route handler so API routes never leak HTML error pages. */
+/** Wraps a route handler so API routes never leak HTML error pages or technical DB strings. */
 export async function guard(fn: () => Promise<Response>): Promise<Response> {
   try {
     return await fn();
@@ -61,16 +61,8 @@ export async function guard(fn: () => Promise<Response>): Promise<Response> {
     if (/duplicate key/i.test(message)) {
       return conflict("That record already exists.");
     }
-    if (/relation .* does not exist/i.test(message)) {
-      return serverError("Database tables are missing. Please verify database initialization.");
-    }
-    if (/DatabaseNotConfiguredError|Production database is not configured/i.test(message)) {
-      return serverError(
-        "Production database is not configured. Please add your remote PostgreSQL DATABASE_URL in environment variables.",
-      );
-    }
-    if (/ECONNREFUSED|password authentication|ENOTFOUND|getaddrinfo/i.test(message)) {
-      return serverError("Database connection failed. Please check your production database configuration.");
+    if (/relation .* does not exist|DatabaseNotConfiguredError|Production database is not configured|ECONNREFUSED|password authentication|ENOTFOUND|getaddrinfo/i.test(message)) {
+      return serverError("Service temporarily unavailable. Please try again in a moment.");
     }
     return serverError("Unable to complete request right now. Please try again.");
   }

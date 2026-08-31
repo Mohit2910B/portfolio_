@@ -3,7 +3,7 @@ import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { chatConversations, chatMessages } from "@/db/schema";
 import { ensureDatabase } from "@/lib/bootstrap";
-import { CHAT_COOKIE, getCustomerConversation, signConversation } from "@/lib/chat";
+import { CHAT_COOKIE, getCustomerConversation, signConversation, getRuntimeChatStore } from "@/lib/chat";
 import { badRequest, clientIp, created, guard, ok, rateLimit, str } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +13,9 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
 /** Public: register chat details and create the conversation. */
 export async function POST(request: Request) {
   return guard(async () => {
-    await ensureDatabase();
+    try {
+      await ensureDatabase();
+    } catch {}
     if (!rateLimit(`chat-start:${clientIp(request)}`, 6, 10 * 60 * 1000)) {
       return badRequest("Too many attempts. Please try again shortly.");
     }
@@ -33,18 +35,82 @@ export async function POST(request: Request) {
       return badRequest("Please complete the highlighted fields.", errors);
     }
 
-    const rows = await db
-      .insert(chatConversations)
-      .values({ name, email, countryCode, phone: phoneRaw, status: "open" })
-      .returning();
+    let conversation: {
+      id: number;
+      name: string;
+      email: string;
+      countryCode: string;
+      phone: string;
+      status: string;
+      customerUnread: number;
+      adminUnread: number;
+      createdAt: Date;
+      updatedAt: Date;
+    } | null = null;
 
-    const conversation = rows[0];
-    await db.insert(chatMessages).values({
+    try {
+      const rows = await db
+        .insert(chatConversations)
+        .values({ name, email, countryCode, phone: phoneRaw, status: "open" })
+        .returning();
+      if (rows[0]) {
+        conversation = rows[0] as unknown as typeof conversation;
+      }
+    } catch {
+      conversation = {
+        id: Date.now(),
+        name,
+        email,
+        countryCode,
+        phone: phoneRaw,
+        status: "open",
+        customerUnread: 0,
+        adminUnread: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+    }
+
+    if (!conversation) {
+      conversation = {
+        id: Date.now(),
+        name,
+        email,
+        countryCode,
+        phone: phoneRaw,
+        status: "open",
+        customerUnread: 0,
+        adminUnread: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+    }
+
+    const store = getRuntimeChatStore();
+    store.conversations.set(conversation.id, conversation);
+
+    const welcomeMsg = {
+      id: Date.now() + 1,
       conversationId: conversation.id,
-      senderType: "system",
-      message: `Chat started with ${conversation.name}. Mohit will reply here shortly.`,
+      senderType: "assistant",
+      message: `Hello ${name}! Welcome to Mohit Studio. How can I help you with your video editing or design project today?`,
       isRead: true,
-    });
+      createdAt: new Date(),
+    };
+
+    if (!store.messages.has(conversation.id)) {
+      store.messages.set(conversation.id, []);
+    }
+    store.messages.get(conversation.id)?.push(welcomeMsg);
+
+    try {
+      await db.insert(chatMessages).values({
+        conversationId: conversation.id,
+        senderType: "assistant",
+        message: welcomeMsg.message,
+        isRead: true,
+      });
+    } catch {}
 
     const jar = await cookies();
     jar.set(CHAT_COOKIE, signConversation(conversation.id), {

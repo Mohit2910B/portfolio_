@@ -692,14 +692,44 @@ export async function POST(request: Request, ctx: Params) {
         const patch = parseProjectBody(body);
         if (!patch.title) return badRequest("Project title is required.", { title: "Required" });
         if (!patch.categoryId) return badRequest("Category is required.", { categoryId: "Required" });
-        patch.categoryLabel = await categoryLabelFor(patch.categoryId);
+        patch.categoryLabel = await categoryLabelFor(patch.categoryId).catch(() => "");
         patch.sortOrder = patch.sortOrder ?? (await nextSortOrder("projects").catch(() => 0));
+        let createdProject: typeof patch & { id: number } = { id: Date.now(), ...patch };
         try {
           const inserted = await db.insert(projects).values(patch as ProjectInsert).returning();
-          return created({ project: inserted[0] });
-        } catch {
-          return created({ project: { id: Date.now(), ...patch } });
-        }
+          if (inserted[0]) createdProject = inserted[0] as typeof createdProject;
+        } catch {}
+
+        const curProjs = getRuntimeOverride("projects") || DEFAULT_PROJECTS;
+        const mappedCreated = {
+          id: createdProject.id,
+          title: createdProject.title || "",
+          description: createdProject.description || "",
+          categoryId: createdProject.categoryId || 1,
+          categoryLabel: createdProject.categoryLabel || "",
+          aiLabType: createdProject.aiLabType || "",
+          year: createdProject.year || 2026,
+          software: createdProject.software || "",
+          tags: createdProject.tags || "",
+          externalLink: createdProject.externalLink || "",
+          videoUrl: createdProject.videoUrl || "",
+          videoSource: createdProject.videoSource || "upload",
+          thumbnailUrl: createdProject.thumbnailUrl || "",
+          aspectRatio: createdProject.aspectRatio || "9:16",
+          displaySize: createdProject.displaySize || "medium",
+          displayWidth: createdProject.displayWidth || 540,
+          displayHeight: createdProject.displayHeight || 960,
+          width: createdProject.width || 1080,
+          height: createdProject.height || 1920,
+          durationSeconds: createdProject.durationSeconds || 30,
+          featured: createdProject.featured ?? true,
+          published: createdProject.published ?? true,
+          demoStatus: createdProject.demoStatus || "verified",
+          sortOrder: createdProject.sortOrder ?? 0,
+          carouselEnabled: createdProject.carouselEnabled ?? true,
+        };
+        setRuntimeOverride("projects", [mappedCreated, ...curProjs.filter((p) => p.id !== mappedCreated.id)] as typeof DEFAULT_PROJECTS);
+        return created({ project: createdProject });
       }
 
       case "categories": {
@@ -938,6 +968,23 @@ export async function POST(request: Request, ctx: Params) {
         const sortOrder = num(body.sortOrder) ?? 0;
         const projectId = num(body.projectId);
 
+        let createdItem: typeof DEFAULT_CAROUSEL_ITEMS[0] = {
+          id: Date.now(),
+          title,
+          category,
+          description,
+          duration,
+          videoUrl,
+          videoSource,
+          thumbnailUrl,
+          aspectRatio,
+          isActive,
+          sortOrder,
+          projectId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+
         try {
           const inserted = await db
             .insert(carouselItems)
@@ -955,27 +1002,12 @@ export async function POST(request: Request, ctx: Params) {
               projectId,
             })
             .returning();
-          return created({ item: inserted[0] });
-        } catch {
-          return created({
-            item: {
-              id: Date.now(),
-              title,
-              category,
-              description,
-              duration,
-              videoUrl,
-              videoSource,
-              thumbnailUrl,
-              aspectRatio,
-              isActive,
-              sortOrder,
-              projectId,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            },
-          });
-        }
+          if (inserted[0]) createdItem = inserted[0] as typeof createdItem;
+        } catch {}
+
+        const curItems = getRuntimeOverride("carouselItems") || DEFAULT_CAROUSEL_ITEMS;
+        setRuntimeOverride("carouselItems", [...curItems.filter((i) => i.id !== createdItem.id), createdItem] as typeof DEFAULT_CAROUSEL_ITEMS);
+        return created({ item: createdItem });
       }
 
       case "layout": {
@@ -1087,6 +1119,11 @@ export async function PATCH(request: Request, ctx: Params) {
           if ("height" in body) patch.height = num(body.height);
           if ("durationSeconds" in body) patch.durationSeconds = num(body.durationSeconds);
           if (!patch.videoUrl) return badRequest("Provide a video URL or upload a file.");
+
+          const curProjs = getRuntimeOverride("projects") || DEFAULT_PROJECTS;
+          const updatedList = curProjs.map((p) => (p.id === id ? { ...p, ...patch } : p));
+          setRuntimeOverride("projects", updatedList as typeof DEFAULT_PROJECTS);
+
           try {
             const updated = await db.update(projects).set(patch).where(eq(projects.id, id)).returning();
             return ok({ project: await one(updated) });
@@ -1101,6 +1138,11 @@ export async function PATCH(request: Request, ctx: Params) {
         }
         if (Object.keys(patch).length === 0) return badRequest("Nothing to update.");
         patch.updatedAt = new Date();
+
+        const curProjs = getRuntimeOverride("projects") || DEFAULT_PROJECTS;
+        const updatedList = curProjs.map((p) => (p.id === id ? { ...p, ...patch } : p));
+        setRuntimeOverride("projects", updatedList as typeof DEFAULT_PROJECTS);
+
         try {
           const updated = await db.update(projects).set(patch).where(eq(projects.id, id)).returning();
           return ok({ project: await one(updated) });
@@ -1236,6 +1278,10 @@ export async function PATCH(request: Request, ctx: Params) {
           if ("isActive" in body) patch.isActive = bool(body.isActive);
           if ("sortOrder" in body) patch.sortOrder = num(body.sortOrder) ?? 0;
           if ("projectId" in body) patch.projectId = num(body.projectId);
+
+          const curItems = getRuntimeOverride("carouselItems") || DEFAULT_CAROUSEL_ITEMS;
+          const updatedItems = curItems.map((i) => (i.id === itemId ? { ...i, ...patch } : i));
+          setRuntimeOverride("carouselItems", updatedItems as typeof DEFAULT_CAROUSEL_ITEMS);
 
           try {
             const updated = await db
@@ -1502,6 +1548,8 @@ export async function DELETE(_request: Request, ctx: Params) {
     try {
       switch (resource) {
         case "projects": {
+          const curProjs = getRuntimeOverride("projects") || DEFAULT_PROJECTS;
+          setRuntimeOverride("projects", curProjs.filter((p) => p.id !== id) as typeof DEFAULT_PROJECTS);
           const project = await one(
             await db.select().from(projects).where(eq(projects.id, id)).limit(1),
           );
@@ -1534,6 +1582,8 @@ export async function DELETE(_request: Request, ctx: Params) {
           return ok({ deleted: id });
         }
         case "carousel": {
+          const curItems = getRuntimeOverride("carouselItems") || DEFAULT_CAROUSEL_ITEMS;
+          setRuntimeOverride("carouselItems", curItems.filter((i) => i.id !== id) as typeof DEFAULT_CAROUSEL_ITEMS);
           const item = await one(
             await db.select().from(carouselItems).where(eq(carouselItems.id, id)).limit(1),
           );

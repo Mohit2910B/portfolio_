@@ -583,13 +583,14 @@ export function PortfolioAdmin({ onChanged }: { onChanged: () => void }) {
                 <Uploader
                   kind="video"
                   projectId={editingId ?? undefined}
+                  onFileSelected={(_file, localUrl) => {
+                    patch("videoUrl", localUrl);
+                    patch("videoSource", "upload");
+                  }}
                   onUploaded={(result) => {
                     patch("videoUrl", result.url);
                     patch("videoSource", "upload");
                     setNotice("Video uploaded and attached to this project.");
-                    if (!form.thumbnailUrl) {
-                      void grabFrame(result.url);
-                    }
                   }}
                 />
               </div>
@@ -614,9 +615,11 @@ export function PortfolioAdmin({ onChanged }: { onChanged: () => void }) {
                   }
                   return (
                     <video
+                      key={form.videoUrl}
                       src={media.streamUrl || form.videoUrl}
                       controls
                       preload="metadata"
+                      playsInline
                       className="w-full rounded-2xl bg-black max-h-56"
                     />
                   );

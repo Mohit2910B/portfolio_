@@ -2,11 +2,10 @@ import { asc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { chatConversations, chatMessages } from "@/db/schema";
 import { ensureDatabase } from "@/lib/bootstrap";
-import { getCustomerConversation } from "@/lib/chat";
+import { getCustomerConversation, getRuntimeChatStore } from "@/lib/chat";
 import { badRequest, guard, ok, rateLimit, str } from "@/lib/http";
 import { getNotificationSettings, sendAdminNotification } from "@/lib/notifications";
 import { runChatAssistant } from "@/lib/ai";
-
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +13,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   return guard(async () => {
     const [settings, conversation] = await Promise.all([
-      getNotificationSettings(),
+      getNotificationSettings().catch(() => ({ adminStatus: "offline" })),
       getCustomerConversation(request),
     ]);
 
@@ -26,11 +25,37 @@ export async function GET(request: Request) {
       });
     }
 
-    const messages = await db
-      .select()
-      .from(chatMessages)
-      .where(eq(chatMessages.conversationId, conversation.id))
-      .orderBy(asc(chatMessages.createdAt), asc(chatMessages.id));
+    let messages: {
+      id: number;
+      conversationId: number;
+      senderType: string;
+      message: string;
+      isRead: boolean;
+      createdAt: Date | string;
+    }[] = [];
+
+    try {
+      const dbMessages = await db
+        .select()
+        .from(chatMessages)
+        .where(eq(chatMessages.conversationId, conversation.id))
+        .orderBy(asc(chatMessages.createdAt), asc(chatMessages.id));
+      if (dbMessages.length > 0) messages = dbMessages;
+    } catch {}
+
+    if (messages.length === 0) {
+      const store = getRuntimeChatStore();
+      messages = store.messages.get(conversation.id) || [
+        {
+          id: Date.now(),
+          conversationId: conversation.id,
+          senderType: "assistant",
+          message: `Hello ${conversation.name || "there"}! Welcome to Mohit Studio. How can I help you with your video editing or design project today?`,
+          isRead: true,
+          createdAt: new Date(),
+        },
+      ];
+    }
 
     return ok({
       conversation,

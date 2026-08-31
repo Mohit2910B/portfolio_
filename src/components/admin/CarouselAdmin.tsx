@@ -899,20 +899,27 @@ export function CarouselAdmin({ onChanged }: { onChanged?: () => void }) {
                 {form.videoSource === "upload" ? (
                   <Uploader
                     kind="video"
+                    onFileSelected={(_file, localUrl) => {
+                      setForm((prev) => ({ ...prev, videoUrl: localUrl, videoSource: "upload" }));
+                    }}
                     onUploaded={(res) => {
                       setForm((prev) => ({ ...prev, videoUrl: res.url, videoSource: "upload" }));
                       showToast("Video uploaded and attached to card.");
-                      if (!form.thumbnailUrl) {
-                        void grabFrame(res.url);
-                      }
                     }}
                   />
                 ) : (
                   <Field label="Video Link URL" hint="YouTube Shorts, Instagram Reel, Google Drive, or MP4">
                     <TextInput
                       value={form.videoUrl}
-                      onChange={(val) => setForm({ ...form, videoUrl: val })}
-                      placeholder="https://..."
+                      onChange={(val) => {
+                        const media = parseMediaUrl(val);
+                        setForm((prev) => ({
+                          ...prev,
+                          videoUrl: val,
+                          thumbnailUrl: prev.thumbnailUrl || media.thumbnailUrl || prev.thumbnailUrl,
+                        }));
+                      }}
+                      placeholder="https://youtube.com/shorts/... or https://drive.google.com/..."
                     />
                   </Field>
                 )}
@@ -920,23 +927,42 @@ export function CarouselAdmin({ onChanged }: { onChanged?: () => void }) {
                 {/* Video Player Preview inside Modal */}
                 {form.videoUrl && (
                   <div>
-                    <span className="text-[11px] font-medium text-ink/60">Live Video Preview:</span>
-                    <div className="mt-1.5 overflow-hidden rounded-xl bg-black max-h-48 aspect-video flex items-center justify-center">
-                      {form.videoUrl.endsWith(".mp4") || form.videoUrl.includes("blob") || form.videoUrl.includes("pexels") ? (
-                        <video
-                          src={form.videoUrl}
-                          controls
-                          className="h-full w-full object-contain"
-                        />
-                      ) : (
-                        <iframe
-                          src={parseMediaUrl(form.videoUrl).embedUrl || form.videoUrl}
-                          title="Preview"
-                          className="h-full w-full border-0"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                        />
-                      )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-semibold text-ink/70">Live Video Preview:</span>
+                      {(() => {
+                        const media = parseMediaUrl(form.videoUrl);
+                        if (media.type === "youtube") return <span className="text-[10px] font-semibold text-red-500">🔴 YouTube {media.isVertical ? "Shorts (9:16)" : "Video"}</span>;
+                        if (media.type === "drive") return <span className="text-[10px] font-semibold text-emerald-500">📁 Google Drive Stream</span>;
+                        if (media.type === "instagram") return <span className="text-[10px] font-semibold text-pink-500">🟣 Instagram Reel</span>;
+                        if (media.type === "vimeo") return <span className="text-[10px] font-semibold text-sky-500">🔵 Vimeo Player</span>;
+                        return <span className="text-[10px] font-semibold text-emerald-600">🎬 Direct Video Stream</span>;
+                      })()}
+                    </div>
+                    <div className="mt-1.5 overflow-hidden rounded-xl bg-black max-h-56 aspect-video flex items-center justify-center border border-black/10 shadow-inner">
+                      {(() => {
+                        const media = parseMediaUrl(form.videoUrl);
+                        if (media.embedUrl) {
+                          return (
+                            <iframe
+                              src={media.embedUrl}
+                              title="Preview"
+                              className="h-full w-full border-0"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                            />
+                          );
+                        }
+                        return (
+                          <video
+                            key={form.videoUrl}
+                            src={media.streamUrl || form.videoUrl}
+                            controls
+                            preload="metadata"
+                            playsInline
+                            className="h-full w-full object-contain"
+                          />
+                        );
+                      })()}
                     </div>
                   </div>
                 )}

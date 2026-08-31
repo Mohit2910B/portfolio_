@@ -48,9 +48,59 @@ export async function getCustomerConversationId(request?: Request): Promise<numb
   return null;
 }
 
+declare global {
+  // eslint-disable-next-line no-var
+  var __runtimeChatStore:
+    | {
+        conversations: Map<
+          number,
+          {
+            id: number;
+            name: string;
+            email: string;
+            countryCode: string;
+            phone: string;
+            status: string;
+            customerUnread: number;
+            adminUnread: number;
+            lastMessage?: string | null;
+            customerSeenAt?: Date | null;
+            createdAt: Date;
+            updatedAt: Date;
+          }
+        >;
+        messages: Map<
+          number,
+          {
+            id: number;
+            conversationId: number;
+            senderType: string;
+            message: string;
+            isRead: boolean;
+            createdAt: Date;
+          }[]
+        >;
+      }
+    | undefined;
+}
+
+export function getRuntimeChatStore() {
+  if (!globalThis.__runtimeChatStore) {
+    globalThis.__runtimeChatStore = {
+      conversations: new Map(),
+      messages: new Map(),
+    };
+  }
+  return globalThis.__runtimeChatStore;
+}
+
 export async function getCustomerConversation(request?: Request) {
   const id = await getCustomerConversationId(request);
   if (!id) return null;
-  const rows = await db.select().from(chatConversations).where(eq(chatConversations.id, id)).limit(1);
-  return rows[0] ?? null;
+  try {
+    const rows = await db.select().from(chatConversations).where(eq(chatConversations.id, id)).limit(1);
+    if (rows[0]) return rows[0];
+  } catch {}
+  const store = getRuntimeChatStore();
+  return store.conversations.get(id) ?? null;
 }

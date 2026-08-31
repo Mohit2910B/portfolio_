@@ -261,12 +261,14 @@ export function Uploader({
   kind,
   projectId,
   onUploaded,
+  onFileSelected,
   label = "Drag & drop video here",
   hint = "MP4, WebM or MOV · max 300MB",
 }: {
   kind: "video" | "image";
   projectId?: number;
   onUploaded: (result: UploadResult) => void;
+  onFileSelected?: (file: File, localUrl: string) => void;
   label?: string;
   hint?: string;
 }) {
@@ -444,7 +446,13 @@ export function Uploader({
           event.preventDefault();
           setDragOver(false);
           const file = event.dataTransfer.files?.[0];
-          if (file) upload(file);
+          if (file) {
+            try {
+              const localUrl = URL.createObjectURL(file);
+              onFileSelected?.(file, localUrl);
+            } catch {}
+            upload(file);
+          }
         }}
         onClick={() => inputRef.current?.click()}
         onKeyDown={(event) => {
@@ -469,7 +477,13 @@ export function Uploader({
           className="hidden"
           onChange={(event) => {
             const file = event.target.files?.[0];
-            if (file) upload(file);
+            if (file) {
+              try {
+                const localUrl = URL.createObjectURL(file);
+                onFileSelected?.(file, localUrl);
+              } catch {}
+              upload(file);
+            }
             event.target.value = "";
           }}
         />

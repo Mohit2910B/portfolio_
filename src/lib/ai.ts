@@ -2,6 +2,7 @@ import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { chatConversations, chatMessages } from "@/db/schema";
 import { getNotificationSettings } from "@/lib/notifications";
+import { getRuntimeChatStore } from "@/lib/chat";
 
 const SYSTEM_PROMPT = `
 You are the official Studio AI Assistant for Mohit Babariya (Creative Video Editor, Motion Graphics Designer & AI Video Specialist).
@@ -241,22 +242,43 @@ export async function runChatAssistant(conversationId: number, latest: string) {
 
     if (!generatedReply) return;
 
-    // Small natural delay so client sees natural reply
-    await db.insert(chatMessages).values({
+    const replyObj = {
+      id: Date.now(),
       conversationId,
       senderType: "assistant",
       message: generatedReply,
       isRead: false,
-    });
+      createdAt: new Date(),
+    };
 
-    await db
-      .update(chatConversations)
-      .set({
-        lastMessage: generatedReply.slice(0, 240),
-        customerUnread: 1,
-        updatedAt: new Date(),
-      })
-      .where(eq(chatConversations.id, conversationId));
+    const store = getRuntimeChatStore();
+    if (!store.messages.has(conversationId)) store.messages.set(conversationId, []);
+    store.messages.get(conversationId)?.push(replyObj);
+
+    const convo = store.conversations.get(conversationId);
+    if (convo) {
+      convo.lastMessage = generatedReply.slice(0, 240);
+      convo.customerUnread = (convo.customerUnread || 0) + 1;
+      convo.updatedAt = new Date();
+    }
+
+    try {
+      await db.insert(chatMessages).values({
+        conversationId,
+        senderType: "assistant",
+        message: generatedReply,
+        isRead: false,
+      });
+
+      await db
+        .update(chatConversations)
+        .set({
+          lastMessage: generatedReply.slice(0, 240),
+          customerUnread: 1,
+          updatedAt: new Date(),
+        })
+        .where(eq(chatConversations.id, conversationId));
+    } catch {}
   } catch (error) {
     console.error("[ai] runChatAssistant failed:", error);
   }
