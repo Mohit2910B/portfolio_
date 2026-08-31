@@ -2,7 +2,8 @@ import { asc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { chatConversations, chatMessages } from "@/db/schema";
 import { ensureDatabase } from "@/lib/bootstrap";
-import { getCustomerConversation, getRuntimeChatStore } from "@/lib/chat";
+import { cookies } from "next/headers";
+import { getCustomerConversation, getRuntimeChatStore, CHAT_COOKIE, signConversation } from "@/lib/chat";
 import { badRequest, guard, ok, rateLimit, str } from "@/lib/http";
 import { getNotificationSettings, sendAdminNotification } from "@/lib/notifications";
 import { runChatAssistant } from "@/lib/ai";
@@ -68,31 +69,111 @@ export async function GET(request: Request) {
 /** Public (customer): send a message. */
 export async function POST(request: Request) {
   return guard(async () => {
-    const conversation = await getCustomerConversation(request);
-    if (!conversation) return badRequest("Start a chat first.");
-    if (conversation.status === "closed") return badRequest("This conversation is closed.");
-
-    const body = (await request.json().catch(() => ({}))) as { message?: unknown };
+    const body = (await request.json().catch(() => ({}))) as {
+      message?: unknown;
+      profile?: {
+        name?: string;
+        email?: string;
+        phone?: string;
+        countryCode?: string;
+      };
+    };
     const message = str(body.message);
     if (message.length < 1) return badRequest("Type a message first.");
     if (message.length > 2000) return badRequest("Message is too long (max 2000 characters).");
-    if (!rateLimit(`chat-msg:${conversation.id}`, 30, 60 * 1000)) {
+
+    let conversation = await getCustomerConversation(request);
+
+    if (!conversation) {
+      const prof = body.profile || {};
+      const name = str(prof.name, "Website Visitor") || "Website Visitor";
+      const email = str(prof.email, "visitor@mohitbabariya.in");
+      const countryCode = str(prof.countryCode, "+91") || "+91";
+      const phone = str(prof.phone, "");
+
+      let createdId = Date.now();
+      try {
+        const rows = await db
+          .insert(chatConversations)
+          .values({ name, email, countryCode, phone, status: "open" })
+          .returning();
+        if (rows[0]) {
+          conversation = rows[0];
+          createdId = rows[0].id;
+        }
+      } catch {}
+
+      if (!conversation) {
+        conversation = {
+          id: createdId,
+          name,
+          email,
+          countryCode,
+          phone,
+          status: "open",
+          customerUnread: 0,
+          adminUnread: 0,
+          lastMessage: message.slice(0, 240),
+          customerSeenAt: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+      }
+
+      const store = getRuntimeChatStore();
+      store.conversations.set(conversation.id, conversation);
+
+      try {
+        const jar = await cookies();
+        jar.set(CHAT_COOKIE, signConversation(conversation.id), {
+          httpOnly: true,
+          sameSite: "lax",
+          secure: process.env.NODE_ENV === "production",
+          path: "/",
+          maxAge: 60 * 60 * 24 * 30,
+        });
+      } catch {}
+    }
+
+    if (conversation.status === "closed") return badRequest("This conversation is closed.");
+
+    if (!rateLimit(`chat-msg:${conversation.id}`, 40, 60 * 1000)) {
       return badRequest("You are sending messages too quickly.");
     }
 
-    const inserted = await db
-      .insert(chatMessages)
-      .values({ conversationId: conversation.id, senderType: "customer", message, isRead: false })
-      .returning();
+    const insertedMsg = {
+      id: Date.now(),
+      conversationId: conversation.id,
+      senderType: "customer",
+      message,
+      isRead: false,
+      createdAt: new Date(),
+    };
 
-    await db
-      .update(chatConversations)
-      .set({
-        lastMessage: message.slice(0, 240),
-        adminUnread: sql`${chatConversations.adminUnread} + 1`,
-        updatedAt: sql`now()`,
-      })
-      .where(eq(chatConversations.id, conversation.id));
+    const store = getRuntimeChatStore();
+    if (!store.messages.has(conversation.id)) store.messages.set(conversation.id, []);
+    store.messages.get(conversation.id)?.push(insertedMsg);
+
+    const convo = store.conversations.get(conversation.id);
+    if (convo) {
+      convo.lastMessage = message.slice(0, 240);
+      convo.updatedAt = new Date();
+    }
+
+    try {
+      await db
+        .insert(chatMessages)
+        .values({ conversationId: conversation.id, senderType: "customer", message, isRead: false });
+
+      await db
+        .update(chatConversations)
+        .set({
+          lastMessage: message.slice(0, 240),
+          adminUnread: sql`${chatConversations.adminUnread} + 1`,
+          updatedAt: sql`now()`,
+        })
+        .where(eq(chatConversations.id, conversation.id));
+    } catch {}
 
     const chatSubject = `💬 Live Chat Message from ${conversation.name || "Website Visitor"}`;
     const chatHtml = `
@@ -119,7 +200,7 @@ export async function POST(request: Request) {
       console.warn("[chat] AI assistant error:", aiErr);
     }
 
-    return ok({ message: inserted[0] });
+    return ok({ message: insertedMsg });
   });
 }
 

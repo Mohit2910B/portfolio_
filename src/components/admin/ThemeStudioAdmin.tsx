@@ -154,13 +154,22 @@ export function ThemeStudioAdmin({ onChanged }: { onChanged?: () => void }) {
           title="THEME STUDIO"
           subtitle="Change the complete visual identity of the website without changing your content."
           action={
-            <Button
-              variant="light"
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              className="text-xs uppercase tracking-wider"
-            >
-              {showAdvanced ? "Hide Fine-Tuning" : "⚙ Fine-Tuning Settings"}
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="light"
+                onClick={() => void restoreDefault()}
+                className="text-xs font-bold tracking-wider hover:!bg-rose-500/10 hover:!text-rose-600"
+              >
+                ↺ Reset to Default Theme
+              </Button>
+              <Button
+                variant={showAdvanced ? "dark" : "light"}
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className="text-xs uppercase tracking-wider"
+              >
+                {showAdvanced ? "Hide Fine-Tuning" : "⚙ Fine-Tuning Settings"}
+              </Button>
+            </div>
           }
         />
 
@@ -428,6 +437,48 @@ export function ThemeStudioAdmin({ onChanged }: { onChanged?: () => void }) {
                     { value: "pill", label: "Pill Capsule (Futuristic)" },
                   ]}
                 />
+              </Field>
+
+              <Field label="Animation Speed">
+                <Select
+                  value={settings.animationSpeed}
+                  onChange={(val) => setSettings({ ...settings, animationSpeed: val })}
+                  options={[
+                    { value: "fast", label: "Fast & Snappy (Quick Transitions)" },
+                    { value: "normal", label: "Normal (Balanced Pacing)" },
+                    { value: "slow", label: "Cinematic & Smooth (Slow Drift)" },
+                  ]}
+                />
+              </Field>
+
+              <Field label={`Glassmorphism Blur: ${settings.glassBlur}px`} hint="0px (flat) to 40px (deep blur)">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min={0}
+                    max={40}
+                    step={2}
+                    value={settings.glassBlur}
+                    onChange={(e) => setSettings({ ...settings, glassBlur: Number(e.target.value) })}
+                    className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-black/15 accent-brand"
+                  />
+                  <span className="w-10 text-right font-mono text-xs font-semibold text-ink">{settings.glassBlur}px</span>
+                </div>
+              </Field>
+
+              <Field label={`Glass Opacity: ${settings.glassOpacity}%`} hint="Transparency of cards and navigation">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min={10}
+                    max={95}
+                    step={5}
+                    value={settings.glassOpacity}
+                    onChange={(e) => setSettings({ ...settings, glassOpacity: Number(e.target.value) })}
+                    className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-black/15 accent-brand"
+                  />
+                  <span className="w-10 text-right font-mono text-xs font-semibold text-ink">{settings.glassOpacity}%</span>
+                </div>
               </Field>
 
               <div className="grid grid-cols-2 gap-4 pt-2">

@@ -797,20 +797,34 @@ export function PortfolioAdmin({ onChanged }: { onChanged: () => void }) {
                       </span>
                     )}
                     <span
-                      className={`rounded-md px-2 py-1 text-[0.55rem] font-semibold uppercase tracking-[0.12em] ${
-                        project.published ? "bg-emerald-600 text-white" : "bg-white/85 text-ink"
+                      className={`rounded-md px-2 py-1 text-[0.55rem] font-bold uppercase tracking-[0.12em] ${
+                        project.published ? "bg-emerald-600 text-white" : "bg-amber-500 text-white"
                       }`}
                     >
-                      {project.published ? "Published" : "Draft"}
+                      {project.published ? "● Live (Visible)" : "🚫 Hidden"}
                     </span>
                   </div>
                 </div>
 
                 <div className="p-4">
-                  <p className="text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-ink/40">
-                    {project.categoryName || project.categoryLabel || "Uncategorised"}
-                    {project.year ? ` · ${project.year}` : ""}
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-ink/40">
+                      {project.categoryName || project.categoryLabel || "Uncategorised"}
+                      {project.year ? ` · ${project.year}` : ""}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => togglePublished(project)}
+                      className={`rounded-lg px-2 py-0.5 text-[10px] font-bold transition ${
+                        project.published
+                          ? "bg-emerald-500/10 text-emerald-600 hover:bg-amber-500/15 hover:text-amber-700"
+                          : "bg-amber-500/15 text-amber-700 hover:bg-emerald-500/15 hover:text-emerald-600"
+                      }`}
+                      title={project.published ? "Click to Hide project from website" : "Click to Show project on website"}
+                    >
+                      {project.published ? "👁️ Visible" : "🚫 Hidden"}
+                    </button>
+                  </div>
                   <h3 className="mt-1.5 text-sm font-semibold text-ink">{project.title}</h3>
                   {view === "list" && project.description && (
                     <p className="mt-2 line-clamp-2 text-[0.75rem] text-ink/55">{project.description}</p>
@@ -819,6 +833,12 @@ export function PortfolioAdmin({ onChanged }: { onChanged: () => void }) {
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     <Button variant="dark" onClick={() => openEdit(project)}>
                       Edit
+                    </Button>
+                    <Button
+                      variant={project.published ? "light" : "accent"}
+                      onClick={() => togglePublished(project)}
+                    >
+                      {project.published ? "Hide" : "Unhide (Show)"}
                     </Button>
                     <Button variant="ghost" onClick={() => setPreviewId(project.id)}>
                       View
@@ -843,9 +863,6 @@ export function PortfolioAdmin({ onChanged }: { onChanged: () => void }) {
                       }
                     >
                       Duplicate
-                    </Button>
-                    <Button variant="ghost" onClick={() => togglePublished(project)}>
-                      {project.published ? "Unpublish" : "Publish"}
                     </Button>
                     <Button variant="ghost" onClick={() => toggleFeatured(project)}>
                       {project.featured ? "Unfeature" : "Feature"}

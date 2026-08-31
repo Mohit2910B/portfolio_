@@ -169,37 +169,40 @@ export default function ChatWidget() {
     const text = draft.trim();
     if (!text) return;
 
-    // If no active conversation yet, but we have saved profile, auto-start conversation first
-    let activeConvo = conversation;
-    if (!activeConvo) {
-      const profileToUse = savedProfile || details;
-      if (profileToUse.name && profileToUse.email && profileToUse.phone) {
-        activeConvo = await startChat(undefined, profileToUse);
-        if (!activeConvo) return;
-      } else {
-        setEditingProfile(true);
-        return;
-      }
-    }
-
+    const profileToUse = savedProfile || details;
     setDraft("");
+    setError("");
+
+    // Optimistic customer message
+    const tempMsg: Message = {
+      id: Date.now(),
+      conversationId: conversation?.id || 0,
+      senderType: "customer",
+      message: text,
+      isRead: false,
+      createdAt: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, tempMsg]);
+    scrollToEnd();
+
     try {
       const response = await fetch("/api/chat/messages", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({
+          message: text,
+          profile: profileToUse.name && profileToUse.email ? profileToUse : undefined,
+        }),
       });
       if (!response.ok) {
         const payload = (await response.json()) as { error?: string };
         setError(payload.error ?? "Message failed to send.");
-        setDraft(text);
         return;
       }
       setError("");
       await loadMessages();
     } catch {
-      setError("Network error. Message not sent.");
-      setDraft(text);
+      setError("Network error. Please try again.");
     }
   };
 
