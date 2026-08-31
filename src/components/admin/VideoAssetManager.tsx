@@ -47,6 +47,7 @@ export function VideoAssetManager({
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [uploadMessage, setUploadMessage] = useState<string>("");
   const [grabbingFrame, setGrabbingFrame] = useState(false);
+  const [thumbError, setThumbError] = useState(false);
   const [videoMeta, setVideoMeta] = useState<{
     width?: number;
     height?: number;
@@ -67,6 +68,12 @@ export function VideoAssetManager({
     if (videoSource) setSourceTab(videoSource);
     if (videoSource === "url") setUrlInput(videoUrl);
   }, [videoSource, videoUrl]);
+
+  // Reset error state when thumbnail URL changes (new capture or upload)
+  useEffect(() => {
+    setThumbError(false);
+  }, [thumbnailUrl]);
+
 
   // Helper to format bytes
   const formatBytes = (bytes: number) => {
@@ -638,24 +645,52 @@ export function VideoAssetManager({
                 </p>
               </div>
 
-              {/* Thumbnail Image Display */}
-              <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-black/10 bg-black/5 shadow-inner">
-                {thumbnailUrl ? (
+              {/* Thumbnail Image Display — adaptive aspect ratio */}
+              <div
+                className={`relative w-full overflow-hidden rounded-xl border border-black/10 bg-black/5 shadow-inner ${
+                  aspectRatio === "9:16" || aspectRatio === "4:5"
+                    ? "aspect-[9/16] max-h-[280px]"
+                    : "aspect-video"
+                }`}
+                style={{ minHeight: 120 }}
+              >
+                {thumbnailUrl && !thumbError ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
+                    key={thumbnailUrl}
                     src={thumbnailUrl}
                     alt="Thumbnail preview"
                     className="h-full w-full object-cover"
+                    onError={() => setThumbError(true)}
+                    onLoad={() => setThumbError(false)}
                   />
                 ) : (
-                  <div className="flex h-full w-full flex-col items-center justify-center p-3 text-center">
-                    <span className="text-xl">🖼️</span>
-                    <span className="text-[10px] font-medium text-ink/40 mt-1">
-                      No thumbnail set yet. Use the frame grabber or upload button below.
-                    </span>
+                  <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-3 text-center">
+                    {thumbError && thumbnailUrl ? (
+                      <>
+                        <span className="text-2xl">⚠️</span>
+                        <span className="text-[10px] font-medium text-red-500">
+                          Cannot load image. Try re-capturing or uploading manually.
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setThumbError(false)}
+                          className="mt-1 rounded-lg bg-red-50 px-2 py-1 text-[10px] font-bold text-red-600 hover:bg-red-100"
+                        >
+                          Retry
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-xl">🖼️</span>
+                        <span className="text-[10px] font-medium text-ink/40">
+                          No thumbnail yet — grab a frame or upload an image.
+                        </span>
+                      </>
+                    )}
                   </div>
                 )}
-                {thumbnailUrl && (
+                {thumbnailUrl && !thumbError && (
                   <span className="absolute bottom-2 right-2 rounded-md bg-emerald-600/90 px-2 py-0.5 text-[9px] font-bold text-white shadow-sm backdrop-blur-sm">
                     ✓ Attached
                   </span>
