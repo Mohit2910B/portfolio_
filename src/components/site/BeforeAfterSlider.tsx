@@ -8,8 +8,8 @@ type GradePreset = {
   name: string;
   badge: string;
   description: string;
-  beforeImg: string;
-  afterImg: string;
+  flatColor: string;
+  gradedColor: string;
 };
 
 const PRESETS: GradePreset[] = [
@@ -18,30 +18,30 @@ const PRESETS: GradePreset[] = [
     name: "Kodak 2383 35mm Film Print",
     badge: "CINEMATIC EMULSION",
     description: "Flat S-Log3 transformed into rich contrast, film halation, and golden skin tones.",
-    beforeImg: "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=1400&q=80&sat=-100", // Flat desaturated look
-    afterImg: "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=1400&q=80", // Rich graded look
+    flatColor: "linear-gradient(135deg, #4a4d52 0%, #6b7077 50%, #3e4146 100%)",
+    gradedColor: "linear-gradient(135deg, #1e3c72 0%, #2a5298 35%, #f39c12 80%, #e0147f 100%)",
   },
   {
     id: "luxury-real-estate",
     name: "Architectural Interior & Sunset Grade",
     badge: "LUXURY PROPERTY",
     description: "Balancing exterior window highlights with warm, inviting interior ambience.",
-    beforeImg: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1400&q=80&sat=-80",
-    afterImg: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1400&q=80",
+    flatColor: "linear-gradient(135deg, #575a61 0%, #767b85 50%, #484b52 100%)",
+    gradedColor: "linear-gradient(135deg, #0f2027 0%, #203a43 40%, #2c5364 70%, #ffb347 100%)",
   },
   {
     id: "commercial-vivid",
     name: "Commercial Brand & High-Contrast Commercial",
     badge: "COMMERCIAL AD",
     description: "Vibrant saturated punch engineered for maximum thumb-stopping retention on social feeds.",
-    beforeImg: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1400&q=80&sat=-90",
-    afterImg: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1400&q=80",
+    flatColor: "linear-gradient(135deg, #52555a 0%, #6c7179 50%, #43464a 100%)",
+    gradedColor: "linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%)",
   },
 ];
 
 export default function BeforeAfterSlider() {
   const [activePreset, setActivePreset] = useState<GradePreset>(PRESETS[0]);
-  const [sliderPos, setSliderPos] = useState<number>(50); // percentage (0 to 100)
+  const [sliderPos, setSliderPos] = useState<number>(50);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -75,7 +75,7 @@ export default function BeforeAfterSlider() {
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-[var(--accent,#e0147f)] animate-pulse" />
               <p className="font-mono text-xs font-bold uppercase tracking-[0.25em] text-[var(--accent,#e0147f)]">
-                Color Science & Grading
+                Color Science &amp; Grading
               </p>
             </div>
             <h2 className="display mt-3 text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white">
@@ -115,33 +115,47 @@ export default function BeforeAfterSlider() {
               onMouseLeave={() => setIsDragging(false)}
               onMouseMove={handleMouseMove}
               onTouchMove={handleTouchMove}
-              className="relative aspect-video max-h-[620px] w-full cursor-ew-resize select-none overflow-hidden rounded-[24px] bg-black"
+              className="relative aspect-video max-h-[500px] w-full cursor-ew-resize select-none overflow-hidden rounded-[24px] bg-black"
             >
-              {/* After / Graded Image (Base Layer) */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={activePreset.afterImg}
-                alt="Color Graded Master"
-                className="pointer-events-none absolute inset-0 h-full w-full object-cover"
-              />
+              {/* After / Graded Layer */}
+              <div
+                className="absolute inset-0 flex items-center justify-center p-8 transition-all duration-500"
+                style={{ background: activePreset.gradedColor }}
+              >
+                <div className="text-center">
+                  <div className="inline-block rounded-full bg-white/20 px-4 py-1.5 text-xs font-bold tracking-widest text-white backdrop-blur-md uppercase">
+                    ★ {activePreset.name}
+                  </div>
+                  <p className="mt-4 max-w-md text-sm font-medium text-white/90">
+                    Full Color Space Conversion · Rec.709 Target · Custom Lut &amp; Curves Applied
+                  </p>
+                </div>
+              </div>
 
-              {/* Before / Raw Log Image (Clipped Overlay) */}
+              {/* Before / Flat Log Layer */}
               <div
                 style={{ width: `${sliderPos}%` }}
                 className="absolute inset-y-0 left-0 overflow-hidden border-r-2 border-white/90 shadow-[5px_0_30px_rgba(0,0,0,0.8)] transition-[width] duration-75 ease-out"
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={activePreset.beforeImg}
-                  alt="Raw Camera Log Footage"
+                <div
+                  className="flex h-full w-full items-center justify-center p-8 filter desaturate-100 contrast-75 brightness-90"
                   style={{
+                    background: activePreset.flatColor,
                     width: containerRef.current ? `${containerRef.current.clientWidth}px` : "100%",
                     maxWidth: "none",
                   }}
-                  className="pointer-events-none h-full object-cover filter contrast-[0.85] brightness-[0.95]"
-                />
+                >
+                  <div className="text-center">
+                    <div className="inline-block rounded-full bg-black/40 px-4 py-1.5 font-mono text-xs font-bold tracking-widest text-white/80 backdrop-blur-md uppercase">
+                      RAW S-LOG3 / UNGRADED
+                    </div>
+                    <p className="mt-4 max-w-md text-sm font-medium text-white/60">
+                      Unprocessed Sensor Dynamic Range · Flat Gamma Curve
+                    </p>
+                  </div>
+                </div>
 
-                {/* Left "RAW S-LOG3" Label */}
+                {/* Left Label */}
                 <div className="absolute top-4 left-4 rounded-lg bg-black/80 px-3 py-1.5 backdrop-blur-md">
                   <div className="flex items-center gap-1.5">
                     <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
@@ -152,7 +166,7 @@ export default function BeforeAfterSlider() {
                 </div>
               </div>
 
-              {/* Right "FINAL COLOR GRADE" Label */}
+              {/* Right Label */}
               <div className="absolute top-4 right-4 rounded-lg bg-[var(--accent,#e0147f)]/90 px-3 py-1.5 backdrop-blur-md shadow-lg">
                 <div className="flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
@@ -162,7 +176,7 @@ export default function BeforeAfterSlider() {
                 </div>
               </div>
 
-              {/* Interactive Divider Handle */}
+              {/* Interactive Handle */}
               <div
                 style={{ left: `${sliderPos}%` }}
                 className="pointer-events-none absolute inset-y-0 -ml-5 flex items-center justify-center transition-[left] duration-75 ease-out"
@@ -176,7 +190,7 @@ export default function BeforeAfterSlider() {
               </div>
             </div>
 
-            {/* Bottom Preset Metadata Details */}
+            {/* Details */}
             <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-2 py-2 text-xs">
               <div className="flex items-center gap-3">
                 <span className="rounded-md bg-white/10 px-2.5 py-1 font-mono text-[11px] font-bold text-[var(--accent,#e0147f)]">

@@ -1,24 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import type { SiteData, PublicProject } from "@/lib/data";
+import type { SiteData } from "@/lib/data";
 import WorkCarousel from "@/components/site/WorkCarousel";
 import ContactSection from "@/components/site/ContactSection";
 import SoftwareTools from "@/components/site/SoftwareTools";
 import ChatWidget from "@/components/site/ChatWidget";
 
 export default function Theme04Studio({ data }: { data: SiteData }) {
-  const { homepage, contact, services, softwareTools, projects, categories } = data;
-  const [activeCategory, setActiveCategory] = useState<string>("all");
-  const [selectedProject, setSelectedProject] = useState<PublicProject | null>(null);
-
-  const filteredProjects = projects.filter((p) => {
-    if (activeCategory === "all") return true;
-    return (
-      String(p.categoryId) === activeCategory ||
-      p.categoryLabel?.toLowerCase() === activeCategory.toLowerCase()
-    );
-  });
+  const { homepage, services, projects = [], carouselItems = [] } = data;
+  const hasCarousel = carouselItems.length > 0 || projects.length > 0;
 
   return (
     <div className="min-h-screen bg-[#0e0e12] text-[#f1f5f9] font-sans antialiased selection:bg-[#a855f7] selection:text-white">
@@ -31,17 +21,16 @@ export default function Theme04Studio({ data }: { data: SiteData }) {
           </a>
 
           <nav className="hidden md:flex items-center gap-8 text-xs font-bold uppercase tracking-widest text-white/70">
-            <a href="#showcase" className="hover:text-[#a855f7] transition">
-              Showcase
-            </a>
-            <a href="#archive" className="hover:text-[#a855f7] transition">
-              Archive
-            </a>
-            <a href="#studio" className="hover:text-[#a855f7] transition">
-              Studio
-            </a>
+            {hasCarousel && (
+              <a href="#work" className="hover:text-[#a855f7] transition">
+                Showcase
+              </a>
+            )}
             <a href="#services" className="hover:text-[#a855f7] transition">
               Capabilities
+            </a>
+            <a href="#tools" className="hover:text-[#a855f7] transition">
+              Stack
             </a>
             <a href="#contact" className="hover:text-[#a855f7] transition">
               Contact
@@ -78,10 +67,10 @@ export default function Theme04Studio({ data }: { data: SiteData }) {
 
               <div className="flex flex-wrap gap-4 pt-4">
                 <a
-                  href="#showcase"
+                  href="#services"
                   className="rounded-xl bg-[#8b5cf6] px-8 py-3.5 text-xs font-bold uppercase tracking-widest text-black shadow-lg hover:bg-white transition"
                 >
-                  Explore Reel Showcase
+                  Explore Capabilities
                 </a>
                 <a
                   href="#contact"
@@ -99,9 +88,9 @@ export default function Theme04Studio({ data }: { data: SiteData }) {
                 <p className="text-[11px] text-white/50">Production Track Record</p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-[#16161e] p-6 space-y-2">
-                <span className="font-mono text-xs text-[#a855f7]">#02 ASSETS</span>
-                <div className="text-3xl font-black text-white">100+</div>
-                <p className="text-[11px] text-white/50">Finished Video Cuts</p>
+                <span className="font-mono text-xs text-[#a855f7]">#02 SERVICES</span>
+                <div className="text-3xl font-black text-white">{services.length}</div>
+                <p className="text-[11px] text-white/50">Core Post Services</p>
               </div>
               <div className="col-span-2 rounded-2xl border border-white/10 bg-[#16161e] p-6 space-y-2">
                 <span className="font-mono text-xs text-[#a855f7]">#03 FOCUS</span>
@@ -113,99 +102,11 @@ export default function Theme04Studio({ data }: { data: SiteData }) {
         </div>
       </section>
 
-      {/* Video Carousel */}
-      <div id="showcase">
-        <WorkCarousel data={data} />
-      </div>
-
-      {/* Studio Layered Archive */}
-      <section id="archive" className="border-t border-white/10 py-24 md:py-36">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-12 border-b border-white/10">
-            <div>
-              <span className="font-mono text-xs uppercase tracking-widest text-[#a855f7]">
-                PROJECT REPOSITORIES
-              </span>
-              <h2 className="mt-2 font-heading text-3xl md:text-5xl font-black uppercase text-white">
-                Studio Projects
-              </h2>
-            </div>
-
-            {/* Category tabs */}
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setActiveCategory("all")}
-                className={`rounded-xl px-4 py-2 text-xs font-bold uppercase tracking-wider transition ${
-                  activeCategory === "all"
-                    ? "bg-[#8b5cf6] text-black"
-                    : "border border-white/10 bg-white/5 text-white/60 hover:text-white"
-                }`}
-              >
-                All Works ({projects.length})
-              </button>
-              {categories.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => setActiveCategory(String(c.id))}
-                  className={`rounded-xl px-4 py-2 text-xs font-bold uppercase tracking-wider transition ${
-                    activeCategory === String(c.id)
-                      ? "bg-[#8b5cf6] text-black"
-                      : "border border-white/10 bg-white/5 text-white/60 hover:text-white"
-                  }`}
-                >
-                  {c.name}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Layered Studio Grid with Oversized Numbers */}
-          <div className="mt-12 grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {filteredProjects.map((project, idx) => (
-              <div
-                key={project.id}
-                onClick={() => setSelectedProject(project)}
-                className="group relative cursor-pointer overflow-hidden rounded-3xl border border-white/10 bg-[#16161e] p-4 transition-all duration-300 hover:border-[#a855f7]/60 hover:shadow-xl"
-              >
-                <div className="relative aspect-[16/10] overflow-hidden rounded-2xl bg-black">
-                  {project.thumbnailUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={project.thumbnailUrl}
-                      alt={project.title}
-                      className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-white/30 text-2xl">
-                      🎬
-                    </div>
-                  )}
-
-                  <div className="absolute bottom-3 left-3 rounded-lg bg-black/80 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-md">
-                    {project.categoryLabel || "Video"}
-                  </div>
-                </div>
-
-                <div className="mt-4 flex items-start justify-between">
-                  <div>
-                    <h3 className="font-heading text-base font-bold uppercase text-white group-hover:text-[#a855f7] transition">
-                      {project.title}
-                    </h3>
-                    <p className="mt-0.5 text-xs text-white/50 line-clamp-1">
-                      {project.description || "Digital Studio Production"}
-                    </p>
-                  </div>
-                  <span className="font-mono text-lg font-black text-white/20 group-hover:text-[#a855f7]/60 transition">
-                    #{String(idx + 1).padStart(2, "0")}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+      {hasCarousel && (
+        <div id="work">
+          <WorkCarousel data={data} />
         </div>
-      </section>
+      )}
 
       {/* Services & Capabilities */}
       <section id="services" className="border-t border-white/10 py-24 bg-[#121218]">
@@ -241,55 +142,17 @@ export default function Theme04Studio({ data }: { data: SiteData }) {
         </div>
       </section>
 
-      {/* Software Tools */}
       <div id="tools">
         <SoftwareTools data={data} />
       </div>
 
-      {/* Contact Section */}
       <div id="contact">
         <ContactSection data={data} />
       </div>
 
-      {/* Footer */}
       <footer className="border-t border-white/10 py-8 bg-[#0a0a0d] text-center text-xs text-white/40">
         <p>© {new Date().getFullYear()} Mohit Babariya. Digital Studio Edition.</p>
       </footer>
-
-      {/* Modal */}
-      {selectedProject && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-md">
-          <div className="relative w-full max-w-4xl rounded-3xl border border-white/20 bg-[#121218] p-6">
-            <button
-              type="button"
-              onClick={() => setSelectedProject(null)}
-              className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
-            >
-              ✕
-            </button>
-            <h3 className="font-heading text-xl font-bold uppercase text-white">
-              {selectedProject.title}
-            </h3>
-            <div className="mt-4 aspect-video w-full rounded-2xl overflow-hidden bg-black">
-              {selectedProject.videoUrl ? (
-                <video
-                  src={selectedProject.videoUrl}
-                  controls
-                  autoPlay
-                  className="h-full w-full object-contain"
-                />
-              ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={selectedProject.thumbnailUrl}
-                  alt={selectedProject.title}
-                  className="h-full w-full object-cover"
-                />
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       <ChatWidget />
     </div>

@@ -8,6 +8,9 @@ import {
   SkillsAdmin,
   SoftwareToolsAdmin,
   WorkOptionsAdmin,
+  ProjectsAdmin,
+  CarouselAdmin,
+  MediaAdmin,
 } from "./CmsAdmin";
 import {
   BackupAdmin,
@@ -31,6 +34,9 @@ const EMPTY_STATS: Stats = {
 
 const NAV: { key: string; label: string; icon: string }[] = [
   { key: "dashboard", label: "Dashboard", icon: "◧" },
+  { key: "projects", label: "Projects", icon: "🎬" },
+  { key: "carousel", label: "Carousel Items", icon: "❖" },
+  { key: "media", label: "Media Library", icon: "🖼" },
   { key: "enquiries", label: "Enquiries", icon: "✉" },
   { key: "categories", label: "Categories", icon: "⌗" },
   { key: "services", label: "Services", icon: "✦" },
@@ -61,13 +67,14 @@ export default function AdminShell({
     try {
       const payload = await api<Stats>("/api/admin/stats");
       setStats({
-        projects: payload.projects ?? EMPTY_STATS.projects,
-        mediaFiles: payload.mediaFiles ?? 0,
         enquiries: payload.enquiries ?? EMPTY_STATS.enquiries,
         chat: payload.chat ?? EMPTY_STATS.chat,
         categories: payload.categories ?? 0,
         skills: payload.skills ?? 0,
         services: payload.services ?? 0,
+        projects: payload.projects ?? 0,
+        carouselItems: payload.carouselItems ?? 0,
+        mediaFiles: payload.mediaFiles ?? 0,
       });
       setError("");
     } catch (caught) {
@@ -235,6 +242,9 @@ export default function AdminShell({
               onRefresh={refresh}
             />
           )}
+          {section === "projects" && <ProjectsAdmin onChanged={refresh} />}
+          {section === "carousel" && <CarouselAdmin onChanged={refresh} />}
+          {section === "media" && <MediaAdmin onChanged={refresh} />}
           {section === "enquiries" && <EnquiriesAdmin onChanged={refresh} />}
           {section === "categories" && <CategoriesAdmin onChanged={refresh} />}
           {section === "services" && <ServicesAdmin onChanged={refresh} />}

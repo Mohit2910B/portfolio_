@@ -100,17 +100,17 @@ export default function Hero({ data }: { data: SiteData }) {
             <dl className="mt-12 grid max-w-lg grid-cols-3 gap-4 hairline pt-6">
               <div>
                 <dt className="text-[0.55rem] font-semibold uppercase tracking-[0.2em] text-ink/40">
-                  Working in
+                  Capabilities
                 </dt>
                 <dd className="mono mt-2 text-sm text-ink/80">
-                  {data.allCategories.length > 0 ? `${data.allCategories.length} categories` : "—"}
+                  {data.services.length > 0 ? `${data.services.length} services` : "6 services"}
                 </dd>
               </div>
               <div>
                 <dt className="text-[0.55rem] font-semibold uppercase tracking-[0.2em] text-ink/40">
-                  Published work
+                  Software Stack
                 </dt>
-                <dd className="mono mt-2 text-sm text-ink/80">{data.projects.length} projects</dd>
+                <dd className="mono mt-2 text-sm text-ink/80">{data.softwareTools.length} tools</dd>
               </div>
               <div>
                 <dt className="text-[0.55rem] font-semibold uppercase tracking-[0.2em] text-ink/40">

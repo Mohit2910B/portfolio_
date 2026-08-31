@@ -1,35 +1,40 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { SiteData, PublicProject } from "@/lib/data";
 import WorkCarousel from "@/components/site/WorkCarousel";
 import ContactSection from "@/components/site/ContactSection";
 import SoftwareTools from "@/components/site/SoftwareTools";
 import ChatWidget from "@/components/site/ChatWidget";
+import ProjectViewer from "@/components/site/ProjectViewer";
 
 export default function Theme02Swiss({ data }: { data: SiteData }) {
-  const { homepage, contact, services, softwareTools, projects, categories } = data;
+  const { homepage, services, projects = [], carouselItems = [], categories = [] } = data;
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [selectedProject, setSelectedProject] = useState<PublicProject | null>(null);
 
-  const filteredProjects = projects.filter((p) => {
-    if (activeCategory === "all") return true;
-    return (
-      String(p.categoryId) === activeCategory ||
-      p.categoryLabel?.toLowerCase() === activeCategory.toLowerCase()
+  const publishedProjects = useMemo(
+    () => projects.filter((p) => p.published !== false),
+    [projects],
+  );
+
+  const filteredProjects = useMemo(() => {
+    if (activeCategory === "all") return publishedProjects;
+    return publishedProjects.filter(
+      (p) => String(p.categoryId) === activeCategory || p.categoryLabel?.toLowerCase() === activeCategory.toLowerCase(),
     );
-  });
+  }, [publishedProjects, activeCategory]);
+
+  const hasCarousel = carouselItems.length > 0 || publishedProjects.length > 0;
 
   return (
     <div className="min-h-screen bg-[#070707] text-[#e5e5e5] font-sans antialiased selection:bg-[#2563eb] selection:text-white">
-      {/* Swiss Monospace Top Bar */}
       <div className="border-b border-white/[0.08] bg-[#070707] px-6 py-2 font-mono text-[10px] text-white/40 uppercase tracking-widest flex items-center justify-between">
         <span>[SYS.VER: 2026.08]</span>
-        <span>INDEX / PORTFOLIO / MOHIT BABARIYA</span>
+        <span>SWISS EDITORIAL SYSTEM / MOHIT BABARIYA</span>
         <span>LAT: 20.5937° N · LNG: 78.9629° E</span>
       </div>
 
-      {/* Swiss Clean Navigation */}
       <header className="sticky top-0 z-40 border-b border-white/[0.08] bg-[#070707]/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <a href="#" className="font-mono text-sm font-bold uppercase tracking-widest text-white">
@@ -37,21 +42,11 @@ export default function Theme02Swiss({ data }: { data: SiteData }) {
           </a>
 
           <nav className="hidden md:flex items-center gap-6 font-mono text-[11px] uppercase tracking-wider text-white/60">
-            <a href="#work" className="hover:text-white transition">
-              01. Showcase
-            </a>
-            <a href="#portfolio" className="hover:text-white transition">
-              02. Archive
-            </a>
-            <a href="#about" className="hover:text-white transition">
-              03. Profile
-            </a>
-            <a href="#services" className="hover:text-white transition">
-              04. Capabilities
-            </a>
-            <a href="#contact" className="hover:text-white transition">
-              05. Contact
-            </a>
+            {hasCarousel && <a href="#work" className="hover:text-white transition">01. Showcase</a>}
+            {publishedProjects.length > 0 && <a href="#portfolio" className="hover:text-white transition">02. Archive</a>}
+            <a href="#about" className="hover:text-white transition">03. Profile</a>
+            <a href="#services" className="hover:text-white transition">04. Capabilities</a>
+            <a href="#contact" className="hover:text-white transition">05. Contact</a>
           </nav>
 
           <a
@@ -63,7 +58,6 @@ export default function Theme02Swiss({ data }: { data: SiteData }) {
         </div>
       </header>
 
-      {/* Swiss Grid Hero */}
       <section className="border-b border-white/[0.08] py-20 md:py-28">
         <div className="mx-auto max-w-7xl px-6">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-8 border border-white/[0.08] p-8 md:p-12 bg-white/[0.01]">
@@ -88,8 +82,8 @@ export default function Theme02Swiss({ data }: { data: SiteData }) {
                   <span className="text-white">Video / Motion</span>
                 </div>
                 <div className="flex justify-between border-b border-white/[0.06] pb-2">
-                  <span>EXP. METRIC</span>
-                  <span className="text-white">2+ Years</span>
+                  <span>RECORD COUNT</span>
+                  <span className="text-white">{publishedProjects.length} Projects</span>
                 </div>
                 <div className="flex justify-between border-b border-white/[0.06] pb-2">
                   <span>STATUS</span>
@@ -98,108 +92,103 @@ export default function Theme02Swiss({ data }: { data: SiteData }) {
               </div>
 
               <a
-                href="#work"
+                href="#contact"
                 className="block text-center rounded border border-white/20 bg-white/10 py-3 font-mono text-xs uppercase tracking-widest text-white hover:bg-white hover:text-black transition"
               >
-                Inspect Works ↓
+                Start Project ↓
               </a>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Video Carousel */}
-      <WorkCarousel data={data} />
+      {hasCarousel && (
+        <div id="work">
+          <WorkCarousel data={data} />
+        </div>
+      )}
 
-      {/* Swiss Structured Archive */}
-      <section id="portfolio" className="border-t border-white/[0.08] py-24">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/[0.08] pb-6">
-            <div>
-              <span className="font-mono text-xs uppercase tracking-widest text-[#3b82f6]">
-                SECTION 02 / ARCHIVE
-              </span>
-              <h2 className="font-heading text-2xl md:text-3xl font-bold uppercase tracking-tight text-white">
-                Project Index
-              </h2>
+      {publishedProjects.length > 0 && (
+        <section id="portfolio" className="border-t border-white/[0.08] py-24">
+          <div className="mx-auto max-w-7xl px-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/[0.08] pb-6">
+              <div>
+                <span className="font-mono text-xs uppercase tracking-widest text-[#3b82f6]">
+                  ARCHIVE / DATABASE
+                </span>
+                <h2 className="font-heading text-2xl md:text-3xl font-bold uppercase text-white">
+                  Project Index ({publishedProjects.length})
+                </h2>
+              </div>
+
+              {categories.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setActiveCategory("all")}
+                    className={`rounded px-3 py-1 font-mono text-[11px] uppercase transition ${
+                      activeCategory === "all" ? "bg-[#3b82f6] text-white" : "border border-white/10 text-white/60"
+                    }`}
+                  >
+                    All [{publishedProjects.length}]
+                  </button>
+                  {categories.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setActiveCategory(String(c.id))}
+                      className={`rounded px-3 py-1 font-mono text-[11px] uppercase transition ${
+                        activeCategory === String(c.id) ? "bg-[#3b82f6] text-white" : "border border-white/10 text-white/60"
+                      }`}
+                    >
+                      {c.name}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Category pills */}
-            <div className="flex flex-wrap gap-1.5">
-              <button
-                type="button"
-                onClick={() => setActiveCategory("all")}
-                className={`rounded px-3 py-1 font-mono text-[11px] uppercase tracking-wider transition ${
-                  activeCategory === "all"
-                    ? "bg-[#3b82f6] text-white"
-                    : "border border-white/10 bg-white/[0.03] text-white/60 hover:text-white"
-                }`}
-              >
-                All [{projects.length}]
-              </button>
-              {categories.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => setActiveCategory(String(c.id))}
-                  className={`rounded px-3 py-1 font-mono text-[11px] uppercase tracking-wider transition ${
-                    activeCategory === String(c.id)
-                      ? "bg-[#3b82f6] text-white"
-                      : "border border-white/10 bg-white/[0.03] text-white/60 hover:text-white"
-                  }`}
+            <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredProjects.map((project) => (
+                <div
+                  key={project.id}
+                  onClick={() => setSelectedProject(project)}
+                  className="group cursor-pointer border border-white/[0.08] bg-[#0c0c0c] p-3 hover:border-[#3b82f6]/50 transition"
                 >
-                  {c.name}
-                </button>
+                  <div className="relative aspect-[16/10] overflow-hidden bg-black/40">
+                    {project.thumbnailUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={project.thumbnailUrl}
+                        alt={project.title}
+                        className="h-full w-full object-cover transition group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center font-mono text-xs text-white/30">
+                        [PREVIEW]
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-3 flex items-start justify-between">
+                    <div>
+                      <h3 className="font-heading text-sm font-bold uppercase text-white group-hover:text-[#3b82f6] transition">
+                        {project.title}
+                      </h3>
+                      <p className="mt-0.5 font-mono text-[10px] text-white/50">
+                        {project.categoryLabel || "Video Edit"}
+                      </p>
+                    </div>
+                    <span className="font-mono text-[10px] text-white/30">
+                      #{String(project.id).padStart(3, "0")}
+                    </span>
+                  </div>
+                </div>
               ))}
             </div>
           </div>
+        </section>
+      )}
 
-          {/* 3-Column Swiss Grid */}
-          <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredProjects.map((project) => (
-              <div
-                key={project.id}
-                onClick={() => setSelectedProject(project)}
-                className="group cursor-pointer border border-white/[0.08] bg-[#0c0c0c] p-3 transition duration-300 hover:border-[#3b82f6]/50"
-              >
-                <div className="relative aspect-[16/10] overflow-hidden bg-black/40">
-                  {project.thumbnailUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={project.thumbnailUrl}
-                      alt={project.title}
-                      className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-white/30 font-mono text-xs">
-                      [NO PREVIEW]
-                    </div>
-                  )}
-                  <div className="absolute top-2 left-2 rounded bg-black/80 px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-white">
-                    {project.categoryLabel || "Video"}
-                  </div>
-                </div>
-
-                <div className="mt-3 flex items-start justify-between">
-                  <div className="min-w-0 pr-2">
-                    <h3 className="truncate font-heading text-sm font-bold uppercase text-white group-hover:text-[#3b82f6] transition">
-                      {project.title}
-                    </h3>
-                    <p className="mt-0.5 truncate font-mono text-[10px] text-white/50">
-                      {project.description || "Video & Motion Deliverable"}
-                    </p>
-                  </div>
-                  <span className="font-mono text-[10px] text-white/30">
-                    #{String(project.id).padStart(3, "0")}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Swiss Profile & Capabilities Table */}
       <section id="about" className="border-t border-white/[0.08] py-24 bg-white/[0.01]">
         <div className="mx-auto max-w-7xl px-6">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
@@ -214,11 +203,6 @@ export default function Theme02Swiss({ data }: { data: SiteData }) {
                 {homepage.aboutIntro ||
                   "I work as an independent video editor, collaborating directly with brands, creators and studios on edits that need to ship fast without losing craft."}
               </p>
-              <div className="rounded border border-white/[0.08] p-4 font-mono text-xs text-white/60 space-y-2">
-                <div>• Timeline pacing &amp; narrative structure</div>
-                <div>• DaVinci Resolve color consistency</div>
-                <div>• Multi-ratio social delivery (9:16, 16:9, 1:1)</div>
-              </div>
             </div>
 
             <div className="lg:col-span-7 space-y-8" id="services">
@@ -247,17 +231,14 @@ export default function Theme02Swiss({ data }: { data: SiteData }) {
         </div>
       </section>
 
-      {/* Software Tools */}
       <div id="tools">
         <SoftwareTools data={data} />
       </div>
 
-      {/* Contact Section */}
       <div id="contact">
         <ContactSection data={data} />
       </div>
 
-      {/* Swiss Footer */}
       <footer className="border-t border-white/[0.08] py-8 bg-[#070707] font-mono text-xs text-white/40">
         <div className="mx-auto max-w-7xl px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>© {new Date().getFullYear()} MOHIT BABARIYA. SWISS SYSTEM.</div>
@@ -265,39 +246,11 @@ export default function Theme02Swiss({ data }: { data: SiteData }) {
         </div>
       </footer>
 
-      {/* Modal */}
       {selectedProject && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-md">
-          <div className="relative w-full max-w-4xl border border-white/20 bg-[#0c0c0c] p-6">
-            <button
-              type="button"
-              onClick={() => setSelectedProject(null)}
-              className="absolute right-4 top-4 font-mono text-xs text-white/60 hover:text-white"
-            >
-              [ CLOSE ✕ ]
-            </button>
-            <h3 className="font-mono text-lg font-bold uppercase text-white">
-              {selectedProject.title}
-            </h3>
-            <div className="mt-4 aspect-video w-full bg-black">
-              {selectedProject.videoUrl ? (
-                <video
-                  src={selectedProject.videoUrl}
-                  controls
-                  autoPlay
-                  className="h-full w-full object-contain"
-                />
-              ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={selectedProject.thumbnailUrl}
-                  alt={selectedProject.title}
-                  className="h-full w-full object-cover"
-                />
-              )}
-            </div>
-          </div>
-        </div>
+        <ProjectViewer
+          project={selectedProject}
+          onClose={() => setSelectedProject(null)}
+        />
       )}
 
       <ChatWidget />

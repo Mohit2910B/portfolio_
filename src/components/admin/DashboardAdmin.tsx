@@ -4,20 +4,21 @@ import { useEffect, useState } from "react";
 import { Button, Card, Notice, SectionTitle, api } from "./ui";
 
 export type Stats = {
-  projects?: { total: number; published: number; drafts: number; featured: number; demo: number };
-  mediaFiles?: number;
   enquiries: { total: number; unread: number };
   chat: { total: number; unread: number };
   categories: number;
   skills: number;
   services: number;
+  projects?: number;
+  carouselItems?: number;
+  mediaFiles?: number;
 };
 
 const ACTIONS: { label: string; target: string; variant: "dark" | "ghost" | "accent" }[] = [
-  { label: "Add category", target: "categories", variant: "dark" },
+  { label: "Add project", target: "projects", variant: "dark" },
+  { label: "Add carousel slide", target: "carousel", variant: "ghost" },
+  { label: "Add category", target: "categories", variant: "ghost" },
   { label: "Add service", target: "services", variant: "ghost" },
-  { label: "Add software", target: "software", variant: "ghost" },
-  { label: "Add skill", target: "skills", variant: "ghost" },
   { label: "View enquiries", target: "enquiries", variant: "accent" },
   { label: "Live chat", target: "chat", variant: "ghost" },
 ];
@@ -52,13 +53,15 @@ export default function DashboardAdmin({
   }, []);
 
   const tiles = [
+    { label: "Projects", value: loading ? "—" : (stats.projects ?? 0), target: "projects" },
+    { label: "Carousel Slides", value: loading ? "—" : (stats.carouselItems ?? 0), target: "carousel" },
+    { label: "Media Files", value: loading ? "—" : (stats.mediaFiles ?? 0), target: "media" },
     { label: "Categories", value: loading ? "—" : stats.categories, target: "categories" },
     { label: "Services", value: loading ? "—" : stats.services, target: "services" },
     { label: "Skills", value: loading ? "—" : stats.skills, target: "skills" },
     { label: "Enquiries", value: loading ? "—" : stats.enquiries.total, target: "enquiries" },
     { label: "Unread enquiries", value: loading ? "—" : stats.enquiries.unread, target: "enquiries" },
     { label: "Chat conversations", value: loading ? "—" : stats.chat.total, target: "chat" },
-    { label: "Unread messages", value: loading ? "—" : stats.chat.unread, target: "chat" },
   ];
 
   return (

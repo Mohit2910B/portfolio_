@@ -46,18 +46,7 @@ type Service = {
 
 type WorkOption = { id: number; label: string; value: string; sortOrder: number; isActive: boolean };
 
-type CarouselRow = {
-  id: number;
-  categoryId: number | null;
-  categoryName: string;
-  slots: number;
-  centerSize: string;
-  sideSize: string;
-  autoFill: boolean;
-  projectIds: string;
-  sortOrder: number;
-  isActive: boolean;
-};
+
 
 import {
   DEFAULT_CATEGORIES,
@@ -964,3 +953,572 @@ export function SoftwareToolsAdmin({ onChanged }: { onChanged: () => void }) {
     </div>
   );
 }
+
+/* ----------------------------- PROJECTS ----------------------------- */
+
+export type AdminProject = {
+  id: number;
+  title: string;
+  description: string;
+  categoryId: number | null;
+  categoryLabel: string;
+  videoUrl: string;
+  thumbnailUrl: string;
+  aspectRatio: string;
+  durationSeconds: number;
+  published: boolean;
+  sortOrder: number;
+};
+
+export function ProjectsAdmin({ onChanged }: { onChanged: () => void }) {
+  const { rows, error, setError, load } = useCollection<AdminProject>("/api/admin/projects");
+  const [draft, setDraft] = useState({
+    title: "",
+    description: "",
+    categoryLabel: "Video Edit",
+    videoUrl: "",
+    thumbnailUrl: "",
+    aspectRatio: "16:9",
+    durationSeconds: "30",
+  });
+  const [editing, setEditing] = useState<AdminProject | null>(null);
+  const [notice, setNotice] = useState("");
+
+  const run = async (fn: () => Promise<void>, message?: string) => {
+    try {
+      await fn();
+      await load();
+      onChanged();
+      if (message) {
+        setNotice(message);
+        window.setTimeout(() => setNotice(""), 2600);
+      }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Action failed.");
+    }
+  };
+
+  const reset = () => {
+    setDraft({
+      title: "",
+      description: "",
+      categoryLabel: "Video Edit",
+      videoUrl: "",
+      thumbnailUrl: "",
+      aspectRatio: "16:9",
+      durationSeconds: "30",
+    });
+    setEditing(null);
+  };
+
+  return (
+    <div>
+      <SectionTitle
+        title="Portfolio Projects"
+        subtitle="Manage live database projects for Selected Works and portfolio grids."
+      />
+      {error && <Notice tone="error">{error}</Notice>}
+      {notice && (
+        <div className="mt-3">
+          <Notice tone="success">{notice}</Notice>
+        </div>
+      )}
+
+      <Card className="mt-5 p-5">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Project Title">
+            <TextInput
+              value={draft.title}
+              onChange={(val) => setDraft({ ...draft, title: val })}
+              placeholder="e.g. Kinetic Typography Reel"
+            />
+          </Field>
+          <Field label="Category / Badge">
+            <TextInput
+              value={draft.categoryLabel}
+              onChange={(val) => setDraft({ ...draft, categoryLabel: val })}
+              placeholder="e.g. Commercial / Motion / Reel"
+            />
+          </Field>
+          <Field label="Video URL (Direct MP4 / Cloud Storage)" className="sm:col-span-2">
+            <TextInput
+              value={draft.videoUrl}
+              onChange={(val) => setDraft({ ...draft, videoUrl: val })}
+              placeholder="https://..."
+            />
+          </Field>
+          <Field label="Thumbnail Image URL" className="sm:col-span-2">
+            <TextInput
+              value={draft.thumbnailUrl}
+              onChange={(val) => setDraft({ ...draft, thumbnailUrl: val })}
+              placeholder="https://..."
+            />
+          </Field>
+          <Field label="Aspect Ratio">
+            <Select
+              value={draft.aspectRatio}
+              onChange={(val) => setDraft({ ...draft, aspectRatio: val })}
+              options={[
+                { value: "16:9", label: "16:9 Widescreen" },
+                { value: "9:16", label: "9:16 Vertical Reel" },
+                { value: "4:5", label: "4:5 Social Feed" },
+                { value: "1:1", label: "1:1 Square" },
+              ]}
+            />
+          </Field>
+          <Field label="Duration (Seconds)">
+            <TextInput
+              value={draft.durationSeconds}
+              onChange={(val) => setDraft({ ...draft, durationSeconds: val })}
+              type="number"
+            />
+          </Field>
+          <Field label="Description" className="sm:col-span-2">
+            <TextArea
+              value={draft.description}
+              onChange={(val) => setDraft({ ...draft, description: val })}
+              rows={2}
+            />
+          </Field>
+        </div>
+
+        <div className="mt-4 flex gap-2">
+          <Button
+            variant="dark"
+            onClick={() => {
+              if (!draft.title.trim()) {
+                setError("Project title is required.");
+                return;
+              }
+              const body = {
+                title: draft.title,
+                description: draft.description,
+                categoryLabel: draft.categoryLabel,
+                videoUrl: draft.videoUrl,
+                thumbnailUrl: draft.thumbnailUrl,
+                aspectRatio: draft.aspectRatio,
+                durationSeconds: Number(draft.durationSeconds) || 30,
+              };
+              void run(async () => {
+                if (editing) {
+                  await api(`/api/admin/projects/${editing.id}`, {
+                    method: "PATCH",
+                    body: JSON.stringify(body),
+                  });
+                } else {
+                  await api("/api/admin/projects", {
+                    method: "POST",
+                    body: JSON.stringify(body),
+                  });
+                }
+                reset();
+              }, editing ? "Project updated." : "Project created.");
+            }}
+          >
+            {editing ? "Save Project" : "Add Project"}
+          </Button>
+          {editing && (
+            <Button variant="ghost" onClick={reset}>
+              Cancel
+            </Button>
+          )}
+        </div>
+      </Card>
+
+      <div className="mt-5 space-y-3">
+        {rows.map((project) => (
+          <Card key={project.id} className="flex flex-wrap items-center justify-between gap-4 p-4">
+            <div>
+              <p className="text-sm font-semibold text-ink">{project.title}</p>
+              <p className="mono text-[0.62rem] text-ink/45">
+                {project.categoryLabel} · {project.aspectRatio} · {project.durationSeconds}s
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setEditing(project);
+                  setDraft({
+                    title: project.title,
+                    description: project.description || "",
+                    categoryLabel: project.categoryLabel || "Video Edit",
+                    videoUrl: project.videoUrl || "",
+                    thumbnailUrl: project.thumbnailUrl || "",
+                    aspectRatio: project.aspectRatio || "16:9",
+                    durationSeconds: String(project.durationSeconds || 30),
+                  });
+                }}
+              >
+                Edit
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() =>
+                  run(
+                    () =>
+                      api(`/api/admin/projects/${project.id}`, {
+                        method: "PATCH",
+                        body: JSON.stringify({ published: !project.published }),
+                      }),
+                    project.published ? "Project un-published." : "Project published.",
+                  )
+                }
+              >
+                {project.published ? "Unpublish" : "Publish"}
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => {
+                  if (!window.confirm(`Delete project ${project.title}?`)) return;
+                  void run(() => api(`/api/admin/projects/${project.id}`, { method: "DELETE" }), "Project deleted.");
+                }}
+              >
+                Delete
+              </Button>
+            </div>
+          </Card>
+        ))}
+        {rows.length === 0 && (
+          <p className="mono p-6 text-center text-xs text-ink/40">
+            0 projects in database. Add a project above to feature it on the website.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ----------------------------- CAROUSEL ----------------------------- */
+
+export type AdminCarouselItem = {
+  id: number;
+  title: string;
+  category: string;
+  description: string;
+  duration: string;
+  videoUrl: string;
+  thumbnailUrl: string;
+  aspectRatio: string;
+  isActive: boolean;
+  sortOrder: number;
+};
+
+export function CarouselAdmin({ onChanged }: { onChanged: () => void }) {
+  const { rows, error, setError, load } = useCollection<AdminCarouselItem>("/api/admin/carousel");
+  const [draft, setDraft] = useState({
+    title: "",
+    category: "Reel",
+    description: "",
+    duration: "0:30",
+    videoUrl: "",
+    thumbnailUrl: "",
+    aspectRatio: "9:16",
+  });
+  const [editing, setEditing] = useState<AdminCarouselItem | null>(null);
+  const [notice, setNotice] = useState("");
+
+  const run = async (fn: () => Promise<void>, message?: string) => {
+    try {
+      await fn();
+      await load();
+      onChanged();
+      if (message) {
+        setNotice(message);
+        window.setTimeout(() => setNotice(""), 2600);
+      }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Action failed.");
+    }
+  };
+
+  const reset = () => {
+    setDraft({
+      title: "",
+      category: "Reel",
+      description: "",
+      duration: "0:30",
+      videoUrl: "",
+      thumbnailUrl: "",
+      aspectRatio: "9:16",
+    });
+    setEditing(null);
+  };
+
+  return (
+    <div>
+      <SectionTitle
+        title="Carousel Items"
+        subtitle="Manage active 3D Showcase and Work Carousel items dynamically."
+      />
+      {error && <Notice tone="error">{error}</Notice>}
+      {notice && (
+        <div className="mt-3">
+          <Notice tone="success">{notice}</Notice>
+        </div>
+      )}
+
+      <Card className="mt-5 p-5">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Carousel Item Title">
+            <TextInput
+              value={draft.title}
+              onChange={(val) => setDraft({ ...draft, title: val })}
+              placeholder="e.g. Commercial Showreel"
+            />
+          </Field>
+          <Field label="Category / Badge">
+            <TextInput
+              value={draft.category}
+              onChange={(val) => setDraft({ ...draft, category: val })}
+              placeholder="e.g. Reel / Commercial / Film"
+            />
+          </Field>
+          <Field label="Video URL" className="sm:col-span-2">
+            <TextInput
+              value={draft.videoUrl}
+              onChange={(val) => setDraft({ ...draft, videoUrl: val })}
+              placeholder="https://..."
+            />
+          </Field>
+          <Field label="Thumbnail Image URL" className="sm:col-span-2">
+            <TextInput
+              value={draft.thumbnailUrl}
+              onChange={(val) => setDraft({ ...draft, thumbnailUrl: val })}
+              placeholder="https://..."
+            />
+          </Field>
+          <Field label="Duration String">
+            <TextInput
+              value={draft.duration}
+              onChange={(val) => setDraft({ ...draft, duration: val })}
+              placeholder="0:30"
+            />
+          </Field>
+          <Field label="Aspect Ratio">
+            <Select
+              value={draft.aspectRatio}
+              onChange={(val) => setDraft({ ...draft, aspectRatio: val })}
+              options={[
+                { value: "9:16", label: "9:16 Vertical" },
+                { value: "16:9", label: "16:9 Widescreen" },
+                { value: "1:1", label: "1:1 Square" },
+              ]}
+            />
+          </Field>
+        </div>
+
+        <div className="mt-4 flex gap-2">
+          <Button
+            variant="dark"
+            onClick={() => {
+              if (!draft.title.trim()) {
+                setError("Title is required.");
+                return;
+              }
+              void run(async () => {
+                if (editing) {
+                  await api(`/api/admin/carousel/${editing.id}`, {
+                    method: "PATCH",
+                    body: JSON.stringify(draft),
+                  });
+                } else {
+                  await api("/api/admin/carousel", {
+                    method: "POST",
+                    body: JSON.stringify(draft),
+                  });
+                }
+                reset();
+              }, editing ? "Carousel item updated." : "Carousel item added.");
+            }}
+          >
+            {editing ? "Save Slide" : "Add Slide"}
+          </Button>
+          {editing && (
+            <Button variant="ghost" onClick={reset}>
+              Cancel
+            </Button>
+          )}
+        </div>
+      </Card>
+
+      <div className="mt-5 space-y-3">
+        {rows.map((item) => (
+          <Card key={item.id} className="flex flex-wrap items-center justify-between gap-4 p-4">
+            <div>
+              <p className="text-sm font-semibold text-ink">{item.title}</p>
+              <p className="mono text-[0.62rem] text-ink/45">
+                {item.category} · {item.duration} · {item.aspectRatio}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setEditing(item);
+                  setDraft({
+                    title: item.title,
+                    category: item.category || "Reel",
+                    description: item.description || "",
+                    duration: item.duration || "0:30",
+                    videoUrl: item.videoUrl || "",
+                    thumbnailUrl: item.thumbnailUrl || "",
+                    aspectRatio: item.aspectRatio || "9:16",
+                  });
+                }}
+              >
+                Edit
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() =>
+                  run(
+                    () =>
+                      api(`/api/admin/carousel/${item.id}`, {
+                        method: "PATCH",
+                        body: JSON.stringify({ isActive: !item.isActive }),
+                      }),
+                    item.isActive ? "Item disabled." : "Item enabled.",
+                  )
+                }
+              >
+                {item.isActive ? "Disable" : "Enable"}
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => {
+                  if (!window.confirm(`Delete ${item.title}?`)) return;
+                  void run(() => api(`/api/admin/carousel/${item.id}`, { method: "DELETE" }), "Carousel item deleted.");
+                }}
+              >
+                Delete
+              </Button>
+            </div>
+          </Card>
+        ))}
+        {rows.length === 0 && (
+          <p className="mono p-6 text-center text-xs text-ink/40">
+            0 carousel items in database. Add a slide above to render it.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------ MEDIA ------------------------------ */
+
+export type AdminMediaFile = {
+  id: number;
+  filename: string;
+  originalName: string;
+  mimeType: string;
+  kind: string;
+  size: number;
+  url: string;
+};
+
+export function MediaAdmin({ onChanged }: { onChanged: () => void }) {
+  const { rows, error, setError, load } = useCollection<AdminMediaFile>("/api/admin/media");
+  const [draft, setDraft] = useState({ filename: "", url: "", kind: "image" });
+  const [notice, setNotice] = useState("");
+
+  const run = async (fn: () => Promise<void>, message?: string) => {
+    try {
+      await fn();
+      await load();
+      onChanged();
+      if (message) {
+        setNotice(message);
+        window.setTimeout(() => setNotice(""), 2600);
+      }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Action failed.");
+    }
+  };
+
+  return (
+    <div>
+      <SectionTitle title="Media Library" subtitle="Database media records and cloud storage URLs." />
+      {error && <Notice tone="error">{error}</Notice>}
+      {notice && (
+        <div className="mt-3">
+          <Notice tone="success">{notice}</Notice>
+        </div>
+      )}
+
+      <Card className="mt-5 p-5">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Field label="Media Name">
+            <TextInput
+              value={draft.filename}
+              onChange={(v) => setDraft({ ...draft, filename: v })}
+              placeholder="e.g. hero-thumbnail.jpg"
+            />
+          </Field>
+          <Field label="Media URL">
+            <TextInput
+              value={draft.url}
+              onChange={(v) => setDraft({ ...draft, url: v })}
+              placeholder="https://..."
+            />
+          </Field>
+          <Field label="Kind">
+            <Select
+              value={draft.kind}
+              onChange={(v) => setDraft({ ...draft, kind: v })}
+              options={[
+                { value: "image", label: "Image" },
+                { value: "video", label: "Video" },
+              ]}
+            />
+          </Field>
+        </div>
+        <div className="mt-4 flex gap-2">
+          <Button
+            variant="dark"
+            onClick={() => {
+              if (!draft.filename.trim() || !draft.url.trim()) {
+                setError("Filename and URL are required.");
+                return;
+              }
+              void run(async () => {
+                await api("/api/admin/media", { method: "POST", body: JSON.stringify(draft) });
+                setDraft({ filename: "", url: "", kind: "image" });
+              }, "Media record registered.");
+            }}
+          >
+            Register Media
+          </Button>
+        </div>
+      </Card>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {rows.map((file) => (
+          <Card key={file.id} className="p-3">
+            <p className="text-xs font-semibold text-ink truncate">{file.filename}</p>
+            <p className="mono text-[0.6rem] text-ink/40 truncate mt-0.5">{file.url}</p>
+            <div className="mt-3 flex justify-between items-center">
+              <span className="mono text-[0.55rem] uppercase text-ink/30">{file.kind}</span>
+              <Button
+                variant="danger"
+                onClick={() => {
+                  if (!window.confirm(`Delete ${file.filename}?`)) return;
+                  void run(() => api(`/api/admin/media/${file.id}`, { method: "DELETE" }), "Media file record deleted.");
+                }}
+              >
+                Delete
+              </Button>
+            </div>
+          </Card>
+        ))}
+        {rows.length === 0 && (
+          <p className="mono col-span-full p-6 text-center text-xs text-ink/40">
+            0 media file records in database.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+

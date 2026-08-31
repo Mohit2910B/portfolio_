@@ -17,14 +17,13 @@ export async function GET() {
       contact: data.contact,
       theme: data.theme,
       categories: data.categories,
-      projects: data.projects,
       services: data.services,
       softwareTools: data.softwareTools,
       workOptions: data.workOptions,
       sections: data.sections,
-      carouselSettings: data.carouselSettings,
-      carouselGlobalSettings: data.carouselGlobalSettings,
+      projects: data.projects,
       carouselItems: data.carouselItems,
+      carouselGlobalSettings: data.carouselGlobalSettings,
     });
   });
 }

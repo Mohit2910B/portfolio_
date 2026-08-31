@@ -608,7 +608,7 @@ export function ThemeStudioAdmin({ onChanged }: { onChanged?: () => void }) {
             </p>
 
             <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-[11px] text-emerald-800 space-y-1">
-              <div>✓ All portfolio projects, media, and categories remain safe and untouched.</div>
+              <div>✓ All website content, services, skills and categories remain safe and untouched.</div>
               <div>✓ All enquiries, contact details, and settings remain preserved.</div>
             </div>
 

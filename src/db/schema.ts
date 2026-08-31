@@ -78,113 +78,7 @@ export const workOptions = pgTable(
   (t) => [uniqueIndex("work_options_value_key").on(t.value)],
 );
 
-/* ------------------------------------------------------------------ */
-/* PORTFOLIO                                                           */
-/* ------------------------------------------------------------------ */
 
-export const projects = pgTable(
-  "projects",
-  {
-    id: serial("id").primaryKey(),
-    title: text("title").notNull(),
-    description: text("description").default("").notNull(),
-    categoryId: integer("category_id").references(() => categories.id, {
-      onDelete: "set null",
-    }),
-    categoryLabel: text("category_label").default("").notNull(),
-    aiLabType: text("ai_lab_type").default("").notNull(),
-    year: integer("year"),
-    sortOrder: integer("sort_order").notNull().default(0),
-    software: text("software").default("").notNull(),
-    tags: text("tags").default("").notNull(),
-    externalLink: text("external_link").default("").notNull(),
-    videoSource: text("video_source").notNull().default("url"),
-    videoUrl: text("video_url").default("").notNull(),
-    thumbnailUrl: text("thumbnail_url").default("").notNull(),
-    aspectRatio: text("aspect_ratio").notNull().default("16:9"),
-    displaySize: text("display_size").notNull().default("medium"),
-    displayWidth: integer("display_width"),
-    displayHeight: integer("display_height"),
-    width: integer("width"),
-    height: integer("height"),
-    durationSeconds: integer("duration_seconds"),
-    featured: boolean("featured").notNull().default(false),
-    published: boolean("published").notNull().default(true),
-    carouselEnabled: boolean("carousel_enabled").notNull().default(true),
-    carouselPinned: boolean("carousel_pinned").notNull().default(false),
-    carouselOrder: integer("carousel_order").notNull().default(0),
-    demoStatus: text("demo_status").notNull().default("none"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [
-    index("projects_category_id_idx").on(t.categoryId),
-    index("projects_published_idx").on(t.published),
-    index("projects_sort_order_idx").on(t.sortOrder),
-    index("projects_carousel_idx").on(t.carouselEnabled, t.carouselPinned, t.carouselOrder),
-  ],
-);
-
-export const carouselGlobalSettings = pgTable("carousel_global_settings", {
-  id: integer("id").primaryKey().default(1),
-  enabled: boolean("enabled").notNull().default(true),
-  sectionBadge: text("section_badge").notNull().default("VIDEO SHOWCASE"),
-  sectionTitle: text("section_title").notNull().default("SELECTED WORKS"),
-  sectionSubtitle: text("section_subtitle")
-    .notNull()
-    .default("A curated showcase of video editing, motion design, and visual storytelling."),
-  textColor: text("text_color").notNull().default("black"),
-  autoplay: boolean("autoplay").notNull().default(true),
-  autoplaySpeed: integer("autoplay_speed").notNull().default(5),
-  infiniteLoop: boolean("infinite_loop").notNull().default(true),
-  showArrows: boolean("show_arrows").notNull().default(true),
-  showDots: boolean("show_dots").notNull().default(true),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
-export const carouselItems = pgTable(
-  "carousel_items",
-  {
-    id: serial("id").primaryKey(),
-    title: text("title").notNull(),
-    category: text("category").notNull().default("Video Edit"),
-    description: text("description").notNull().default(""),
-    duration: text("duration").notNull().default(""),
-    videoUrl: text("video_url").notNull().default(""),
-    videoSource: text("video_source").notNull().default("upload"),
-    thumbnailUrl: text("thumbnail_url").notNull().default(""),
-    aspectRatio: text("aspect_ratio").notNull().default("9:16"),
-    isActive: boolean("is_active").notNull().default(true),
-    sortOrder: integer("sort_order").notNull().default(0),
-    projectId: integer("project_id"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [
-    index("carousel_items_is_active_idx").on(t.isActive),
-    index("carousel_items_sort_order_idx").on(t.sortOrder),
-  ],
-);
-
-export const mediaFiles = pgTable(
-  "media_files",
-  {
-    id: serial("id").primaryKey(),
-    filename: text("filename").notNull(),
-    originalName: text("original_name").notNull(),
-    mimeType: text("mime_type").notNull(),
-    kind: text("kind").notNull().default("image"),
-    size: integer("size").notNull().default(0),
-    url: text("url").notNull(),
-    width: integer("width"),
-    height: integer("height"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [
-    uniqueIndex("media_files_filename_key").on(t.filename),
-    index("media_files_kind_idx").on(t.kind),
-  ],
-);
 
 /* ------------------------------------------------------------------ */
 /* CMS CONTENT                                                         */
@@ -239,25 +133,7 @@ export const services = pgTable(
   (t) => [index("services_sort_order_idx").on(t.sortOrder)],
 );
 
-export const carouselSettings = pgTable(
-  "carousel_settings",
-  {
-    id: serial("id").primaryKey(),
-    categoryId: integer("category_id").references(() => categories.id, {
-      onDelete: "cascade",
-    }),
-    slots: integer("slots").notNull().default(5),
-    centerSize: text("center_size").notNull().default("large"),
-    sideSize: text("side_size").notNull().default("small"),
-    autoFill: boolean("auto_fill").notNull().default(true),
-    projectIds: text("project_ids").default("[]").notNull(),
-    sortOrder: integer("sort_order").notNull().default(0),
-    isActive: boolean("is_active").notNull().default(true),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [index("carousel_settings_category_id_idx").on(t.categoryId)],
-);
+
 
 export const layoutSections = pgTable(
   "layout_sections",
@@ -427,19 +303,133 @@ export const chatMessages = pgTable(
   (t) => [index("chat_messages_conversation_id_idx").on(t.conversationId)],
 );
 
-export type Project = typeof projects.$inferSelect;
+export const projects = pgTable(
+  "projects",
+  {
+    id: serial("id").primaryKey(),
+    title: text("title").notNull(),
+    description: text("description").default("").notNull(),
+    categoryId: integer("category_id").references(() => categories.id, { onDelete: "set null" }),
+    categoryLabel: text("category_label").default("").notNull(),
+    aiLabType: text("ai_lab_type").default("").notNull(),
+    year: integer("year").default(2026).notNull(),
+    software: text("software").default("").notNull(),
+    tags: text("tags").default("").notNull(),
+    externalLink: text("external_link").default("").notNull(),
+    videoSource: text("video_source").default("upload").notNull(),
+    videoUrl: text("video_url").default("").notNull(),
+    thumbnailUrl: text("thumbnail_url").default("").notNull(),
+    aspectRatio: text("aspect_ratio").default("16:9").notNull(),
+    displaySize: text("display_size").default("medium").notNull(),
+    displayWidth: integer("display_width").default(540).notNull(),
+    displayHeight: integer("display_height").default(960).notNull(),
+    width: integer("width").default(1080).notNull(),
+    height: integer("height").default(1920).notNull(),
+    durationSeconds: integer("duration_seconds").default(30).notNull(),
+    featured: boolean("featured").default(true).notNull(),
+    published: boolean("published").default(true).notNull(),
+    sortOrder: integer("sort_order").default(0).notNull(),
+    demoStatus: text("demo_status").default("verified").notNull(),
+    carouselEnabled: boolean("carousel_enabled").default(true).notNull(),
+    carouselPinned: boolean("carousel_pinned").default(false).notNull(),
+    carouselOrder: integer("carousel_order").default(0).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("projects_category_id_idx").on(t.categoryId),
+    index("projects_published_idx").on(t.published),
+    index("projects_sort_order_idx").on(t.sortOrder),
+  ],
+);
+
+export const carouselGlobalSettings = pgTable("carousel_global_settings", {
+  id: integer("id").primaryKey().default(1),
+  enabled: boolean("enabled").default(true).notNull(),
+  sectionBadge: text("section_badge").default("VIDEO SHOWCASE").notNull(),
+  sectionTitle: text("section_title").default("SELECTED WORKS").notNull(),
+  sectionSubtitle: text("section_subtitle").default("").notNull(),
+  textColor: text("text_color").default("black").notNull(),
+  autoplay: boolean("autoplay").default(true).notNull(),
+  autoplaySpeed: integer("autoplay_speed").default(5).notNull(),
+  infiniteLoop: boolean("infinite_loop").default(true).notNull(),
+  showArrows: boolean("show_arrows").default(true).notNull(),
+  showDots: boolean("show_dots").default(true).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const carouselItems = pgTable(
+  "carousel_items",
+  {
+    id: serial("id").primaryKey(),
+    title: text("title").notNull(),
+    category: text("category").default("Reel").notNull(),
+    description: text("description").default("").notNull(),
+    duration: text("duration").default("0:30").notNull(),
+    videoUrl: text("video_url").default("").notNull(),
+    videoSource: text("video_source").default("upload").notNull(),
+    thumbnailUrl: text("thumbnail_url").default("").notNull(),
+    aspectRatio: text("aspect_ratio").default("9:16").notNull(),
+    isActive: boolean("is_active").default(true).notNull(),
+    sortOrder: integer("sort_order").default(0).notNull(),
+    projectId: integer("project_id").references(() => projects.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("carousel_items_sort_order_idx").on(t.sortOrder)],
+);
+
+export const mediaFiles = pgTable(
+  "media_files",
+  {
+    id: serial("id").primaryKey(),
+    filename: text("filename").notNull(),
+    originalName: text("original_name").notNull(),
+    mimeType: text("mime_type").notNull(),
+    kind: text("kind").notNull().default("image"),
+    size: integer("size").notNull().default(0),
+    url: text("url").notNull(),
+    width: integer("width"),
+    height: integer("height"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("media_files_kind_idx").on(t.kind)],
+);
+
+export const carouselSettings = pgTable(
+  "carousel_settings",
+  {
+    id: serial("id").primaryKey(),
+    categoryId: integer("category_id").references(() => categories.id, { onDelete: "cascade" }),
+    slots: integer("slots").notNull().default(6),
+    centerSize: text("center_size").notNull().default("large"),
+    sideSize: text("side_size").notNull().default("medium"),
+    autoFill: boolean("auto_fill").notNull().default(true),
+    projectIds: text("project_ids").notNull().default("[]"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("carousel_settings_category_id_key").on(t.categoryId)],
+);
+
 export type Category = typeof categories.$inferSelect;
 export type Skill = typeof skills.$inferSelect;
 export type SoftwareTool = typeof softwareTools.$inferSelect;
 export type Service = typeof services.$inferSelect;
-export type MediaFile = typeof mediaFiles.$inferSelect;
 export type Enquiry = typeof enquiries.$inferSelect;
 export type ChatConversation = typeof chatConversations.$inferSelect;
 export type ChatMessage = typeof chatMessages.$inferSelect;
-export type CarouselSetting = typeof carouselSettings.$inferSelect;
 export type HomepageSettings = typeof homepageSettings.$inferSelect;
 export type ContactSettings = typeof contactSettings.$inferSelect;
 export type ThemeSettings = typeof themeSettings.$inferSelect;
 export type LayoutSection = typeof layoutSections.$inferSelect;
 export type WorkOption = typeof workOptions.$inferSelect;
 export type Admin = typeof admins.$inferSelect;
+export type Project = typeof projects.$inferSelect;
+export type CarouselItem = typeof carouselItems.$inferSelect;
+export type CarouselGlobalSettings = typeof carouselGlobalSettings.$inferSelect;
+export type MediaFile = typeof mediaFiles.$inferSelect;
+export type CarouselSetting = typeof carouselSettings.$inferSelect;
+

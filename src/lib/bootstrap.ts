@@ -1,24 +1,18 @@
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db, getPool } from "@/db";
 import {
-  carouselSettings,
   categories,
   contactSettings,
   homepageSettings,
   layoutSections,
-  projects,
   services,
   skills,
   softwareTools,
   themeSettings,
   workOptions,
   notificationSettings,
-  carouselGlobalSettings,
-  carouselItems,
 } from "@/db/schema";
 import { hashPassword } from "@/lib/auth";
-
-let bootstrapped = false;
 
 const DDL_STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS admins (
@@ -55,48 +49,73 @@ const DDL_STATEMENTS = [
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS categories_slug_key ON categories (slug)`,
 
-  `CREATE TABLE IF NOT EXISTS work_options (
-    id          SERIAL PRIMARY KEY,
-    label       TEXT NOT NULL,
-    value       TEXT NOT NULL,
-    sort_order  INTEGER NOT NULL DEFAULT 0,
-    is_active   BOOLEAN NOT NULL DEFAULT true,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
-  )`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS work_options_value_key ON work_options (value)`,
-
   `CREATE TABLE IF NOT EXISTS projects (
-    id               SERIAL PRIMARY KEY,
-    title            TEXT NOT NULL,
-    description      TEXT NOT NULL DEFAULT '',
-    category_id      INTEGER REFERENCES categories (id) ON DELETE SET NULL,
-    category_label   TEXT NOT NULL DEFAULT '',
-    ai_lab_type      TEXT NOT NULL DEFAULT '',
-    year             INTEGER,
-    sort_order       INTEGER NOT NULL DEFAULT 0,
-    software         TEXT NOT NULL DEFAULT '',
-    tags             TEXT NOT NULL DEFAULT '',
-    external_link    TEXT NOT NULL DEFAULT '',
-    video_source     TEXT NOT NULL DEFAULT 'url',
-    video_url        TEXT NOT NULL DEFAULT '',
-    thumbnail_url    TEXT NOT NULL DEFAULT '',
-    aspect_ratio     TEXT NOT NULL DEFAULT '16:9',
-    display_size     TEXT NOT NULL DEFAULT 'medium',
-    display_width    INTEGER,
-    display_height   INTEGER,
-    width            INTEGER,
-    height           INTEGER,
-    duration_seconds INTEGER,
-    featured         BOOLEAN NOT NULL DEFAULT false,
-    published        BOOLEAN NOT NULL DEFAULT true,
-    demo_status      TEXT NOT NULL DEFAULT 'none',
-    created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+    id                SERIAL PRIMARY KEY,
+    title             TEXT NOT NULL,
+    description       TEXT NOT NULL DEFAULT '',
+    category_id       INTEGER REFERENCES categories (id) ON DELETE SET NULL,
+    category_label    TEXT NOT NULL DEFAULT '',
+    ai_lab_type       TEXT NOT NULL DEFAULT '',
+    year              INTEGER NOT NULL DEFAULT 2026,
+    software          TEXT NOT NULL DEFAULT '',
+    tags              TEXT NOT NULL DEFAULT '',
+    external_link     TEXT NOT NULL DEFAULT '',
+    video_source      TEXT NOT NULL DEFAULT 'upload',
+    video_url         TEXT NOT NULL DEFAULT '',
+    thumbnail_url     TEXT NOT NULL DEFAULT '',
+    aspect_ratio      TEXT NOT NULL DEFAULT '16:9',
+    display_size      TEXT NOT NULL DEFAULT 'medium',
+    display_width     INTEGER NOT NULL DEFAULT 540,
+    display_height    INTEGER NOT NULL DEFAULT 960,
+    width             INTEGER NOT NULL DEFAULT 1080,
+    height            INTEGER NOT NULL DEFAULT 1920,
+    duration_seconds  INTEGER NOT NULL DEFAULT 30,
+    featured          BOOLEAN NOT NULL DEFAULT true,
+    published         BOOLEAN NOT NULL DEFAULT true,
+    sort_order        INTEGER NOT NULL DEFAULT 0,
+    demo_status       TEXT NOT NULL DEFAULT 'verified',
+    carousel_enabled  BOOLEAN NOT NULL DEFAULT true,
+    carousel_pinned   BOOLEAN NOT NULL DEFAULT false,
+    carousel_order    INTEGER NOT NULL DEFAULT 0,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updatedAt         TIMESTAMPTZ NOT NULL DEFAULT now()
   )`,
   `CREATE INDEX IF NOT EXISTS projects_category_id_idx ON projects (category_id)`,
   `CREATE INDEX IF NOT EXISTS projects_published_idx ON projects (published)`,
   `CREATE INDEX IF NOT EXISTS projects_sort_order_idx ON projects (sort_order)`,
+
+  `CREATE TABLE IF NOT EXISTS carousel_global_settings (
+    id                INTEGER PRIMARY KEY DEFAULT 1,
+    enabled           BOOLEAN NOT NULL DEFAULT true,
+    section_badge     TEXT NOT NULL DEFAULT 'VIDEO SHOWCASE',
+    section_title     TEXT NOT NULL DEFAULT 'SELECTED WORKS',
+    section_subtitle  TEXT NOT NULL DEFAULT '',
+    text_color        TEXT NOT NULL DEFAULT 'black',
+    autoplay          BOOLEAN NOT NULL DEFAULT true,
+    autoplay_speed    INTEGER NOT NULL DEFAULT 5,
+    infinite_loop     BOOLEAN NOT NULL DEFAULT true,
+    show_arrows       BOOLEAN NOT NULL DEFAULT true,
+    show_dots         BOOLEAN NOT NULL DEFAULT true,
+    updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS carousel_items (
+    id             SERIAL PRIMARY KEY,
+    title          TEXT NOT NULL,
+    category       TEXT NOT NULL DEFAULT 'Reel',
+    description    TEXT NOT NULL DEFAULT '',
+    duration       TEXT NOT NULL DEFAULT '0:30',
+    video_url      TEXT NOT NULL DEFAULT '',
+    video_source   TEXT NOT NULL DEFAULT 'upload',
+    thumbnail_url  TEXT NOT NULL DEFAULT '',
+    aspect_ratio   TEXT NOT NULL DEFAULT '9:16',
+    is_active      BOOLEAN NOT NULL DEFAULT true,
+    sort_order     INTEGER NOT NULL DEFAULT 0,
+    project_id     INTEGER REFERENCES projects (id) ON DELETE CASCADE,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS carousel_items_sort_order_idx ON carousel_items (sort_order)`,
 
   `CREATE TABLE IF NOT EXISTS media_files (
     id             SERIAL PRIMARY KEY,
@@ -110,8 +129,18 @@ const DDL_STATEMENTS = [
     height         INTEGER,
     created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
   )`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS media_files_filename_key ON media_files (filename)`,
   `CREATE INDEX IF NOT EXISTS media_files_kind_idx ON media_files (kind)`,
+
+  `CREATE TABLE IF NOT EXISTS work_options (
+    id          SERIAL PRIMARY KEY,
+    label       TEXT NOT NULL,
+    value       TEXT NOT NULL,
+    sort_order  INTEGER NOT NULL DEFAULT 0,
+    is_active   BOOLEAN NOT NULL DEFAULT true,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS work_options_value_key ON work_options (value)`,
 
   `CREATE TABLE IF NOT EXISTS skills (
     id           SERIAL PRIMARY KEY,
@@ -152,21 +181,6 @@ const DDL_STATEMENTS = [
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
   )`,
   `CREATE INDEX IF NOT EXISTS services_sort_order_idx ON services (sort_order)`,
-
-  `CREATE TABLE IF NOT EXISTS carousel_settings (
-    id            SERIAL PRIMARY KEY,
-    category_id   INTEGER REFERENCES categories (id) ON DELETE CASCADE,
-    slots         INTEGER NOT NULL DEFAULT 5,
-    center_size   TEXT NOT NULL DEFAULT 'large',
-    side_size     TEXT NOT NULL DEFAULT 'small',
-    auto_fill     BOOLEAN NOT NULL DEFAULT true,
-    project_ids   TEXT NOT NULL DEFAULT '[]',
-    sort_order    INTEGER NOT NULL DEFAULT 0,
-    is_active     BOOLEAN NOT NULL DEFAULT true,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
-  )`,
-  `CREATE INDEX IF NOT EXISTS carousel_settings_category_id_idx ON carousel_settings (category_id)`,
 
   `CREATE TABLE IF NOT EXISTS layout_sections (
     id           SERIAL PRIMARY KEY,
@@ -285,7 +299,6 @@ const DDL_STATEMENTS = [
     attempts      INTEGER NOT NULL DEFAULT 0,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
   )`,
-  `CREATE INDEX IF NOT EXISTS admin_otp_challenges_email_idx ON admin_otp_challenges (email)`,
 
   `CREATE TABLE IF NOT EXISTS email_otp_challenges (
     id          SERIAL PRIMARY KEY,
@@ -297,7 +310,6 @@ const DDL_STATEMENTS = [
     verified_at TIMESTAMPTZ,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
   )`,
-  `CREATE INDEX IF NOT EXISTS email_otp_challenges_email_idx ON email_otp_challenges (email)`,
 
   `CREATE TABLE IF NOT EXISTS mobile_otp_challenges (
     id          SERIAL PRIMARY KEY,
@@ -309,12 +321,6 @@ const DDL_STATEMENTS = [
     verified_at TIMESTAMPTZ,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
   )`,
-  `CREATE INDEX IF NOT EXISTS mobile_otp_challenges_phone_idx ON mobile_otp_challenges (phone)`,
-
-  `ALTER TABLE projects ADD COLUMN IF NOT EXISTS carousel_enabled BOOLEAN NOT NULL DEFAULT true`,
-  `ALTER TABLE projects ADD COLUMN IF NOT EXISTS carousel_pinned BOOLEAN NOT NULL DEFAULT false`,
-  `ALTER TABLE projects ADD COLUMN IF NOT EXISTS carousel_order INTEGER NOT NULL DEFAULT 0`,
-  `CREATE INDEX IF NOT EXISTS projects_carousel_idx ON projects (carousel_enabled, carousel_pinned, carousel_order)`,
 
   `ALTER TABLE theme_settings ADD COLUMN IF NOT EXISTS active_theme TEXT NOT NULL DEFAULT 'theme01'`,
   `ALTER TABLE theme_settings ADD COLUMN IF NOT EXISTS font_pairing TEXT NOT NULL DEFAULT 'default'`,
@@ -324,41 +330,6 @@ const DDL_STATEMENTS = [
 
   `ALTER TABLE notification_settings ADD COLUMN IF NOT EXISTS admin_status TEXT NOT NULL DEFAULT 'offline'`,
   `ALTER TABLE notification_settings ADD COLUMN IF NOT EXISTS ai_auto_reply BOOLEAN NOT NULL DEFAULT true`,
-
-  `CREATE TABLE IF NOT EXISTS carousel_global_settings (
-    id               INTEGER PRIMARY KEY DEFAULT 1,
-    enabled          BOOLEAN NOT NULL DEFAULT true,
-    section_badge    TEXT NOT NULL DEFAULT 'VIDEO SHOWCASE',
-    section_title    TEXT NOT NULL DEFAULT 'SELECTED WORKS',
-    section_subtitle TEXT NOT NULL DEFAULT 'A curated showcase of video editing, motion design, and visual storytelling.',
-    text_color       TEXT NOT NULL DEFAULT 'black',
-    autoplay         BOOLEAN NOT NULL DEFAULT true,
-    autoplay_speed   INTEGER NOT NULL DEFAULT 5,
-    infinite_loop    BOOLEAN NOT NULL DEFAULT true,
-    show_arrows      BOOLEAN NOT NULL DEFAULT true,
-    show_dots        BOOLEAN NOT NULL DEFAULT true,
-    updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
-  )`,
-  `ALTER TABLE carousel_global_settings ADD COLUMN IF NOT EXISTS section_badge TEXT NOT NULL DEFAULT 'VIDEO SHOWCASE'`,
-  `ALTER TABLE carousel_global_settings ADD COLUMN IF NOT EXISTS text_color TEXT NOT NULL DEFAULT 'black'`,
-
-  `CREATE TABLE IF NOT EXISTS carousel_items (
-    id            SERIAL PRIMARY KEY,
-    title         TEXT NOT NULL,
-    category      TEXT NOT NULL DEFAULT 'Video Edit',
-    description   TEXT NOT NULL DEFAULT '',
-    duration      TEXT NOT NULL DEFAULT '',
-    video_url     TEXT NOT NULL DEFAULT '',
-    video_source  TEXT NOT NULL DEFAULT 'upload',
-    thumbnail_url TEXT NOT NULL DEFAULT '',
-    aspect_ratio  TEXT NOT NULL DEFAULT '9:16',
-    is_active     BOOLEAN NOT NULL DEFAULT true,
-    sort_order    INTEGER NOT NULL DEFAULT 0,
-    project_id    INTEGER,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
-  )`,
-  `CREATE INDEX IF NOT EXISTS carousel_items_active_idx ON carousel_items (is_active, sort_order)`,
 ];
 
 async function ensureTables(): Promise<void> {
@@ -376,7 +347,6 @@ async function count(table: string): Promise<number> {
   const allowedTables = [
     "admins",
     "categories",
-    "projects",
     "services",
     "skills",
     "inquiries",
@@ -391,9 +361,11 @@ async function count(table: string): Promise<number> {
     "homepage_settings",
     "contact_settings",
     "theme_settings",
-    "carousel_settings",
-    "carousel_global_settings",
+    "projects",
     "carousel_items",
+    "carousel_global_settings",
+    "carousel_settings",
+    "media_files",
   ];
 
   if (!allowedTables.includes(table)) {
@@ -408,6 +380,7 @@ async function count(table: string): Promise<number> {
     return 0;
   }
 }
+
 async function seedAdmin() {
   const name = process.env.SEED_ADMIN_NAME || "MOHIT BABARIYA";
   const email = (
@@ -555,179 +528,13 @@ export const WORK_OPTION_SEED = [
 
 export const SECTION_SEED = [
   ["hero", "Hero"],
-  ["about", "About"],
+  ["grading", "Color Grading"],
+  ["pipeline", "Editing Pipeline"],
   ["tools", "Tools & Software"],
+  ["about", "About"],
   ["services", "Services"],
-  ["work", "Work / Portfolio"],
   ["contact", "Contact & Enquiry"],
 ] as const;
-
-export type SeedProject = {
-  title: string;
-  description: string;
-  category: string;
-  software: string;
-  tags: string;
-  aspectRatio: string;
-  displaySize: string;
-  year: number;
-  featured: boolean;
-  demoStatus: string;
-  videoUrl: string;
-  thumbnailUrl: string;
-  width: number;
-  height: number;
-  durationSeconds: number;
-};
-
-export const PROJECT_SEED: SeedProject[] = [
-
-  {
-    title: "Concrete Light â€” Property Film",
-    description:
-      "A cinematic property tour cut to a slow build, with matched colour across daylight and dusk interiors.",
-    category: "Real Estate",
-    software: "Premiere Pro, DaVinci Resolve",
-    tags: "property film,colour grade,cinematic",
-    aspectRatio: "16:9",
-    displaySize: "large",
-    year: 2025,
-    featured: true,
-    demoStatus: "live",
-    videoUrl: "https://videos.pexels.com/video-files/39105109/16638114_3840_2160_30fps.mp4",
-    thumbnailUrl:
-      "https://images.pexels.com/videos/39105109/aerial-view-architecture-cinematic-lighting-interior-design-39105109.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=630&w=1200",
-    width: 3840,
-    height: 2160,
-    durationSeconds: 13,
-  },
-  {
-    title: "Interior Walkthrough Cut",
-    description: "Space-led edit with architectural pacing, clean transitions and a warm neutral grade.",
-    category: "Real Estate",
-    software: "Premiere Pro",
-    tags: "walkthrough,interior,tour",
-    aspectRatio: "16:9",
-    displaySize: "medium",
-    year: 2025,
-    featured: false,
-    demoStatus: "live",
-    videoUrl: "https://videos.pexels.com/video-files/7578546/7578546-uhd_3840_2160_30fps.mp4",
-    thumbnailUrl:
-      "https://images.pexels.com/videos/7578546/apartment-at-home-business-buy-7578546.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=630&w=1200",
-    width: 3840,
-    height: 2160,
-    durationSeconds: 21,
-  },
-  {
-    title: "Listing Reel â€” Vertical",
-    description: "Hook-first vertical cut for social with captions, beat-matched cuts and clean type.",
-    category: "Instagram",
-    software: "After Effects, Premiere Pro",
-    tags: "reel,vertical,social",
-    aspectRatio: "9:16",
-    displaySize: "small",
-    year: 2025,
-    featured: false,
-    demoStatus: "live",
-    videoUrl: "https://videos.pexels.com/video-files/15887293/15887293-uhd_3840_2160_30fps.mp4",
-    thumbnailUrl:
-      "https://images.pexels.com/videos/15887293/pexels-photo-15887293.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=630&w=1200",
-    width: 3840,
-    height: 2160,
-    durationSeconds: 12,
-  },
-  {
-    title: "Process Story â€” Long Form",
-    description: "Long-form edit structured around interview beats with supporting b-roll and graphics.",
-    category: "YouTube",
-    software: "Premiere Pro, After Effects",
-    tags: "youtube,long form,interview",
-    aspectRatio: "16:9",
-    displaySize: "medium",
-    year: 2024,
-    featured: false,
-    demoStatus: "live",
-    videoUrl: "https://videos.pexels.com/video-files/7578108/7578108-uhd_3840_2160_30fps.mp4",
-    thumbnailUrl:
-      "https://images.pexels.com/videos/7578108/adult-agent-apartment-at-home-7578108.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=630&w=1200",
-    width: 3840,
-    height: 2160,
-    durationSeconds: 20,
-  },
-  {
-    title: "Product Detail Study",
-    description: "Macro product moments graded for texture, with motion-graphic callouts on key features.",
-    category: "Product Video",
-    software: "After Effects, DaVinci Resolve",
-    tags: "product,macro,callouts",
-    aspectRatio: "1:1",
-    displaySize: "small",
-    year: 2025,
-    featured: false,
-    demoStatus: "demo",
-    videoUrl: "https://videos.pexels.com/video-files/15887297/15887297-uhd_3840_2160_30fps.mp4",
-    thumbnailUrl:
-      "https://images.pexels.com/videos/15887297/pexels-photo-15887297.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=630&w=1200",
-    width: 3840,
-    height: 2160,
-    durationSeconds: 14,
-  },
-  {
-    title: "Brand Motion System",
-    description: "Animated identity elements â€” logo resolve, type behaviour and transition language.",
-    category: "Motion Graphics",
-    software: "After Effects",
-    tags: "branding,motion system,titles",
-    aspectRatio: "16:9",
-    displaySize: "small",
-    year: 2024,
-    featured: false,
-    demoStatus: "demo",
-    videoUrl: "https://videos.pexels.com/video-files/7578117/7578117-uhd_3840_2160_30fps.mp4",
-    thumbnailUrl:
-      "https://images.pexels.com/videos/7578117/administration-adult-agent-apartment-7578117.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=630&w=1200",
-    width: 3840,
-    height: 2160,
-    durationSeconds: 11,
-  },
-  {
-    title: "Corporate Recap Edit",
-    description: "Event recap assembled from multi-camera coverage with a clean corporate finish.",
-    category: "Corporate",
-    software: "Premiere Pro",
-    tags: "corporate,event,multicam",
-    aspectRatio: "16:9",
-    displaySize: "small",
-    year: 2024,
-    featured: false,
-    demoStatus: "live",
-    videoUrl: "https://videos.pexels.com/video-files/7348146/7348146-uhd_3840_2160_25fps.mp4",
-    thumbnailUrl:
-      "https://images.pexels.com/videos/7348146/pexels-photo-7348146.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=630&w=1200",
-    width: 3840,
-    height: 2160,
-    durationSeconds: 12,
-  },
-  {
-    title: "Studio Session Cut",
-    description: "Documentary-styled session edit with natural sound design and soft contrast grade.",
-    category: "Other",
-    software: "Premiere Pro, DaVinci Resolve",
-    tags: "documentary,sound design,grade",
-    aspectRatio: "16:9",
-    displaySize: "small",
-    year: 2025,
-    featured: false,
-    demoStatus: "live",
-    videoUrl: "https://videos.pexels.com/video-files/7578112/7578112-uhd_3840_2160_30fps.mp4",
-    thumbnailUrl:
-      "https://images.pexels.com/videos/7578112/adult-agent-apartment-at-home-7578112.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=630&w=1200",
-    width: 3840,
-    height: 2160,
-    durationSeconds: 11,
-  },
-];
 
 async function seedContent() {
   try {
@@ -740,40 +547,6 @@ async function seedContent() {
           sortOrder: index,
           isActive: true,
         })),
-      ).onConflictDoNothing();
-    }
-
-    const categoryRows = await db.select().from(categories);
-    const categoryByName = new Map(categoryRows.map((c) => [c.name, c]));
-
-    if ((await count("projects")) === 0) {
-      await db.insert(projects).values(
-        PROJECT_SEED.map((project, index) => {
-          const category = categoryByName.get(project.category);
-          return {
-            title: project.title,
-            description: project.description,
-            categoryId: category?.id ?? null,
-            categoryLabel: project.category,
-            software: project.software,
-            tags: project.tags,
-            aspectRatio: project.aspectRatio,
-            displaySize: project.displaySize,
-            displayWidth: project.aspectRatio === "9:16" ? 540 : 1200,
-            displayHeight: project.aspectRatio === "9:16" ? 960 : 675,
-            year: project.year,
-            sortOrder: index,
-            featured: project.featured,
-            published: true,
-            demoStatus: project.demoStatus,
-            videoSource: "url",
-            videoUrl: project.videoUrl,
-            thumbnailUrl: project.thumbnailUrl,
-            width: project.width,
-            height: project.height,
-            durationSeconds: project.durationSeconds,
-          };
-        }),
       ).onConflictDoNothing();
     }
 
@@ -848,7 +621,7 @@ async function seedContent() {
         availabilityLabel: "Available for freelance projects",
         ctaPrimaryLabel: "WATCH REEL",
         ctaSecondaryLabel: "START PROJECT",
-        reelUrl: "https://videos.pexels.com/video-files/39105109/16638114_3840_2160_30fps.mp4",
+        reelUrl: "",
         aboutIntro:
           "I am Mohit Babariya, a video editor and motion designer working across editorial, social and brand content. My work sits between structure and feel — the timeline has to make sense, and it also has to move someone.",
         aboutExperience:
@@ -881,20 +654,6 @@ async function seedContent() {
 
     if ((await count("theme_settings")) === 0) {
       await db.insert(themeSettings).values({ id: 1 }).onConflictDoNothing();
-    }
-
-    if ((await count("carousel_global_settings")) === 0) {
-      await db.insert(carouselGlobalSettings).values({
-        id: 1,
-        enabled: true,
-        sectionTitle: "Selected Works",
-        sectionSubtitle: "A curated showcase of video editing, motion design, and visual storytelling.",
-        autoplay: true,
-        autoplaySpeed: 5,
-        infiniteLoop: true,
-        showArrows: true,
-        showDots: true,
-      }).onConflictDoNothing();
     }
   } catch (err) {
     console.warn("[bootstrap] seedContent notice:", err);
@@ -940,10 +699,3 @@ export function ensureDatabase(): Promise<void> {
   }
   return globalThis.__dbEnsuredPromise;
 }
-
-
-
-
-
-
-

@@ -545,7 +545,7 @@ export function BackupAdmin({ onChanged }: { onChanged: () => void }) {
     <div>
       <SectionTitle
         title="Backup & Restore"
-        subtitle="Export the full content database as JSON and restore projects, skills and services. Only authenticated admins can reach these endpoints."
+        subtitle="Export the full content database as JSON and restore skills and services. Only authenticated admins can reach these endpoints."
       />
       {error && <Notice tone="error">{error}</Notice>}
       {notice && (
@@ -560,7 +560,7 @@ export function BackupAdmin({ onChanged }: { onChanged: () => void }) {
             Database export
           </p>
           <p className="mt-3 text-sm text-ink/60">
-            Downloads projects, categories, skills, services, carousel settings, CMS content, enquiries
+            Downloads categories, skills, services, CMS content, enquiries
             and chat history.
           </p>
           <Button variant="dark" className="mt-4" onClick={exportDatabase} disabled={busy}>
@@ -573,7 +573,7 @@ export function BackupAdmin({ onChanged }: { onChanged: () => void }) {
             Restore content
           </p>
           <p className="mt-3 text-sm text-ink/60">
-            Restore projects, skills and services from a JSON export. Existing rows for those collections
+            Restore skills and services from a JSON export. Existing rows for those collections
             are replaced.
           </p>
           <input

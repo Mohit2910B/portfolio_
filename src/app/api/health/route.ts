@@ -21,7 +21,6 @@ export async function GET() {
     // Fetch counts from real tables
     const countQuery = await pool.query(`
       SELECT 
-        (SELECT count(*)::int FROM projects) AS projects,
         (SELECT count(*)::int FROM categories) AS categories,
         (SELECT count(*)::int FROM services) AS services,
         (SELECT count(*)::int FROM chat_conversations) AS chats,
@@ -29,7 +28,6 @@ export async function GET() {
     `);
     const rawCounts = countQuery.rows?.[0] || {};
     counts = {
-      projects: Number(rawCounts.projects ?? 0),
       categories: Number(rawCounts.categories ?? 0),
       services: Number(rawCounts.services ?? 0),
       chats: Number(rawCounts.chats ?? 0),
