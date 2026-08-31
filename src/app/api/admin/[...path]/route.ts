@@ -56,7 +56,10 @@ type ProjectInsert = typeof projects.$inferInsert;
 function revalidatePublic() {
   try {
     invalidateSiteDataCache();
-    revalidatePath("/");
+    revalidatePath("/", "page");
+    revalidatePath("/", "layout");
+    revalidatePath("/admin", "page");
+    revalidatePath("/admin", "layout");
   } catch {}
 }
 
@@ -440,6 +443,50 @@ export async function GET(_request: Request, ctx: Params) {
         throw notFound("Unknown settings resource.");
       }
 
+      case "carousel": {
+        const curItems = getRuntimeOverride("carouselItems") || DEFAULT_CAROUSEL_ITEMS;
+        const curGlobal = getRuntimeOverride("carouselGlobalSettings") || DEFAULT_CAROUSEL_GLOBAL_SETTINGS;
+        const curCategories = getRuntimeOverride("allCategories") || DEFAULT_CATEGORIES;
+
+        if (second === "global") {
+          try {
+            const rows = await db.select().from(carouselGlobalSettings).limit(1);
+            return ok({ global: rows[0] || curGlobal });
+          } catch {
+            return ok({ global: curGlobal });
+          }
+        }
+
+        if (second === "item" && third) {
+          const id = Number(third);
+          try {
+            const rows = await db.select().from(carouselItems).where(eq(carouselItems.id, id)).limit(1);
+            if (rows[0]) return ok({ item: rows[0] });
+          } catch {}
+          const it = curItems.find((i) => i.id === id);
+          return ok({ item: it || null });
+        }
+
+        try {
+          const [itemRows, globalRows, catRows] = await Promise.all([
+            db.select().from(carouselItems).orderBy(asc(carouselItems.sortOrder), asc(carouselItems.id)),
+            db.select().from(carouselGlobalSettings).limit(1),
+            db.select().from(categories).orderBy(asc(categories.sortOrder), asc(categories.name)),
+          ]);
+          return ok({
+            items: itemRows.length > 0 ? itemRows : curItems,
+            global: globalRows[0] || curGlobal,
+            categories: catRows.length > 0 ? catRows : curCategories,
+          });
+        } catch {
+          return ok({
+            items: curItems,
+            global: curGlobal,
+            categories: curCategories,
+          });
+        }
+      }
+
       case "layout":
         return ok({
           sections: await db
@@ -814,6 +861,67 @@ export async function POST(request: Request, ctx: Params) {
             },
           });
         }
+      }
+
+      case "carousel": {
+        if (second === "reorder") {
+          const id = Number(body.id);
+          const dir = str(body.direction, "up");
+          const curItems = [...(getRuntimeOverride("carouselItems") || DEFAULT_CAROUSEL_ITEMS)];
+          const idx = curItems.findIndex((i) => i.id === id);
+          if (idx !== -1) {
+            const targetIdx = dir === "up" ? idx - 1 : idx + 1;
+            if (targetIdx >= 0 && targetIdx < curItems.length) {
+              const temp = curItems[idx];
+              curItems[idx] = curItems[targetIdx];
+              curItems[targetIdx] = temp;
+              curItems.forEach((it, i) => { it.sortOrder = i; });
+              setRuntimeOverride("carouselItems", curItems as typeof DEFAULT_CAROUSEL_ITEMS);
+            }
+          }
+          return ok({ reordered: true });
+        }
+
+        const title = str(body.title);
+        const category = str(body.category);
+        if (!title) return badRequest("Title is required.");
+
+        const newItem = {
+          id: Date.now(),
+          title,
+          category: category || "Reel",
+          description: str(body.description),
+          duration: str(body.duration, "0:30"),
+          videoUrl: str(body.videoUrl),
+          videoSource: str(body.videoSource, "upload"),
+          thumbnailUrl: str(body.thumbnailUrl),
+          aspectRatio: (str(body.aspectRatio, "9:16") as "9:16" | "4:5" | "16:9" | "1:1") || "9:16",
+          isActive: body.isActive !== false,
+          sortOrder: num(body.sortOrder) ?? 0,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        const curItems = getRuntimeOverride("carouselItems") || DEFAULT_CAROUSEL_ITEMS;
+        setRuntimeOverride("carouselItems", [...curItems, newItem] as typeof DEFAULT_CAROUSEL_ITEMS);
+
+        try {
+          const inserted = await db.insert(carouselItems).values({
+            title: newItem.title,
+            category: newItem.category,
+            description: newItem.description,
+            duration: newItem.duration,
+            videoUrl: newItem.videoUrl,
+            videoSource: newItem.videoSource,
+            thumbnailUrl: newItem.thumbnailUrl,
+            aspectRatio: newItem.aspectRatio,
+            isActive: newItem.isActive,
+            sortOrder: newItem.sortOrder,
+          }).returning();
+          if (inserted[0]) return created({ item: inserted[0] });
+        } catch {}
+
+        return created({ item: newItem });
       }
 
       case "skills": {
@@ -1195,6 +1303,63 @@ export async function PATCH(request: Request, ctx: Params) {
           return ok({ project: await one(updated) });
         } catch {
           return ok({ project: { id, ...patch } });
+        }
+      }
+
+      case "carousel": {
+        if (second === "global") {
+          const patch: Partial<typeof carouselGlobalSettings.$inferInsert> = { updatedAt: new Date() };
+          if ("enabled" in body) patch.enabled = bool(body.enabled);
+          if ("sectionBadge" in body) patch.sectionBadge = str(body.sectionBadge);
+          if ("sectionTitle" in body) patch.sectionTitle = str(body.sectionTitle);
+          if ("sectionSubtitle" in body) patch.sectionSubtitle = str(body.sectionSubtitle);
+          if ("autoplay" in body) patch.autoplay = bool(body.autoplay);
+          if ("autoplaySpeed" in body) patch.autoplaySpeed = num(body.autoplaySpeed) ?? 5;
+          if ("infiniteLoop" in body) patch.infiniteLoop = bool(body.infiniteLoop);
+          if ("showArrows" in body) patch.showArrows = bool(body.showArrows);
+          if ("showDots" in body) patch.showDots = bool(body.showDots);
+
+          const curGlobal = getRuntimeOverride("carouselGlobalSettings") || DEFAULT_CAROUSEL_GLOBAL_SETTINGS;
+          const mergedGlobal = { ...curGlobal, ...patch };
+          setRuntimeOverride("carouselGlobalSettings", mergedGlobal as typeof DEFAULT_CAROUSEL_GLOBAL_SETTINGS);
+
+          try {
+            const existing = await db.select().from(carouselGlobalSettings).limit(1);
+            if (!existing[0]) {
+              const inserted = await db.insert(carouselGlobalSettings).values({ id: 1, ...patch }).returning();
+              return ok({ global: inserted[0] });
+            }
+            const updated = await db.update(carouselGlobalSettings).set(patch).where(eq(carouselGlobalSettings.id, existing[0].id)).returning();
+            return ok({ global: updated[0] });
+          } catch {
+            return ok({ global: mergedGlobal });
+          }
+        }
+
+        const id = Number(second === "item" ? third : second);
+        if (!Number.isInteger(id)) return badRequest("Invalid carousel item id.");
+
+        const patch: Record<string, unknown> = { updatedAt: new Date() };
+        if ("title" in body) patch.title = str(body.title);
+        if ("category" in body) patch.category = str(body.category);
+        if ("description" in body) patch.description = str(body.description);
+        if ("duration" in body) patch.duration = str(body.duration);
+        if ("videoUrl" in body) patch.videoUrl = str(body.videoUrl);
+        if ("videoSource" in body) patch.videoSource = str(body.videoSource);
+        if ("thumbnailUrl" in body) patch.thumbnailUrl = str(body.thumbnailUrl);
+        if ("aspectRatio" in body) patch.aspectRatio = str(body.aspectRatio);
+        if ("isActive" in body) patch.isActive = bool(body.isActive);
+        if ("sortOrder" in body) patch.sortOrder = num(body.sortOrder) ?? 0;
+
+        const curItems = getRuntimeOverride("carouselItems") || DEFAULT_CAROUSEL_ITEMS;
+        const updatedList = curItems.map((i) => (i.id === id ? { ...i, ...patch } : i));
+        setRuntimeOverride("carouselItems", updatedList as typeof DEFAULT_CAROUSEL_ITEMS);
+
+        try {
+          const updated = await db.update(carouselItems).set(patch).where(eq(carouselItems.id, id)).returning();
+          return ok({ item: updated[0] || { id, ...patch } });
+        } catch {
+          return ok({ item: { id, ...patch } });
         }
       }
 
