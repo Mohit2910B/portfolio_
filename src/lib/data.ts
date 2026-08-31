@@ -132,6 +132,7 @@ export type CarouselItem = {
   thumbnailUrl: string;
   aspectRatio: string;
   isActive: boolean;
+  featured?: boolean;
   sortOrder: number;
   projectId?: number | null;
   createdAt: Date;

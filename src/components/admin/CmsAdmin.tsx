@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import SpotlightReelCarousel from "@/components/site/SpotlightReelCarousel";
 import {
   Button,
   Card,
@@ -1198,25 +1199,36 @@ export type AdminCarouselItem = {
   description: string;
   duration: string;
   videoUrl: string;
+  videoSource?: string;
   thumbnailUrl: string;
   aspectRatio: string;
   isActive: boolean;
+  featured?: boolean;
   sortOrder: number;
+  projectId?: number | null;
 };
 
 export function CarouselAdmin({ onChanged }: { onChanged: () => void }) {
   const { rows, error, setError, load } = useCollection<AdminCarouselItem>("/api/admin/carousel");
+  const { rows: categoriesList } = useCollection<AdminCategory>("/api/admin/categories");
+  const { rows: projectsList } = useCollection<AdminProject>("/api/admin/projects");
+  const { rows: mediaList } = useCollection<AdminMediaFile>("/api/admin/media");
+
   const [draft, setDraft] = useState({
     title: "",
-    category: "Reel",
+    category: "Real Estate",
     description: "",
     duration: "0:30",
     videoUrl: "",
     thumbnailUrl: "",
     aspectRatio: "9:16",
+    projectId: "",
+    featured: true,
   });
   const [editing, setEditing] = useState<AdminCarouselItem | null>(null);
   const [notice, setNotice] = useState("");
+  const [showLivePreview, setShowLivePreview] = useState(false);
+  const [mediaPickerTarget, setMediaPickerTarget] = useState<"video" | "thumbnail" | null>(null);
 
   const run = async (fn: () => Promise<void>, message?: string) => {
     try {
@@ -1235,22 +1247,53 @@ export function CarouselAdmin({ onChanged }: { onChanged: () => void }) {
   const reset = () => {
     setDraft({
       title: "",
-      category: "Reel",
+      category: categoriesList[0]?.name || "Real Estate",
       description: "",
       duration: "0:30",
       videoUrl: "",
       thumbnailUrl: "",
       aspectRatio: "9:16",
+      projectId: "",
+      featured: true,
     });
     setEditing(null);
+  };
+
+  // Helper to handle selecting a portfolio project to auto-fill fields
+  const handleSelectProject = (projIdStr: string) => {
+    if (!projIdStr) return;
+    const proj = projectsList.find((p) => String(p.id) === projIdStr);
+    if (!proj) return;
+    setDraft((prev) => ({
+      ...prev,
+      projectId: String(proj.id),
+      title: proj.title,
+      description: proj.description || "",
+      category: proj.categoryLabel || categoriesList[0]?.name || "Reel",
+      videoUrl: proj.videoUrl || "",
+      thumbnailUrl: proj.thumbnailUrl || "",
+      aspectRatio: proj.aspectRatio || "9:16",
+      duration: proj.durationSeconds ? `${proj.durationSeconds}s` : "0:30",
+    }));
   };
 
   return (
     <div>
       <SectionTitle
-        title="Carousel Items"
-        subtitle="Manage active 3D Showcase and Work Carousel items dynamically."
+        title="Carousel Manager"
+        subtitle="Manage dynamic 3D Spotlight Showcase items. Empty database displays zero slides."
+        action={
+          <div className="flex gap-2">
+            <Button
+              variant={showLivePreview ? "accent" : "dark"}
+              onClick={() => setShowLivePreview((v) => !v)}
+            >
+              {showLivePreview ? "✕ Close Preview" : "👁 PREVIEW 3D CAROUSEL"}
+            </Button>
+          </div>
+        }
       />
+
       {error && <Notice tone="error">{error}</Notice>}
       {notice && (
         <div className="mt-3">
@@ -1258,81 +1301,262 @@ export function CarouselAdmin({ onChanged }: { onChanged: () => void }) {
         </div>
       )}
 
+      {/* Live 3D Carousel Preview Overlay */}
+      {showLivePreview && (
+        <Card className="mt-5 p-6 bg-[#070709] border-[#e0147f]/40">
+          <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
+            <div>
+              <p className="font-mono text-xs font-bold uppercase tracking-widest text-[#e0147f]">
+                LIVE 3D SPOTLIGHT PREVIEW
+              </p>
+              <p className="text-xs text-white/50">
+                This shows exact public rendering based on active database records.
+              </p>
+            </div>
+            <Button variant="ghost" onClick={() => setShowLivePreview(false)}>
+              Close
+            </Button>
+          </div>
+
+          <SpotlightReelCarousel
+            carouselItems={rows.map((r) => ({
+              ...r,
+              videoSource: r.videoSource || "upload",
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            }))}
+            showEmptyNotice={true}
+          />
+        </Card>
+      )}
+
+      {/* Media Picker Modal */}
+      {mediaPickerTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-3xl border border-white/20 bg-neutral-900 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold uppercase text-white">
+                Select {mediaPickerTarget === "video" ? "Video File" : "Thumbnail Image"} from Media Library
+              </h3>
+              <Button variant="ghost" onClick={() => setMediaPickerTarget(null)}>
+                ✕ Close
+              </Button>
+            </div>
+
+            <div className="max-h-80 overflow-y-auto grid gap-2 sm:grid-cols-2">
+              {mediaList
+                .filter((m) => (mediaPickerTarget === "video" ? m.kind === "video" : m.kind === "image"))
+                .map((media) => (
+                  <button
+                    key={media.id}
+                    type="button"
+                    onClick={() => {
+                      if (mediaPickerTarget === "video") {
+                        setDraft((prev) => ({ ...prev, videoUrl: media.url }));
+                      } else {
+                        setDraft((prev) => ({ ...prev, thumbnailUrl: media.url }));
+                      }
+                      setMediaPickerTarget(null);
+                    }}
+                    className="flex items-center gap-3 p-3 rounded-2xl border border-white/10 bg-white/5 text-left hover:border-[#e0147f] hover:bg-white/10 transition-colors"
+                  >
+                    <div className="h-10 w-10 shrink-0 rounded-xl bg-black overflow-hidden flex items-center justify-center">
+                      {media.kind === "image" ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={media.url} alt={media.filename} className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="text-xs">🎬</span>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-white truncate">{media.filename}</p>
+                      <p className="mono text-[0.6rem] text-white/40 truncate">{media.url}</p>
+                    </div>
+                  </button>
+                ))}
+
+              {mediaList.length === 0 && (
+                <p className="mono col-span-full p-4 text-center text-xs text-white/40">
+                  No uploaded media files in library. Go to Media Library to register URLs.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit / Create Form Card */}
       <Card className="mt-5 p-5">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Carousel Item Title">
+        <div className="flex items-center justify-between border-b border-ink/10 pb-3 mb-4">
+          <p className="text-xs font-bold uppercase tracking-wider text-ink">
+            {editing ? `Editing Item #${editing.id}` : "+ Add New Carousel Item"}
+          </p>
+          {editing && (
+            <span className="rounded-full bg-[#e0147f]/10 px-3 py-1 font-mono text-[10px] font-bold text-[#e0147f]">
+              EDIT MODE
+            </span>
+          )}
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          {/* Project Pre-Fill Dropdown */}
+          <Field label="Import from Portfolio Project (Optional)" hint="Auto-fills title, description, category, video & thumbnail URLs.">
+            <Select
+              value={draft.projectId}
+              onChange={(val) => handleSelectProject(val)}
+              options={[
+                { value: "", label: "— Select existing project or enter custom —" },
+                ...projectsList.map((p) => ({ value: String(p.id), label: `${p.title} (${p.categoryLabel || "Project"})` })),
+              ]}
+            />
+          </Field>
+
+          {/* Dynamic Category Selector */}
+          <Field label="Category" hint="Select from live Categories CMS.">
+            <Select
+              value={draft.category}
+              onChange={(val) => setDraft({ ...draft, category: val })}
+              options={
+                categoriesList.length > 0
+                  ? categoriesList.map((c) => ({ value: c.name, label: c.name }))
+                  : [
+                      { value: "Real Estate", label: "Real Estate" },
+                      { value: "Reel", label: "Reel" },
+                      { value: "Motion Graphics", label: "Motion Graphics" },
+                    ]
+              }
+            />
+          </Field>
+
+          <Field label="Carousel Title">
             <TextInput
               value={draft.title}
               onChange={(val) => setDraft({ ...draft, title: val })}
-              placeholder="e.g. Commercial Showreel"
+              placeholder="e.g. Luxury Villa Tour"
             />
           </Field>
-          <Field label="Category / Badge">
-            <TextInput
-              value={draft.category}
-              onChange={(val) => setDraft({ ...draft, category: val })}
-              placeholder="e.g. Reel / Commercial / Film"
-            />
-          </Field>
-          <Field label="Video URL" className="sm:col-span-2">
-            <TextInput
-              value={draft.videoUrl}
-              onChange={(val) => setDraft({ ...draft, videoUrl: val })}
-              placeholder="https://..."
-            />
-          </Field>
-          <Field label="Thumbnail Image URL" className="sm:col-span-2">
-            <TextInput
-              value={draft.thumbnailUrl}
-              onChange={(val) => setDraft({ ...draft, thumbnailUrl: val })}
-              placeholder="https://..."
-            />
-          </Field>
+
           <Field label="Duration String">
             <TextInput
               value={draft.duration}
               onChange={(val) => setDraft({ ...draft, duration: val })}
-              placeholder="0:30"
+              placeholder="e.g. 0:30 or 1:15"
             />
           </Field>
+
+          {/* Video URL + Media Picker */}
+          <Field
+            label="Video URL (MP4 / Direct Storage)"
+            hint="Playback file URL for the video showcase."
+            className="sm:col-span-2"
+          >
+            <div className="flex gap-2">
+              <TextInput
+                value={draft.videoUrl}
+                onChange={(val) => setDraft({ ...draft, videoUrl: val })}
+                placeholder="https://..."
+              />
+              <Button variant="ghost" onClick={() => setMediaPickerTarget("video")}>
+                Pick Media
+              </Button>
+            </div>
+          </Field>
+
+          {/* Thumbnail Image URL + Media Picker */}
+          <Field
+            label="Thumbnail / Poster Image URL (Required for Card Display)"
+            hint="Poster image displayed on 3D card prior to playback."
+            className="sm:col-span-2"
+          >
+            <div className="flex gap-2">
+              <TextInput
+                value={draft.thumbnailUrl}
+                onChange={(val) => setDraft({ ...draft, thumbnailUrl: val })}
+                placeholder="https://..."
+              />
+              <Button variant="ghost" onClick={() => setMediaPickerTarget("thumbnail")}>
+                Pick Media
+              </Button>
+            </div>
+          </Field>
+
           <Field label="Aspect Ratio">
             <Select
               value={draft.aspectRatio}
               onChange={(val) => setDraft({ ...draft, aspectRatio: val })}
               options={[
-                { value: "9:16", label: "9:16 Vertical" },
+                { value: "9:16", label: "9:16 Vertical Reel" },
                 { value: "16:9", label: "16:9 Widescreen" },
+                { value: "4:5", label: "4:5 Social Feed" },
                 { value: "1:1", label: "1:1 Square" },
               ]}
             />
           </Field>
+
+          <Field label="Short Description" className="sm:col-span-2">
+            <TextArea
+              value={draft.description}
+              onChange={(val) => setDraft({ ...draft, description: val })}
+              rows={2}
+              placeholder="Short description displayed on center carousel card"
+            />
+          </Field>
         </div>
 
-        <div className="mt-4 flex gap-2">
+        {/* Thumbnail Preview Image */}
+        {draft.thumbnailUrl ? (
+          <div className="mt-4 flex items-center gap-4 rounded-2xl border border-ink/10 bg-ink/5 p-3">
+            <div className="h-16 w-12 overflow-hidden rounded-xl bg-black">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={draft.thumbnailUrl} alt="Thumbnail preview" className="h-full w-full object-cover" />
+            </div>
+            <div className="text-xs">
+              <p className="font-bold text-ink">Poster Image Preview</p>
+              <p className="mono text-[0.6rem] text-ink/50 truncate max-w-xs">{draft.thumbnailUrl}</p>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-4 rounded-2xl border border-dashed border-amber-500/40 bg-amber-500/5 p-3 text-xs text-amber-700">
+            ⚠ Missing Poster Thumbnail — Upload or select an image URL above so the 3D card renders properly on the public website.
+          </div>
+        )}
+
+        <div className="mt-5 flex gap-2">
           <Button
             variant="dark"
             onClick={() => {
               if (!draft.title.trim()) {
-                setError("Title is required.");
+                setError("Carousel item title is required.");
                 return;
               }
+              const body = {
+                title: draft.title,
+                category: draft.category || "Reel",
+                description: draft.description,
+                duration: draft.duration || "0:30",
+                videoUrl: draft.videoUrl,
+                thumbnailUrl: draft.thumbnailUrl,
+                aspectRatio: draft.aspectRatio || "9:16",
+                projectId: draft.projectId ? Number(draft.projectId) : null,
+                featured: draft.featured !== false,
+              };
               void run(async () => {
                 if (editing) {
                   await api(`/api/admin/carousel/${editing.id}`, {
                     method: "PATCH",
-                    body: JSON.stringify(draft),
+                    body: JSON.stringify(body),
                   });
                 } else {
                   await api("/api/admin/carousel", {
                     method: "POST",
-                    body: JSON.stringify(draft),
+                    body: JSON.stringify(body),
                   });
                 }
                 reset();
               }, editing ? "Carousel item updated." : "Carousel item added.");
             }}
           >
-            {editing ? "Save Slide" : "Add Slide"}
+            {editing ? "Save Changes" : "+ Add Carousel Item"}
           </Button>
           {editing && (
             <Button variant="ghost" onClick={reset}>
@@ -1342,64 +1566,174 @@ export function CarouselAdmin({ onChanged }: { onChanged: () => void }) {
         </div>
       </Card>
 
-      <div className="mt-5 space-y-3">
-        {rows.map((item) => (
-          <Card key={item.id} className="flex flex-wrap items-center justify-between gap-4 p-4">
-            <div>
-              <p className="text-sm font-semibold text-ink">{item.title}</p>
-              <p className="mono text-[0.62rem] text-ink/45">
-                {item.category} · {item.duration} · {item.aspectRatio}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setEditing(item);
-                  setDraft({
-                    title: item.title,
-                    category: item.category || "Reel",
-                    description: item.description || "",
-                    duration: item.duration || "0:30",
-                    videoUrl: item.videoUrl || "",
-                    thumbnailUrl: item.thumbnailUrl || "",
-                    aspectRatio: item.aspectRatio || "9:16",
-                  });
-                }}
-              >
-                Edit
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() =>
-                  run(
-                    () =>
-                      api(`/api/admin/carousel/${item.id}`, {
-                        method: "PATCH",
-                        body: JSON.stringify({ isActive: !item.isActive }),
-                      }),
-                    item.isActive ? "Item disabled." : "Item enabled.",
-                  )
-                }
-              >
-                {item.isActive ? "Disable" : "Enable"}
-              </Button>
-              <Button
-                variant="danger"
-                onClick={() => {
-                  if (!window.confirm(`Delete ${item.title}?`)) return;
-                  void run(() => api(`/api/admin/carousel/${item.id}`, { method: "DELETE" }), "Carousel item deleted.");
-                }}
-              >
-                Delete
-              </Button>
-            </div>
-          </Card>
-        ))}
+      {/* Visual Admin Cards Section */}
+      <div className="mt-6 space-y-4">
+        <p className="mono text-xs font-bold uppercase tracking-wider text-ink/50">
+          Database Carousel Items ({rows.length})
+        </p>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {rows.map((item) => {
+            const missingThumbnail = !item.thumbnailUrl;
+            const missingVideo = !item.videoUrl;
+            const missingCategory = !item.category;
+
+            return (
+              <Card key={item.id} className="overflow-hidden p-4 flex flex-col justify-between">
+                <div>
+                  {/* Poster Thumbnail Box */}
+                  <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-neutral-900 border border-ink/10 mb-3">
+                    {item.thumbnailUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={item.thumbnailUrl} alt={item.title} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="grid h-full place-items-center font-mono text-[10px] text-ink/40 bg-neutral-900">
+                        [NO THUMBNAIL]
+                      </div>
+                    )}
+
+                    <div className="absolute top-2 left-2 right-2 flex justify-between items-center">
+                      <span className="rounded-full bg-[#e0147f] px-2 py-0.5 font-mono text-[9px] uppercase font-bold text-white">
+                        {item.category || "REEL"}
+                      </span>
+                      <span className="rounded-full bg-black/70 px-2 py-0.5 font-mono text-[9px] text-white">
+                        #{item.sortOrder}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Info Header */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h4 className="text-sm font-bold text-ink leading-tight">{item.title}</h4>
+                      <p className="mono text-[0.62rem] text-ink/45 mt-0.5">
+                        {item.aspectRatio} · {item.duration}
+                      </p>
+                    </div>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${
+                        item.isActive ? "bg-emerald-500/10 text-emerald-600" : "bg-rose-500/10 text-rose-600"
+                      }`}
+                    >
+                      {item.isActive ? "Published" : "Disabled"}
+                    </span>
+                  </div>
+
+                  {item.description && (
+                    <p className="mt-2 text-xs text-ink/60 line-clamp-2">{item.description}</p>
+                  )}
+
+                  {/* Warning Indicators */}
+                  {(missingThumbnail || missingVideo || missingCategory) && (
+                    <div className="mt-3 space-y-1 rounded-xl bg-amber-500/10 border border-amber-500/20 p-2 text-[10px] font-mono text-amber-700">
+                      {missingThumbnail && <p>⚠ Missing Poster Thumbnail</p>}
+                      {missingVideo && <p>⚠ Missing Video File / URL</p>}
+                      {missingCategory && <p>⚠ Missing Category</p>}
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions Footer */}
+                <div className="mt-4 pt-3 border-t border-ink/10 flex flex-wrap items-center justify-between gap-1.5">
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setEditing(item);
+                        setDraft({
+                          title: item.title,
+                          category: item.category || "Real Estate",
+                          description: item.description || "",
+                          duration: item.duration || "0:30",
+                          videoUrl: item.videoUrl || "",
+                          thumbnailUrl: item.thumbnailUrl || "",
+                          aspectRatio: item.aspectRatio || "9:16",
+                          projectId: item.projectId ? String(item.projectId) : "",
+                          featured: item.featured !== false,
+                        });
+                        window.scrollTo({ top: 300, behavior: "smooth" });
+                      }}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() =>
+                        run(
+                          () =>
+                            api(`/api/admin/carousel/${item.id}`, {
+                              method: "PATCH",
+                              body: JSON.stringify({ isActive: !item.isActive }),
+                            }),
+                          item.isActive ? "Slide disabled." : "Slide published.",
+                        )
+                      }
+                    >
+                      {item.isActive ? "Disable" : "Enable"}
+                    </Button>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      onClick={() =>
+                        run(
+                          () =>
+                            api("/api/admin/carousel/reorder", {
+                              method: "POST",
+                              body: JSON.stringify({ id: item.id, direction: "up" }),
+                            }),
+                          "Order updated.",
+                        )
+                      }
+                      title="Move Up"
+                    >
+                      ↑
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() =>
+                        run(
+                          () =>
+                            api("/api/admin/carousel/reorder", {
+                              method: "POST",
+                              body: JSON.stringify({ id: item.id, direction: "down" }),
+                            }),
+                          "Order updated.",
+                        )
+                      }
+                      title="Move Down"
+                    >
+                      ↓
+                    </Button>
+                    <Button
+                      variant="danger"
+                      onClick={() => {
+                        if (!window.confirm(`Delete ${item.title}?`)) return;
+                        void run(
+                          () => api(`/api/admin/carousel/${item.id}`, { method: "DELETE" }),
+                          "Carousel slide deleted.",
+                        );
+                      }}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+
         {rows.length === 0 && (
-          <p className="mono p-6 text-center text-xs text-ink/40">
-            0 carousel items in database. Add a slide above to render it.
-          </p>
+          <Card className="p-8 text-center">
+            <p className="font-mono text-xs text-ink/40">
+              0 Carousel items in database.
+            </p>
+            <p className="mt-1 text-xs text-ink/50">
+              Use the form above to add a carousel slide, or import a Portfolio project.
+            </p>
+          </Card>
         )}
       </div>
     </div>

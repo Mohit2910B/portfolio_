@@ -371,6 +371,7 @@ export const carouselItems = pgTable(
     thumbnailUrl: text("thumbnail_url").default("").notNull(),
     aspectRatio: text("aspect_ratio").default("9:16").notNull(),
     isActive: boolean("is_active").default(true).notNull(),
+    featured: boolean("featured").default(true).notNull(),
     sortOrder: integer("sort_order").default(0).notNull(),
     projectId: integer("project_id").references(() => projects.id, { onDelete: "cascade" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

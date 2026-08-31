@@ -51,7 +51,7 @@ async function one<T>(rows: T[]): Promise<T> {
   return rows[0];
 }
 
-const REORDERABLE = new Set(["categories", "skills", "services", "software_tools", "work_options"]);
+const REORDERABLE = new Set(["categories", "skills", "services", "software_tools", "work_options", "carousel_items"]);
 
 async function nextSortOrder(tableName: string) {
   if (!REORDERABLE.has(tableName)) throw badRequest("Unknown collection.");
@@ -468,6 +468,13 @@ export async function POST(request: Request, ctx: Params) {
       }
 
       case "carousel": {
+        if (second === "reorder") {
+          return reorder(
+            "carousel_items",
+            Number(body.id),
+            str(body.direction, "up") === "down" ? "down" : "up",
+          );
+        }
         const title = str(body.title);
         if (!title) return badRequest("Carousel item title is required.", { title: "Required" });
         const inserted = await db
@@ -482,7 +489,8 @@ export async function POST(request: Request, ctx: Params) {
             thumbnailUrl: str(body.thumbnailUrl),
             aspectRatio: str(body.aspectRatio, "9:16"),
             isActive: "isActive" in body ? bool(body.isActive) : true,
-            sortOrder: num(body.sortOrder) ?? 0,
+            featured: "featured" in body ? bool(body.featured) : true,
+            sortOrder: num(body.sortOrder) ?? (await nextSortOrder("carousel_items").catch(() => 0)),
             projectId: num(body.projectId),
           })
           .returning();
@@ -747,7 +755,9 @@ export async function PATCH(request: Request, ctx: Params) {
         if ("thumbnailUrl" in body) patch.thumbnailUrl = str(body.thumbnailUrl);
         if ("aspectRatio" in body) patch.aspectRatio = str(body.aspectRatio);
         if ("isActive" in body) patch.isActive = bool(body.isActive);
+        if ("featured" in body) patch.featured = bool(body.featured);
         if ("sortOrder" in body) patch.sortOrder = num(body.sortOrder);
+        if ("projectId" in body) patch.projectId = num(body.projectId);
         const updated = await db
           .update(carouselItems)
           .set(patch as Partial<typeof carouselItems.$inferInsert>)
