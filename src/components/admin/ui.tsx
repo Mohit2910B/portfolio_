@@ -197,10 +197,12 @@ export function Toggle({
   checked,
   onChange,
   label,
+  description,
 }: {
   checked: boolean;
   onChange: (value: boolean) => void;
   label: string;
+  description?: string;
 }) {
   return (
     <button
@@ -208,10 +210,10 @@ export function Toggle({
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className="flex items-center gap-3"
+      className="flex items-center gap-3 text-left"
     >
       <span
-        className={`relative h-5 w-9 rounded-full transition-colors ${
+        className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
           checked ? "bg-[var(--accent)]" : "bg-ink/15"
         }`}
       >
@@ -221,9 +223,16 @@ export function Toggle({
           }`}
         />
       </span>
-      <span className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-ink/60">
-        {label}
-      </span>
+      <div>
+        <span className="block text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-ink/75">
+          {label}
+        </span>
+        {description && (
+          <span className="block text-[0.65rem] text-ink/45 mt-0.5 font-normal">
+            {description}
+          </span>
+        )}
+      </div>
     </button>
   );
 }

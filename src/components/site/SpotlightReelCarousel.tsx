@@ -30,23 +30,23 @@ export default function SpotlightReelCarousel({
   projects = [],
   onSelectProject,
 }: Props) {
-  // Combine dedicated carousel items + active video projects without duplicates
+  // Combine category carousel items + active video projects without duplicates
   const items: SpotlightItem[] = useMemo(() => {
     const list: SpotlightItem[] = [];
-    const seenUrls = new Set<string>();
+    const seenIds = new Set<string>();
 
-    // 1. Dedicated Carousel items first
+    // 1. Category-driven carousel items
     for (const item of carouselItems) {
-      if (item.isActive !== false && item.videoUrl && item.videoUrl.trim()) {
-        const normUrl = item.videoUrl.trim();
-        if (!seenUrls.has(normUrl)) {
-          seenUrls.add(normUrl);
+      if (item.isActive !== false && (item.videoUrl?.trim() || item.thumbnailUrl?.trim())) {
+        const key = `cat-${item.id}-${item.title}`;
+        if (!seenIds.has(key)) {
+          seenIds.add(key);
           list.push({
             id: item.id,
             title: item.title,
             category: item.category || "Selected Work",
             description: item.description || "",
-            videoUrl: normUrl,
+            videoUrl: item.videoUrl?.trim() || "",
             videoSource: item.videoSource || "upload",
             thumbnailUrl: item.thumbnailUrl || "",
             aspectRatio: item.aspectRatio || "16:9",
@@ -57,27 +57,29 @@ export default function SpotlightReelCarousel({
       }
     }
 
-    // 2. Published Video Projects from portfolio
-    for (const p of projects) {
-      if (p.published && p.videoUrl && p.videoUrl.trim()) {
-        const normUrl = p.videoUrl.trim();
-        if (!seenUrls.has(normUrl)) {
-          seenUrls.add(normUrl);
-          list.push({
-            id: p.id,
-            title: p.title,
-            category: p.categoryLabel || "Selected Work",
-            description: p.description || "",
-            videoUrl: normUrl,
-            videoSource: p.videoSource || "upload",
-            thumbnailUrl: p.thumbnailUrl || "",
-            aspectRatio: p.aspectRatio || "16:9",
-            duration: p.durationSeconds ? `0:${p.durationSeconds}` : "0:45",
-            durationSeconds: p.durationSeconds ?? undefined,
-            software: p.software,
-            featured: p.featured,
-            published: true,
-          });
+    // 2. Published Video Projects fallback if carouselItems is empty
+    if (list.length === 0) {
+      for (const p of projects) {
+        if (p.published && (p.videoUrl?.trim() || p.thumbnailUrl?.trim())) {
+          const key = `proj-${p.id}`;
+          if (!seenIds.has(key)) {
+            seenIds.add(key);
+            list.push({
+              id: p.id,
+              title: p.title,
+              category: p.categoryLabel || "Selected Work",
+              description: p.description || "",
+              videoUrl: p.videoUrl?.trim() || "",
+              videoSource: p.videoSource || "upload",
+              thumbnailUrl: p.thumbnailUrl || "",
+              aspectRatio: p.aspectRatio || "16:9",
+              duration: p.durationSeconds ? `0:${p.durationSeconds}` : "0:45",
+              durationSeconds: p.durationSeconds ?? undefined,
+              software: p.software,
+              featured: p.featured,
+              published: true,
+            });
+          }
         }
       }
     }

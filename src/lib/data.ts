@@ -168,113 +168,7 @@ export type CarouselItem = {
   updatedAt: Date;
 };
 
-export const DEFAULT_CAROUSEL_ITEMS: CarouselItem[] = [
-  {
-    id: 1,
-    title: "Cinematic Coastline Tour",
-    category: "Real Estate",
-    description: "Aerial cliffside drone capture and luxury oceanfront property walk-through.",
-    duration: "0:30",
-    videoUrl: "https://videos.pexels.com/video-files/39105109/16638114_3840_2160_30fps.mp4",
-    videoSource: "upload",
-    thumbnailUrl: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80",
-    aspectRatio: "9:16",
-    isActive: true,
-    sortOrder: 0,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: 2,
-    title: "Organic Skincare Ritual",
-    category: "Product Video",
-    description: "Tactile textures, macro product application, and glowing studio lighting.",
-    duration: "0:15",
-    videoUrl: "https://videos.pexels.com/video-files/3843433/3843433-hd_1080_1920_30fps.mp4",
-    videoSource: "upload",
-    thumbnailUrl: "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=800&q=80",
-    aspectRatio: "9:16",
-    isActive: true,
-    sortOrder: 1,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: 3,
-    title: "Citrus & Culinary Craft",
-    category: "Commercial",
-    description: "High-speed macro food preparation with kinetic cuts and natural color grading.",
-    duration: "0:20",
-    videoUrl: "https://videos.pexels.com/video-files/4255557/4255557-hd_1080_1920_25fps.mp4",
-    videoSource: "upload",
-    thumbnailUrl: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=800&q=80",
-    aspectRatio: "9:16",
-    isActive: true,
-    sortOrder: 2,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: 4,
-    title: "Modern Dining Experience",
-    category: "Social Reel",
-    description: "Atmospheric lifestyle dining, ambient cuts, and fast-paced sound design.",
-    duration: "0:35",
-    videoUrl: "https://videos.pexels.com/video-files/4440854/4440854-hd_1080_1920_25fps.mp4",
-    videoSource: "upload",
-    thumbnailUrl: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80",
-    aspectRatio: "9:16",
-    isActive: true,
-    sortOrder: 3,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: 5,
-    title: "Urban Highway Midnight Cut",
-    category: "Motion Graphics",
-    description: "Night motorcycle speed tracking, kinetic text tracking, and neon grade.",
-    duration: "0:25",
-    videoUrl: "https://videos.pexels.com/video-files/2887463/2887463-hd_1080_1920_30fps.mp4",
-    videoSource: "upload",
-    thumbnailUrl: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=800&q=80",
-    aspectRatio: "9:16",
-    isActive: true,
-    sortOrder: 4,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: 6,
-    title: "Artisan Fresh Brew",
-    category: "Brand Film",
-    description: "Warm cafe aesthetic, pour-over coffee ritual, and organic depth of field.",
-    duration: "0:30",
-    videoUrl: "https://videos.pexels.com/video-files/3015510/3015510-hd_1080_1920_24fps.mp4",
-    videoSource: "upload",
-    thumbnailUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=800&q=80",
-    aspectRatio: "9:16",
-    isActive: true,
-    sortOrder: 5,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: 7,
-    title: "Studio Recording Session",
-    category: "Music & Event",
-    description: "Intimate acoustic performance, vintage microphone styling, and warm grading.",
-    duration: "0:45",
-    videoUrl: "https://videos.pexels.com/video-files/3196236/3196236-hd_1080_1920_25fps.mp4",
-    videoSource: "upload",
-    thumbnailUrl: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&q=80",
-    aspectRatio: "9:16",
-    isActive: true,
-    sortOrder: 6,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-];
+export const DEFAULT_CAROUSEL_ITEMS: CarouselItem[] = [];
 
 export type SiteData = {
   homepage: typeof HOME_FALLBACK & { id?: number; [key: string]: unknown };
@@ -693,42 +587,72 @@ export async function getSiteData(): Promise<SiteData> {
           }
         : DEFAULT_CAROUSEL_GLOBAL_SETTINGS);
 
-    // Build rich carousel items (from carousel admin + active video projects)
-    let finalCarouselItems: CarouselItem[] =
-      overrides.carouselItems && overrides.carouselItems.length > 0
-        ? overrides.carouselItems
-        : carouselItemRows && carouselItemRows.length > 0
-          ? carouselItemRows
-          : DEFAULT_CAROUSEL_ITEMS;
+    // ================================================================
+    // BUILD CATEGORY-DRIVEN CAROUSEL
+    // Each active category = one carousel slide, using project media
+    // ================================================================
+    const buildCarouselFromCategories = (
+      cats: typeof finalCategories,
+      pubs: PublicProject[],
+    ): CarouselItem[] => {
+      const activeCats = cats
+        .filter((c) => c.isActive !== false)
+        .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 
-    // If active projects exist that have video URLs, ensure they are seamlessly available
-    if (publicProjects.some((p) => p.videoUrl && p.videoUrl.trim())) {
-      const projectCarouselCards: CarouselItem[] = publicProjects
-        .filter((p) => p.videoUrl && p.videoUrl.trim() && p.carouselEnabled !== false)
-        .map((p, idx) => ({
-          id: p.id + 10000,
-          title: p.title,
-          category: p.categoryLabel || "Video Project",
-          description: p.description || "",
-          videoUrl: p.videoUrl,
-          videoSource: (p.videoSource as "upload" | "url") || "upload",
-          thumbnailUrl: p.thumbnailUrl || "",
-          duration: p.durationSeconds ? `${Math.floor(p.durationSeconds / 60)}:${(p.durationSeconds % 60).toString().padStart(2, "0")}` : "0:45",
-          aspectRatio: (p.aspectRatio as "9:16" | "4:5" | "16:9" | "1:1") || "9:16",
-          sortOrder: p.sortOrder ?? idx,
+      const slides: CarouselItem[] = [];
+
+      for (const cat of activeCats) {
+        // Find all published projects in this category
+        const catProjects = pubs.filter(
+          (p) => p.published && (p.categoryId === cat.id || p.categoryLabel === cat.name),
+        );
+
+        if (catProjects.length === 0) {
+          // Skip empty categories from the carousel
+          continue;
+        }
+
+        // Pick best video: first project with a real video URL
+        const projectWithVideo = catProjects.find((p) => p.videoUrl && p.videoUrl.trim());
+        const videoUrl = projectWithVideo?.videoUrl ?? "";
+        const videoSource = (projectWithVideo?.videoSource as "upload" | "url") ?? "url";
+        const aspectRatio = (projectWithVideo?.aspectRatio as CarouselItem["aspectRatio"]) ?? "9:16";
+        const dur = projectWithVideo?.durationSeconds
+          ? `${Math.floor(projectWithVideo.durationSeconds / 60)}:${(projectWithVideo.durationSeconds % 60).toString().padStart(2, "0")}`
+          : "0:30";
+
+        // Pick best thumbnail: first project with thumbnail, else empty
+        const thumbnailUrl =
+          catProjects.find((p) => p.thumbnailUrl && p.thumbnailUrl.trim())?.thumbnailUrl ?? "";
+
+        // Best description
+        const description =
+          cat.description ||
+          catProjects.find((p) => p.description)?.description ||
+          `${catProjects.length} project${catProjects.length !== 1 ? "s" : ""}`;
+
+        slides.push({
+          id: cat.id,
+          title: cat.name.toUpperCase(),
+          category: cat.name,
+          description,
+          duration: dur,
+          videoUrl,
+          videoSource,
+          thumbnailUrl,
+          aspectRatio,
           isActive: true,
-          badgeText: p.featured ? "FEATURED" : undefined,
-          clientName: undefined,
-          actionUrl: undefined,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        }));
+          sortOrder: cat.sortOrder ?? slides.length,
+          projectId: projectWithVideo?.id ?? null,
+          createdAt: cat.createdAt,
+          updatedAt: cat.updatedAt,
+        });
+      }
 
-      // Combine dedicated carousel items with project videos without duplicate URLs
-      const existingUrls = new Set(finalCarouselItems.map((c) => c.videoUrl));
-      const newFromProjects = projectCarouselCards.filter((p) => !existingUrls.has(p.videoUrl));
-      finalCarouselItems = [...finalCarouselItems, ...newFromProjects];
-    }
+      return slides;
+    };
+
+    const finalCarouselItems = buildCarouselFromCategories(finalCategories, publicProjects);
 
     const result = {
       homepage,

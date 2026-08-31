@@ -311,17 +311,6 @@ const DDL_STATEMENTS = [
   )`,
   `CREATE INDEX IF NOT EXISTS mobile_otp_challenges_phone_idx ON mobile_otp_challenges (phone)`,
 
-  `CREATE TABLE IF NOT EXISTS notification_settings (
-    id                 INTEGER PRIMARY KEY DEFAULT 1,
-    email_enabled      BOOLEAN NOT NULL DEFAULT true,
-    notification_email TEXT NOT NULL DEFAULT 'mohitbabariyaa@gmail.com',
-    admin_status       TEXT NOT NULL DEFAULT 'offline',
-    ai_auto_reply      BOOLEAN NOT NULL DEFAULT true,
-    updated_at         TIMESTAMPTZ NOT NULL DEFAULT now()
-  )`,
-  `ALTER TABLE notification_settings ADD COLUMN IF NOT EXISTS admin_status TEXT NOT NULL DEFAULT 'offline'`,
-  `ALTER TABLE notification_settings ADD COLUMN IF NOT EXISTS ai_auto_reply BOOLEAN NOT NULL DEFAULT true`,
-
   `ALTER TABLE projects ADD COLUMN IF NOT EXISTS carousel_enabled BOOLEAN NOT NULL DEFAULT true`,
   `ALTER TABLE projects ADD COLUMN IF NOT EXISTS carousel_pinned BOOLEAN NOT NULL DEFAULT false`,
   `ALTER TABLE projects ADD COLUMN IF NOT EXISTS carousel_order INTEGER NOT NULL DEFAULT 0`,
@@ -333,8 +322,9 @@ const DDL_STATEMENTS = [
   `ALTER TABLE theme_settings ADD COLUMN IF NOT EXISTS animation_speed TEXT NOT NULL DEFAULT 'normal'`,
   `ALTER TABLE theme_settings ADD COLUMN IF NOT EXISTS cursor_effect BOOLEAN NOT NULL DEFAULT true`,
 
-  `ALTER TABLE carousel_global_settings ADD COLUMN IF NOT EXISTS section_badge TEXT NOT NULL DEFAULT 'VIDEO SHOWCASE'`,
-  `ALTER TABLE carousel_global_settings ADD COLUMN IF NOT EXISTS text_color TEXT NOT NULL DEFAULT 'black'`,
+  `ALTER TABLE notification_settings ADD COLUMN IF NOT EXISTS admin_status TEXT NOT NULL DEFAULT 'offline'`,
+  `ALTER TABLE notification_settings ADD COLUMN IF NOT EXISTS ai_auto_reply BOOLEAN NOT NULL DEFAULT true`,
+
   `CREATE TABLE IF NOT EXISTS carousel_global_settings (
     id               INTEGER PRIMARY KEY DEFAULT 1,
     enabled          BOOLEAN NOT NULL DEFAULT true,
@@ -349,6 +339,8 @@ const DDL_STATEMENTS = [
     show_dots        BOOLEAN NOT NULL DEFAULT true,
     updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
   )`,
+  `ALTER TABLE carousel_global_settings ADD COLUMN IF NOT EXISTS section_badge TEXT NOT NULL DEFAULT 'VIDEO SHOWCASE'`,
+  `ALTER TABLE carousel_global_settings ADD COLUMN IF NOT EXISTS text_color TEXT NOT NULL DEFAULT 'black'`,
 
   `CREATE TABLE IF NOT EXISTS carousel_items (
     id            SERIAL PRIMARY KEY,
