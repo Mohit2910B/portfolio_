@@ -639,7 +639,7 @@ export function VideoAssetManager({
               </div>
 
               {/* Thumbnail Image Display */}
-              <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-black/10 bg-black/5">
+              <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-black/10 bg-black/5 shadow-inner">
                 {thumbnailUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -651,11 +651,67 @@ export function VideoAssetManager({
                   <div className="flex h-full w-full flex-col items-center justify-center p-3 text-center">
                     <span className="text-xl">🖼️</span>
                     <span className="text-[10px] font-medium text-ink/40 mt-1">
-                      No thumbnail set yet. Click "Grab Frame" above.
+                      No thumbnail set yet. Use the frame grabber or upload button below.
                     </span>
                   </div>
                 )}
+                {thumbnailUrl && (
+                  <span className="absolute bottom-2 right-2 rounded-md bg-emerald-600/90 px-2 py-0.5 text-[9px] font-bold text-white shadow-sm backdrop-blur-sm">
+                    ✓ Attached
+                  </span>
+                )}
               </div>
+
+              {/* Live Video Frame Scrubber for Precise Thumbnail Extraction */}
+              {!media.embedUrl && videoRef.current && (
+                <div className="rounded-xl border border-black/8 bg-white p-2.5 space-y-1.5 shadow-sm">
+                  <div className="flex items-center justify-between text-[10px] font-bold text-ink">
+                    <span>🎞️ Scrub to Exact Frame:</span>
+                    <span className="font-mono text-ink/60">
+                      {formatSeconds(videoRef.current.currentTime || 0)}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={videoRef.current.duration || 10}
+                    step={0.1}
+                    defaultValue={1.0}
+                    onChange={(e) => {
+                      const sec = parseFloat(e.target.value);
+                      if (videoRef.current) {
+                        videoRef.current.currentTime = sec;
+                      }
+                    }}
+                    className="w-full accent-[var(--accent,#e0147f)] cursor-pointer"
+                  />
+                  <button
+                    type="button"
+                    disabled={grabbingFrame}
+                    onClick={() => {
+                      const cur = videoRef.current?.currentTime || 1.0;
+                      void captureFrame(cur);
+                    }}
+                    className="w-full rounded-lg bg-[var(--accent,#e0147f)] py-1.5 text-center text-[11px] font-bold text-white shadow-sm transition hover:opacity-90"
+                  >
+                    📸 {grabbingFrame ? "Extracting Frame…" : "Capture This Exact Frame"}
+                  </button>
+                </div>
+              )}
+
+              {/* YouTube 1-Click HD Thumbnail Grab */}
+              {media.type === "youtube" && media.id && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const ytThumb = `https://img.youtube.com/vi/${media.id}/maxresdefault.jpg`;
+                    onThumbnailChange(ytThumb);
+                  }}
+                  className="w-full rounded-xl border border-red-500/20 bg-red-500/10 py-1.5 text-center text-[11px] font-bold text-red-700 transition hover:bg-red-500/20"
+                >
+                  🔴 Extract Official YouTube HD Thumbnail
+                </button>
+              )}
 
               {/* Thumbnail Custom Upload Buttons */}
               <div className="flex flex-wrap items-center gap-2 pt-1">

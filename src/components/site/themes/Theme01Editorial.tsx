@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { SiteData, PublicProject } from "@/lib/data";
 import SiteNav from "@/components/site/SiteNav";
 import Hero from "@/components/site/Hero";
@@ -10,6 +10,123 @@ import ContactSection from "@/components/site/ContactSection";
 import ProjectViewer from "@/components/site/ProjectViewer";
 import ChatWidget from "@/components/site/ChatWidget";
 import Reveal from "@/components/site/Reveal";
+
+function ProjectCard({
+  project,
+  onSelect,
+}: {
+  project: PublicProject;
+  onSelect: () => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+    if (videoRef.current && project.videoUrl) {
+      void videoRef.current.play().catch(() => {});
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+  };
+
+  return (
+    <article
+      onClick={onSelect}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      className="group glass-soft cursor-pointer overflow-hidden rounded-[26px] border border-ink/8 transition duration-500 hover:-translate-y-1.5 hover:shadow-2xl"
+    >
+      <div className="relative aspect-video overflow-hidden bg-ink/5">
+        {project.videoUrl ? (
+          <video
+            ref={videoRef}
+            src={project.videoUrl}
+            poster={project.thumbnailUrl || undefined}
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
+          />
+        ) : project.thumbnailUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={project.thumbnailUrl}
+            alt={project.title}
+            loading="lazy"
+            className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
+          />
+        ) : (
+          <div className="grid h-full place-items-center text-[0.65rem] uppercase tracking-[0.2em] text-ink/35">
+            🎬 Video Project
+          </div>
+        )}
+
+        {/* Play Badge */}
+        <div className="absolute inset-0 grid place-items-center bg-black/30 opacity-0 backdrop-blur-[2px] transition duration-300 group-hover:opacity-100">
+          <div className="grid h-12 w-12 place-items-center rounded-full bg-white text-ink shadow-2xl transition duration-300 group-hover:scale-110">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </div>
+        </div>
+
+        {/* Live Motion Sound Wave Pill on Hover */}
+        {isHovered && project.videoUrl && (
+          <div className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-black/75 px-2.5 py-1 text-[9px] font-bold text-white shadow-lg backdrop-blur-md">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>LIVE PREVIEW</span>
+          </div>
+        )}
+
+        <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
+          <span className="rounded-md bg-black/60 px-2 py-1 text-[0.55rem] font-semibold uppercase tracking-[0.12em] text-white backdrop-blur-md">
+            {project.aspectRatio || "16:9"}
+          </span>
+          {project.durationSeconds ? (
+            <span className="rounded-md bg-black/60 px-2 py-1 font-mono text-[0.55rem] font-semibold text-white/90 backdrop-blur-md">
+              ⏱️ {project.durationSeconds}s
+            </span>
+          ) : null}
+          {project.featured && (
+            <span className="rounded-md bg-[var(--accent,#e0147f)] px-2 py-1 text-[0.55rem] font-semibold uppercase tracking-[0.12em] text-white shadow-sm">
+              ★ Spotlight
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="p-5">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-ink/40">
+            {project.categoryLabel || "Video Project"}
+            {project.year ? ` · ${project.year}` : ""}
+          </p>
+          {project.software && (
+            <span className="text-[9px] font-mono text-ink/50 bg-black/5 px-2 py-0.5 rounded-md">
+              {project.software.split(",")[0]}
+            </span>
+          )}
+        </div>
+        <h3 className="display mt-2 text-lg text-ink group-hover:text-[var(--accent,#e0147f)] transition">
+          {project.title}
+        </h3>
+        {project.description && (
+          <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-ink/60">
+            {project.description}
+          </p>
+        )}
+      </div>
+    </article>
+  );
+}
 
 export default function Theme01Editorial({ data }: { data: SiteData }) {
   const { homepage, projects, categories } = data;
@@ -102,78 +219,14 @@ export default function Theme01Editorial({ data }: { data: SiteData }) {
             </div>
           </div>
 
-          {/* Clean Responsive Project Grid */}
+          {/* Clean Responsive Project Grid with Live Hover Previews */}
           <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {filteredProjects.map((project, index) => (
               <Reveal key={project.id} delay={index * 35}>
-                <article
-                  onClick={() => setSelectedProject(project)}
-                  className="group glass-soft cursor-pointer overflow-hidden rounded-[26px] border border-ink/8 transition duration-500 hover:-translate-y-1.5 hover:shadow-2xl"
-                >
-                  <div className="relative aspect-video overflow-hidden bg-ink/5">
-                    {project.thumbnailUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={project.thumbnailUrl}
-                        alt={project.title}
-                        loading="lazy"
-                        className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
-                      />
-                    ) : project.videoUrl ? (
-                      <video
-                        src={project.videoUrl}
-                        muted
-                        playsInline
-                        preload="metadata"
-                        className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="grid h-full place-items-center text-[0.65rem] uppercase tracking-[0.2em] text-ink/35">
-                        🎬 Video Project
-                      </div>
-                    )}
-
-                    {/* Play Badge */}
-                    <div className="absolute inset-0 grid place-items-center bg-black/30 opacity-0 backdrop-blur-[2px] transition duration-300 group-hover:opacity-100">
-                      <div className="grid h-12 w-12 place-items-center rounded-full bg-white text-ink shadow-2xl transition duration-300 group-hover:scale-110">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                          <path d="M8 5v14l11-7z" />
-                        </svg>
-                      </div>
-                    </div>
-
-                    <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
-                      <span className="rounded-md bg-black/60 px-2 py-1 text-[0.55rem] font-semibold uppercase tracking-[0.12em] text-white backdrop-blur-md">
-                        {project.aspectRatio || "16:9"}
-                      </span>
-                      {project.durationSeconds ? (
-                        <span className="rounded-md bg-black/60 px-2 py-1 font-mono text-[0.55rem] font-semibold text-white/90 backdrop-blur-md">
-                          ⏱️ {project.durationSeconds}s
-                        </span>
-                      ) : null}
-                      {project.featured && (
-                        <span className="rounded-md bg-[var(--accent,#e0147f)] px-2 py-1 text-[0.55rem] font-semibold uppercase tracking-[0.12em] text-white">
-                          Featured
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="p-5">
-                    <p className="text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-ink/40">
-                      {project.categoryLabel || "Video Project"}
-                      {project.year ? ` · ${project.year}` : ""}
-                    </p>
-                    <h3 className="display mt-2 text-lg text-ink group-hover:text-[var(--accent,#e0147f)] transition">
-                      {project.title}
-                    </h3>
-                    {project.description && (
-                      <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-ink/60">
-                        {project.description}
-                      </p>
-                    )}
-                  </div>
-                </article>
+                <ProjectCard
+                  project={project}
+                  onSelect={() => setSelectedProject(project)}
+                />
               </Reveal>
             ))}
           </div>
