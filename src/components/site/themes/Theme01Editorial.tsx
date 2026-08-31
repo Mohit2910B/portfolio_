@@ -10,6 +10,7 @@ import ContactSection from "@/components/site/ContactSection";
 import ProjectViewer from "@/components/site/ProjectViewer";
 import ChatWidget from "@/components/site/ChatWidget";
 import Reveal from "@/components/site/Reveal";
+import SpotlightReelCarousel from "@/components/site/SpotlightReelCarousel";
 
 function ProjectCard({
   project,
@@ -163,11 +164,6 @@ export default function Theme01Editorial({ data }: { data: SiteData }) {
     });
   }, [projects, activeCatIds, activeCategory]);
 
-  // Find top spotlight featured project
-  const spotlightProject = useMemo(() => {
-    return filteredProjects.find((p) => p.featured) || filteredProjects[0] || null;
-  }, [filteredProjects]);
-
   return (
     <div className="min-h-screen bg-[var(--paper,#f7f5f2)] text-[var(--ink,#0b0b0c)] font-sans antialiased selection:bg-black selection:text-white">
       {/* Primary Floating Navigation Bar */}
@@ -196,9 +192,9 @@ export default function Theme01Editorial({ data }: { data: SiteData }) {
         <div className="mx-auto max-w-[1400px]">
           <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <SectionHeading
-              eyebrow="Portfolio & Films"
+              eyebrow="Kinetic Showcase & Films"
               title="SELECTED WORKS"
-              description="A curated collection of viral reels, commercial brand films, motion graphics, and color grades."
+              description="Rotate through high-retention vertical reels, commercials, and visual storytelling."
             />
 
             {/* Category Filter Pills */}
@@ -231,115 +227,34 @@ export default function Theme01Editorial({ data }: { data: SiteData }) {
             </div>
           </div>
 
-          {/* 🌟 Spotlight Featured Premiere Card (When in All Works view) */}
-          {activeCategory === "all" && spotlightProject && (
-            <div className="mt-12">
-              <Reveal>
-                <div
-                  onClick={() => setSelectedProject(spotlightProject)}
-                  className="group relative cursor-pointer overflow-hidden rounded-[32px] border border-ink/10 bg-black text-white shadow-2xl transition duration-500 hover:border-ink/30"
-                >
-                  <div className="grid lg:grid-cols-12">
-                    {/* Left: Cinematic Visualizer Frame */}
-                    <div className="lg:col-span-7 relative aspect-video overflow-hidden bg-black flex items-center justify-center">
-                      {spotlightProject.thumbnailUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={spotlightProject.thumbnailUrl}
-                          alt={spotlightProject.title}
-                          className="h-full w-full object-cover opacity-90 transition duration-700 group-hover:scale-105"
-                        />
-                      ) : spotlightProject.videoUrl ? (
-                        <video
-                          src={spotlightProject.videoUrl}
-                          muted
-                          playsInline
-                          preload="metadata"
-                          className="h-full w-full object-cover opacity-90 transition duration-700 group-hover:scale-105"
-                        />
-                      ) : null}
-
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-black/80 hidden lg:block" />
-
-                      {/* Giant Cinema Play Icon */}
-                      <div className="absolute inset-0 grid place-items-center bg-black/30 opacity-0 backdrop-blur-[2px] transition duration-300 group-hover:opacity-100">
-                        <div className="grid h-16 w-16 place-items-center rounded-full bg-white text-ink shadow-2xl transition duration-300 group-hover:scale-110">
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M8 5v14l11-7z" />
-                          </svg>
-                        </div>
-                      </div>
-
-                      <div className="absolute left-4 top-4 flex gap-2">
-                        <span className="rounded-lg bg-[var(--accent,#e0147f)] px-3 py-1 text-[0.62rem] font-bold uppercase tracking-[0.14em] text-white shadow-lg">
-                          ★ Featured Premiere
-                        </span>
-                        <span className="rounded-lg bg-black/70 px-3 py-1 font-mono text-[0.62rem] font-bold text-white backdrop-blur-md">
-                          {spotlightProject.aspectRatio || "16:9"}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Right: Editorial Showcase Description */}
-                    <div className="lg:col-span-5 flex flex-col justify-between p-8 sm:p-10 bg-gradient-to-br from-neutral-900 to-black">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                          <span className="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-[var(--accent,#e0147f)]">
-                            {spotlightProject.categoryLabel || "Selected Work"}
-                          </span>
-                        </div>
-                        <h3 className="display mt-3 text-2xl sm:text-3xl font-bold leading-tight text-white group-hover:text-[var(--accent,#e0147f)] transition">
-                          {spotlightProject.title}
-                        </h3>
-                        {spotlightProject.description && (
-                          <p className="mt-4 text-sm leading-relaxed text-white/70">
-                            {spotlightProject.description}
-                          </p>
-                        )}
-
-                        {spotlightProject.software && (
-                          <div className="mt-6 flex flex-wrap gap-2">
-                            {spotlightProject.software.split(",").map((tool) => (
-                              <span
-                                key={tool}
-                                className="rounded-md bg-white/10 px-2.5 py-1 text-[10px] font-mono font-medium text-white/80"
-                              >
-                                {tool.trim()}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="mt-8 flex items-center justify-between border-t border-white/10 pt-6">
-                        <span className="text-xs font-bold uppercase tracking-wider text-white/60">
-                          {spotlightProject.year ? `Year: ${spotlightProject.year}` : "Cinema Edition"}
-                        </span>
-                        <button
-                          type="button"
-                          className="flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-xs font-bold text-ink shadow-lg transition duration-300 hover:bg-[var(--accent,#e0147f)] hover:text-white"
-                        >
-                          <span>▶ Watch Project</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Reveal>
-            </div>
-          )}
+          {/* 🌟 3D Kinetic Spotlight Reel Carousel */}
+          <div className="mt-8">
+            <Reveal>
+              <SpotlightReelCarousel
+                projects={filteredProjects}
+                onSelectProject={(p) => setSelectedProject(p)}
+              />
+            </Reveal>
+          </div>
 
           {/* Clean Responsive Project Grid with Live Hover Previews */}
-          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredProjects.map((project, index) => (
-              <Reveal key={project.id} delay={index * 35}>
-                <ProjectCard
-                  project={project}
-                  onSelect={() => setSelectedProject(project)}
-                />
-              </Reveal>
-            ))}
+          <div className="mt-14 border-t border-black/5 pt-12">
+            <div className="mb-8 flex items-center justify-between">
+              <h3 className="font-heading text-sm font-bold uppercase tracking-wider text-ink/60">
+                Explore All Projects ({filteredProjects.length})
+              </h3>
+            </div>
+
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredProjects.map((project, index) => (
+                <Reveal key={project.id} delay={index * 35}>
+                  <ProjectCard
+                    project={project}
+                    onSelect={() => setSelectedProject(project)}
+                  />
+                </Reveal>
+              ))}
+            </div>
           </div>
 
           {filteredProjects.length === 0 && (
