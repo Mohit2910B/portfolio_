@@ -48,6 +48,7 @@ export function VideoAssetManager({
   const [uploadMessage, setUploadMessage] = useState<string>("");
   const [grabbingFrame, setGrabbingFrame] = useState(false);
   const [thumbError, setThumbError] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const [videoMeta, setVideoMeta] = useState<{
     width?: number;
     height?: number;
@@ -575,24 +576,72 @@ export function VideoAssetManager({
                     setUrlInput("");
                   }
                 }}
-                className="rounded-xl border border-black/15 bg-white px-3 py-1 text-xs font-bold text-ink shadow-sm transition hover:bg-black/5"
+                disabled={uploadStatus === "uploading"}
+                className="rounded-xl border border-black/15 bg-white px-3 py-1 text-xs font-bold text-ink shadow-sm transition hover:bg-black/5 disabled:opacity-40"
               >
                 🔄 Replace Video
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  onVideoChange("", sourceTab);
-                  onThumbnailChange("");
-                  setUrlInput("");
-                  setVideoMeta({});
-                }}
-                className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-1 text-xs font-bold text-red-700 transition hover:bg-red-500/20"
-              >
-                🗑️ Remove
-              </button>
+
+              {/* Confirm Remove Dialog */}
+              {confirmRemove ? (
+                <div className="flex items-center gap-1.5 rounded-xl border border-red-400/40 bg-red-50 px-3 py-1">
+                  <span className="text-[11px] font-bold text-red-700">Remove?</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onVideoChange("", sourceTab);
+                      onThumbnailChange("");
+                      setUrlInput("");
+                      setVideoMeta({});
+                      setConfirmRemove(false);
+                    }}
+                    className="rounded-lg bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white hover:bg-red-700"
+                  >
+                    Yes, Remove
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmRemove(false)}
+                    className="rounded-lg bg-black/10 px-2 py-0.5 text-[10px] font-bold text-ink hover:bg-black/20"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmRemove(true)}
+                  disabled={uploadStatus === "uploading"}
+                  className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-1 text-xs font-bold text-red-700 transition hover:bg-red-500/20 disabled:opacity-40"
+                >
+                  🗑️ Remove
+                </button>
+              )}
             </div>
           </div>
+
+          {/* Upload Progress Bar — visible during Replace upload */}
+          {uploadStatus === "uploading" && (
+            <div className="rounded-xl border border-[var(--accent,#e0147f)]/30 bg-[var(--accent,#e0147f)]/5 p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--accent,#e0147f)]/30 border-t-[var(--accent,#e0147f)]" />
+                  <span className="text-[11px] font-bold text-[var(--accent,#e0147f)]">{uploadMessage}</span>
+                </div>
+                {uploadProgress !== null && (
+                  <span className="font-mono text-[11px] font-bold text-ink/60">{uploadProgress}%</span>
+                )}
+              </div>
+              {uploadProgress !== null && (
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-black/10">
+                  <div
+                    className="h-full rounded-full bg-[var(--accent,#e0147f)] transition-all duration-300"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Interactive Player & Poster Grid */}
           <div className="grid gap-4 md:grid-cols-12">
