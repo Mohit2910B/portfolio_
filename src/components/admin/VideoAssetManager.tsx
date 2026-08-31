@@ -473,6 +473,48 @@ export function VideoAssetManager({
               <span className="rounded-md bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold text-sky-700">🔵 Vimeo</span>
               <span className="rounded-md bg-black/10 px-2 py-0.5 text-[10px] font-bold text-ink">🎬 Direct MP4 Stream</span>
             </div>
+
+            <div className="pt-2 border-t border-black/5">
+              <span className="text-[10px] font-bold text-ink/50 uppercase tracking-wider">1-Click Test Samples:</span>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const url = "https://videos.pexels.com/video-files/7578544/7578544-uhd_1440_2732_25fps.mp4";
+                    setUrlInput(url);
+                    onVideoChange(url, "url", { aspectRatio: "9:16", durationFormatted: "0:45" });
+                    onThumbnailChange("https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80");
+                  }}
+                  className="rounded-lg bg-black/5 px-2.5 py-1 text-[10px] font-bold text-ink transition hover:bg-black hover:text-white"
+                >
+                  🏡 Luxury Real Estate Reel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const url = "https://videos.pexels.com/video-files/3129671/3129671-hd_1080_1920_30fps.mp4";
+                    setUrlInput(url);
+                    onVideoChange(url, "url", { aspectRatio: "9:16", durationFormatted: "0:30" });
+                    onThumbnailChange("https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&q=80");
+                  }}
+                  className="rounded-lg bg-black/5 px-2.5 py-1 text-[10px] font-bold text-ink transition hover:bg-black hover:text-white"
+                >
+                  ✨ Cyberpunk VFX Reel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const url = "https://videos.pexels.com/video-files/5532766/5532766-hd_1080_1920_25fps.mp4";
+                    setUrlInput(url);
+                    onVideoChange(url, "url", { aspectRatio: "9:16", durationFormatted: "0:20" });
+                    onThumbnailChange("https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&q=80");
+                  }}
+                  className="rounded-lg bg-black/5 px-2.5 py-1 text-[10px] font-bold text-ink transition hover:bg-black hover:text-white"
+                >
+                  👟 Sneaker Commercial Reel
+                </button>
+              </div>
+            </div>
           </div>
         )
       ) : (

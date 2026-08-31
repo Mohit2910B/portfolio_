@@ -164,18 +164,11 @@ export default function VideoPlayer({
         poster={poster || undefined}
         className="absolute inset-0 h-full w-full bg-black object-contain"
         playsInline
-        controls={false}
-        preload="metadata"
+        controls
+        preload="auto"
         autoPlay={autoPlay}
         tabIndex={0}
         aria-label="Project video player"
-        onKeyDown={(event) => {
-          if (event.key === " " || event.key === "k") {
-            event.preventDefault();
-            togglePlay();
-          }
-          if (event.key === "m") toggleMute();
-        }}
       >
         <track kind="captions" />
       </video>
