@@ -455,45 +455,83 @@ export async function GET(_request: Request, ctx: Params) {
 
       case "chat": {
         if (second === "status") {
-          const rows = await db.select().from(notificationSettings).limit(1);
-          const s = rows[0];
+          try {
+            const rows = await db.select().from(notificationSettings).limit(1);
+            const s = rows[0];
+            if (s) {
+              return ok({
+                adminStatus: s.adminStatus || "offline",
+                aiAutoReply: s.aiAutoReply !== false,
+              });
+            }
+          } catch {}
+          const notif = globalThis.__runtimeSiteDataOverrides?.notificationSettings;
           return ok({
-            adminStatus: s?.adminStatus || "offline",
-            aiAutoReply: s?.aiAutoReply !== false,
+            adminStatus: notif?.adminStatus || "offline",
+            aiAutoReply: notif?.aiAutoReply !== false,
           });
         }
         if (second !== "conversations") throw notFound("Unknown chat resource.");
         if (!third) {
-          const rows = await db
-            .select()
-            .from(chatConversations)
-            .orderBy(desc(chatConversations.updatedAt));
-          const now = Date.now();
-          return ok({
-            conversations: rows.map((c) => ({
-              ...c,
-              online: Boolean(
-                c.customerSeenAt && now - new Date(c.customerSeenAt).getTime() < 3 * 60 * 1000,
-              ),
-            })),
-          });
+          const store = (await import("@/lib/chat")).getRuntimeChatStore();
+          const storeConvos = Array.from(store.conversations.values());
+          try {
+            const rows = await db
+              .select()
+              .from(chatConversations)
+              .orderBy(desc(chatConversations.updatedAt));
+            const now = Date.now();
+            const mergedMap = new Map<number, (typeof rows)[0] & { online?: boolean }>();
+            for (const c of storeConvos) {
+              mergedMap.set(c.id, {
+                ...c,
+                online: Boolean(c.customerSeenAt && now - new Date(c.customerSeenAt).getTime() < 3 * 60 * 1000),
+              } as unknown as (typeof rows)[0] & { online?: boolean });
+            }
+            for (const r of rows) {
+              mergedMap.set(r.id, {
+                ...r,
+                online: Boolean(r.customerSeenAt && now - new Date(r.customerSeenAt).getTime() < 3 * 60 * 1000),
+              });
+            }
+            const allConvos = Array.from(mergedMap.values()).sort(
+              (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+            );
+            return ok({ conversations: allConvos });
+          } catch {
+            const now = Date.now();
+            return ok({
+              conversations: storeConvos.map((c) => ({
+                ...c,
+                online: Boolean(c.customerSeenAt && now - new Date(c.customerSeenAt).getTime() < 3 * 60 * 1000),
+              })),
+            });
+          }
         }
         const id = Number(third);
-        const conversation = await one(
-          await db.select().from(chatConversations).where(eq(chatConversations.id, id)).limit(1),
-        );
-        const messages = await db
-          .select()
-          .from(chatMessages)
-          .where(eq(chatMessages.conversationId, id))
-          .orderBy(asc(chatMessages.createdAt), asc(chatMessages.id));
-        await db
-          .update(chatMessages)
-          .set({ isRead: true })
-          .where(
-            sql`${chatMessages.conversationId} = ${id} and ${chatMessages.senderType} = 'customer' and ${chatMessages.isRead} = false`,
-          );
-        await db.update(chatConversations).set({ adminUnread: 0 }).where(eq(chatConversations.id, id));
+        const store = (await import("@/lib/chat")).getRuntimeChatStore();
+        let conversation = store.conversations.get(id) || null;
+        let messages = store.messages.get(id) || [];
+
+        try {
+          const rows = await db.select().from(chatConversations).where(eq(chatConversations.id, id)).limit(1);
+          if (rows[0]) conversation = rows[0];
+          const dbMsgs = await db
+            .select()
+            .from(chatMessages)
+            .where(eq(chatMessages.conversationId, id))
+            .orderBy(asc(chatMessages.createdAt), asc(chatMessages.id));
+          if (dbMsgs.length > 0) messages = dbMsgs;
+          await db
+            .update(chatMessages)
+            .set({ isRead: true })
+            .where(
+              sql`${chatMessages.conversationId} = ${id} and ${chatMessages.senderType} = 'customer' and ${chatMessages.isRead} = false`,
+            );
+          await db.update(chatConversations).set({ adminUnread: 0 }).where(eq(chatConversations.id, id));
+        } catch {}
+
+        if (!conversation) throw notFound("Conversation not found.");
         return ok({ conversation, messages });
       }
 
@@ -1500,13 +1538,29 @@ export async function PATCH(request: Request, ctx: Params) {
           const patch: Partial<typeof notificationSettings.$inferInsert> = { updatedAt: new Date() };
           if ("adminStatus" in body) patch.adminStatus = str(body.adminStatus, "offline") === "online" ? "online" : "offline";
           if ("aiAutoReply" in body) patch.aiAutoReply = bool(body.aiAutoReply);
-          const existing = await db.select().from(notificationSettings).limit(1);
-          if (!existing[0]) {
-            const inserted = await db.insert(notificationSettings).values({ id: 1, ...patch }).returning();
-            return ok({ status: inserted[0] });
+
+          if (!globalThis.__runtimeSiteDataOverrides) globalThis.__runtimeSiteDataOverrides = {};
+          const currentNotif = globalThis.__runtimeSiteDataOverrides.notificationSettings || {
+            id: 1,
+            emailEnabled: true,
+            notificationEmail: "mohitbabariyaa@gmail.com",
+            adminStatus: "offline",
+            aiAutoReply: true,
+          };
+          const mergedNotif = { ...currentNotif, ...patch };
+          globalThis.__runtimeSiteDataOverrides.notificationSettings = mergedNotif as typeof currentNotif;
+
+          try {
+            const existing = await db.select().from(notificationSettings).limit(1);
+            if (!existing[0]) {
+              const inserted = await db.insert(notificationSettings).values({ id: 1, ...patch }).returning();
+              return ok({ adminStatus: inserted[0]?.adminStatus || "offline", aiAutoReply: inserted[0]?.aiAutoReply !== false });
+            }
+            const updated = await db.update(notificationSettings).set(patch).where(eq(notificationSettings.id, existing[0].id)).returning();
+            return ok({ adminStatus: updated[0]?.adminStatus || "offline", aiAutoReply: updated[0]?.aiAutoReply !== false });
+          } catch {
+            return ok({ adminStatus: mergedNotif.adminStatus, aiAutoReply: mergedNotif.aiAutoReply });
           }
-          const updated = await db.update(notificationSettings).set(patch).where(eq(notificationSettings.id, existing[0].id)).returning();
-          return ok({ status: updated[0] });
         }
 
         const id = Number(second === "conversations" ? third : second);

@@ -199,8 +199,17 @@ export default function ChatWidget() {
         setError(payload.error ?? "Message failed to send.");
         return;
       }
+      const payload = (await response.json()) as { message?: Message; reply?: Message };
       setError("");
-      await loadMessages();
+      if (payload.reply) {
+        setMessages((prev) => {
+          const filtered = prev.filter((m) => m.id !== tempMsg.id);
+          return [...filtered, payload.message || tempMsg, payload.reply as Message];
+        });
+        scrollToEnd();
+      } else {
+        await loadMessages();
+      }
     } catch {
       setError("Network error. Please try again.");
     }

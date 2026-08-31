@@ -194,13 +194,14 @@ export async function POST(request: Request) {
       console.warn("[chat] Error dispatching admin chat notification email:", notifyErr);
     }
 
+    let aiReply = null;
     try {
-      await runChatAssistant(conversation.id, message);
+      aiReply = await runChatAssistant(conversation.id, message);
     } catch (aiErr) {
       console.warn("[chat] AI assistant error:", aiErr);
     }
 
-    return ok({ message: insertedMsg });
+    return ok({ message: insertedMsg, reply: aiReply });
   });
 }
 

@@ -240,7 +240,7 @@ export async function runChatAssistant(conversationId: number, latest: string) {
       generatedReply = generateFallbackReply(latest);
     }
 
-    if (!generatedReply) return;
+    if (!generatedReply) return null;
 
     const replyObj = {
       id: Date.now(),
@@ -279,7 +279,10 @@ export async function runChatAssistant(conversationId: number, latest: string) {
         })
         .where(eq(chatConversations.id, conversationId));
     } catch {}
+
+    return replyObj;
   } catch (error) {
     console.error("[ai] runChatAssistant failed:", error);
+    return null;
   }
 }
