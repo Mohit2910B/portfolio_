@@ -132,7 +132,17 @@ export default function SpotlightReelCarousel({
     return () => window.removeEventListener("keydown", onKey);
   }, [next, prev]);
 
-  if (count === 0) return null;
+  if (count === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 py-24 text-center">
+        <div className="text-4xl opacity-40">🎬</div>
+        <p className="font-mono text-xs font-bold uppercase tracking-[0.25em] text-white/40">
+          Add videos in Admin → Carousel Manager
+        </p>
+        <p className="text-sm text-white/30">Your spotlight reels will appear here once added.</p>
+      </div>
+    );
+  }
 
   const currentItem = items[activeIndex];
   const isCurrentVertical = currentItem?.aspectRatio === "9:16" || currentItem?.aspectRatio === "4:5";
@@ -367,7 +377,7 @@ export default function SpotlightReelCarousel({
           type="button"
           onClick={prev}
           aria-label="Previous reel"
-          className="grid h-11 w-11 place-items-center rounded-full border border-black/10 bg-white shadow-md transition duration-300 hover:scale-110 hover:bg-black hover:text-white"
+          className="grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-white/10 text-white shadow-md transition duration-300 hover:scale-110 hover:bg-white hover:text-black"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <path d="m15 18-6-6 6-6" />
@@ -385,7 +395,7 @@ export default function SpotlightReelCarousel({
               className={`h-2 rounded-full transition-all duration-300 ${
                 i === activeIndex
                   ? "w-7 bg-[var(--accent,#e0147f)]"
-                  : "w-2 bg-black/20 hover:bg-black/40"
+                  : "w-2 bg-white/30 hover:bg-white/60"
               }`}
             />
           ))}
@@ -395,7 +405,7 @@ export default function SpotlightReelCarousel({
           type="button"
           onClick={next}
           aria-label="Next reel"
-          className="grid h-11 w-11 place-items-center rounded-full border border-black/10 bg-white shadow-md transition duration-300 hover:scale-110 hover:bg-black hover:text-white"
+          className="grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-white/10 text-white shadow-md transition duration-300 hover:scale-110 hover:bg-white hover:text-black"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <path d="m9 18 6-6-6-6" />
