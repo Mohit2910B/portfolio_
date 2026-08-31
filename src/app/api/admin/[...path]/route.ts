@@ -160,9 +160,7 @@ async function taxonomyPatch(table: TaxonomyTable, body: Record<string, unknown>
   if ("icon" in body) patch.icon = str(body.icon);
   if ("priceFrom" in body) patch.priceFrom = str(body.priceFrom);
   if ("level" in body) patch.level = num(body.level);
-  if ("sortOrder" in body) patch.sortOrder = num(body.sortOrder) ?? 0;
-  if ("isActive" in body) patch.isActive = bool(body.isActive);
-  if ("value" in body) patch.value = str(body.value).toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  if ("isActive" in body) patch.isActive = body.isActive === true || body.isActive === "true";
 
   const id = num(body.id);
   if (!id) throw badRequest("Missing record id.");
@@ -296,7 +294,7 @@ export async function GET(_request: Request, ctx: Params) {
               slug: r.slug,
               description: r.description,
               sortOrder: r.sortOrder,
-              isActive: r.isActive,
+              isActive: r.isActive !== false,
               createdAt: r.createdAt,
               updatedAt: r.updatedAt,
               projectCount: Number(r.projectCount ?? 0),

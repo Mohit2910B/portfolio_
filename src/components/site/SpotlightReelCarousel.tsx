@@ -63,9 +63,12 @@ export default function SpotlightReelCarousel({ projects, onSelectProject }: Pro
 
   if (count === 0) return null;
 
+  const currentProject = items[activeIndex];
+  const isCurrentVertical = currentProject?.aspectRatio === "9:16" || currentProject?.aspectRatio === "4:5";
+
   return (
     <div
-      className="relative w-full overflow-hidden py-10"
+      className="relative w-full overflow-hidden py-8"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onTouchStart={(e) => {
@@ -91,12 +94,16 @@ export default function SpotlightReelCarousel({ projects, onSelectProject }: Pro
     >
       {/* Ambient Spotlight Beam Background */}
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <div className="h-[420px] w-[650px] rounded-full bg-[var(--accent,#e0147f)]/15 blur-[120px]" />
+        <div className="h-[400px] w-[680px] rounded-full bg-[var(--accent,#e0147f)]/15 blur-[120px]" />
       </div>
 
       {/* 3D Perspective Stage */}
       <div
-        className="relative mx-auto flex h-[480px] sm:h-[540px] max-w-[1200px] items-center justify-center"
+        className={`relative mx-auto flex items-center justify-center transition-all duration-500 ${
+          isCurrentVertical
+            ? "h-[460px] sm:h-[520px] max-w-[1100px]"
+            : "h-[360px] sm:h-[440px] max-w-[1250px]"
+        }`}
         style={{ perspective: "1400px" }}
       >
         {items.map((project, index) => {
@@ -106,18 +113,19 @@ export default function SpotlightReelCarousel({ projects, onSelectProject }: Pro
           if (offset < -count / 2) offset += count;
 
           const isCenter = offset === 0;
-          const isLeft = offset === -1 || (offset < 0 && Math.abs(offset) <= 2);
-          const isRight = offset === 1 || (offset > 0 && Math.abs(offset) <= 2);
           const isVisible = Math.abs(offset) <= 2;
 
           if (!isVisible && count > 5) return null;
 
-          // 3D positioning transform
-          const translateX = offset * 230; // Horizontal spread
-          const translateZ = -Math.abs(offset) * 160; // Push back side cards
-          const rotateY = offset * -22; // Inward 3D tilt
-          const scale = isCenter ? 1 : Math.max(0.78, 1 - Math.abs(offset) * 0.14);
-          const opacity = isCenter ? 1 : Math.max(0.35, 0.8 - Math.abs(offset) * 0.25);
+          const isVertical = project.aspectRatio === "9:16" || project.aspectRatio === "4:5";
+
+          // Dynamic spacing based on vertical vs horizontal
+          const spreadWidth = isVertical ? 240 : 320;
+          const translateX = offset * spreadWidth;
+          const translateZ = -Math.abs(offset) * 170;
+          const rotateY = offset * -20;
+          const scale = isCenter ? 1 : Math.max(0.75, 1 - Math.abs(offset) * 0.16);
+          const opacity = isCenter ? 1 : Math.max(0.3, 0.75 - Math.abs(offset) * 0.25);
           const zIndex = 30 - Math.abs(offset) * 5;
 
           return (
@@ -136,14 +144,22 @@ export default function SpotlightReelCarousel({ projects, onSelectProject }: Pro
                 zIndex,
                 transition: "transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.6s ease",
               }}
-              className={`absolute top-0 flex flex-col cursor-pointer select-none overflow-hidden rounded-[32px] border bg-black shadow-2xl ${
+              className={`absolute flex flex-col cursor-pointer select-none overflow-hidden rounded-[30px] border bg-black shadow-2xl ${
                 isCenter
-                  ? "border-white/30 ring-2 ring-[var(--accent,#e0147f)]/50 shadow-[0_20px_60px_-15px_rgba(224,20,127,0.3)] w-[260px] sm:w-[290px] h-[460px] sm:h-[510px]"
-                  : "border-white/10 hover:border-white/25 w-[240px] sm:w-[270px] h-[440px] sm:h-[480px]"
+                  ? `border-white/30 ring-2 ring-[var(--accent,#e0147f)]/60 shadow-[0_25px_60px_-15px_rgba(224,20,127,0.35)] ${
+                      isVertical
+                        ? "w-[260px] sm:w-[290px] h-[450px] sm:h-[500px]"
+                        : "w-[340px] sm:w-[460px] md:w-[540px] h-[330px] sm:h-[400px]"
+                    }`
+                  : `border-white/10 hover:border-white/25 ${
+                      isVertical
+                        ? "w-[230px] sm:w-[260px] h-[410px] sm:h-[460px]"
+                        : "w-[300px] sm:w-[380px] md:w-[440px] h-[280px] sm:h-[340px]"
+                    }`
               }`}
             >
               {/* Card Video / Poster Media */}
-              <div className="relative flex-1 overflow-hidden bg-neutral-900">
+              <div className="relative flex-1 overflow-hidden bg-neutral-950 flex items-center justify-center">
                 {project.videoUrl ? (
                   <video
                     ref={(el) => {
@@ -167,7 +183,7 @@ export default function SpotlightReelCarousel({ projects, onSelectProject }: Pro
                   />
                 ) : (
                   <div className="grid h-full place-items-center text-xs uppercase tracking-widest text-white/40">
-                    🎬 Video Reel
+                    🎬 Video Project
                   </div>
                 )}
 
@@ -176,19 +192,22 @@ export default function SpotlightReelCarousel({ projects, onSelectProject }: Pro
 
                 {/* Live Playing Soundwave Pill for Center Card */}
                 {isCenter && (
-                  <div className="absolute top-4 right-4 flex items-center gap-1.5 rounded-full bg-black/75 px-3 py-1 text-[9px] font-bold text-white shadow-lg backdrop-blur-md">
+                  <div className="absolute top-3.5 right-3.5 flex items-center gap-1.5 rounded-full bg-black/80 px-3 py-1 text-[9px] font-bold text-white shadow-xl backdrop-blur-md">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                     <span>SPOTLIGHT</span>
                   </div>
                 )}
 
-                {/* Top Category Badge */}
-                <div className="absolute top-4 left-4 flex flex-wrap gap-1.5">
+                {/* Top Badges */}
+                <div className="absolute top-3.5 left-3.5 flex flex-wrap gap-1.5">
                   <span className="rounded-lg bg-[var(--accent,#e0147f)] px-2.5 py-1 text-[0.55rem] font-bold uppercase tracking-wider text-white shadow-md">
-                    {project.categoryLabel || "Reel"}
+                    {project.categoryLabel || "Video"}
+                  </span>
+                  <span className="rounded-lg bg-black/60 px-2 py-1 font-mono text-[0.55rem] font-bold text-white/90 backdrop-blur-md">
+                    {project.aspectRatio || (isVertical ? "9:16" : "16:9")}
                   </span>
                   {project.durationSeconds ? (
-                    <span className="rounded-lg bg-black/60 px-2.5 py-1 font-mono text-[0.55rem] font-bold text-white/90 backdrop-blur-md">
+                    <span className="rounded-lg bg-black/60 px-2 py-1 font-mono text-[0.55rem] font-bold text-white/90 backdrop-blur-md">
                       ⏱️ {project.durationSeconds}s
                     </span>
                   ) : null}
@@ -197,7 +216,7 @@ export default function SpotlightReelCarousel({ projects, onSelectProject }: Pro
                 {/* Center Big Play Button (Click to Open) */}
                 {isCenter && (
                   <div className="absolute inset-0 grid place-items-center">
-                    <div className="group/btn grid h-14 w-14 place-items-center rounded-full bg-white text-ink shadow-2xl transition duration-300 hover:scale-110 hover:bg-[var(--accent,#e0147f)] hover:text-white">
+                    <div className="grid h-14 w-14 place-items-center rounded-full bg-white text-ink shadow-2xl transition duration-300 hover:scale-110 hover:bg-[var(--accent,#e0147f)] hover:text-white">
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M8 5v14l11-7z" />
                       </svg>
@@ -207,15 +226,17 @@ export default function SpotlightReelCarousel({ projects, onSelectProject }: Pro
               </div>
 
               {/* Bottom Card Info & CTA */}
-              <div className="p-4 sm:p-5 bg-gradient-to-b from-neutral-900 to-black border-t border-white/10">
-                <h4 className="font-heading text-sm font-bold text-white line-clamp-1">
-                  {project.title}
-                </h4>
-                {project.description && (
-                  <p className="mt-1 line-clamp-1 text-[11px] text-white/60">
-                    {project.description}
-                  </p>
-                )}
+              <div className="p-3.5 sm:p-4 bg-gradient-to-b from-neutral-900 to-black border-t border-white/10">
+                <div className="flex items-center justify-between gap-2">
+                  <h4 className="font-heading text-xs sm:text-sm font-bold text-white line-clamp-1">
+                    {project.title}
+                  </h4>
+                  {project.software && (
+                    <span className="hidden sm:inline-block text-[9px] font-mono text-white/50 bg-white/10 px-2 py-0.5 rounded-md">
+                      {project.software.split(",")[0]}
+                    </span>
+                  )}
+                </div>
 
                 {isCenter && (
                   <button
@@ -224,9 +245,9 @@ export default function SpotlightReelCarousel({ projects, onSelectProject }: Pro
                       e.stopPropagation();
                       onSelectProject(project);
                     }}
-                    className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white/15 py-2 text-center text-xs font-bold text-white transition hover:bg-[var(--accent,#e0147f)]"
+                    className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl bg-white/15 py-1.5 sm:py-2 text-center text-xs font-bold text-white transition hover:bg-[var(--accent,#e0147f)]"
                   >
-                    <span>▶ Watch Full Reel</span>
+                    <span>▶ Watch Full Film</span>
                   </button>
                 )}
               </div>
@@ -236,7 +257,7 @@ export default function SpotlightReelCarousel({ projects, onSelectProject }: Pro
       </div>
 
       {/* Navigation Arrows & Pagination Bar */}
-      <div className="mt-4 flex items-center justify-center gap-6">
+      <div className="mt-6 flex items-center justify-center gap-6">
         <button
           type="button"
           onClick={prev}

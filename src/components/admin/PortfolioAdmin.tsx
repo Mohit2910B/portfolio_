@@ -822,24 +822,25 @@ export function PortfolioAdmin({ onChanged }: { onChanged: () => void }) {
                     <p className="mt-2 line-clamp-2 text-[0.75rem] text-ink/55">{project.description}</p>
                   )}
 
-                  <div className="mt-3 flex flex-wrap gap-1.5">
+                  <div className="mt-3 flex flex-wrap items-center gap-1.5">
                     <Button variant="dark" onClick={() => openEdit(project)}>
-                      Edit
+                      ✏️ Edit & Video
                     </Button>
                     <Button
                       variant={project.published ? "light" : "accent"}
                       onClick={() => togglePublished(project)}
                     >
-                      {project.published ? "Hide" : "Unhide (Show)"}
-                    </Button>
-                    <Button variant="ghost" onClick={() => setPreviewId(project.id)}>
-                      View
+                      {project.published ? "👁️ Hide" : "👁️ Publish"}
                     </Button>
                     <Button
-                      variant="light"
-                      onClick={() => openEdit(project)}
+                      variant={project.featured ? "accent" : "ghost"}
+                      onClick={() => toggleFeatured(project)}
+                      title={project.featured ? "Click to remove from Top Spotlight Carousel" : "Click to Pin in Top Spotlight Carousel"}
                     >
-                      Replace video / edit
+                      {project.featured ? "★ In Spotlight" : "☆ Add to Spotlight"}
+                    </Button>
+                    <Button variant="ghost" onClick={() => setPreviewId(project.id)}>
+                      ▶ Preview
                     </Button>
                     <Button
                       variant="ghost"
@@ -852,9 +853,6 @@ export function PortfolioAdmin({ onChanged }: { onChanged: () => void }) {
                       }
                     >
                       Duplicate
-                    </Button>
-                    <Button variant="ghost" onClick={() => toggleFeatured(project)}>
-                      {project.featured ? "Unfeature" : "Feature"}
                     </Button>
                     <Button variant="ghost" onClick={() => move(project, "up")} title="Move up">
                       ↑
