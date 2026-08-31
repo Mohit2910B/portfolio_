@@ -319,6 +319,28 @@ export function CarouselAdmin({ onChanged }: { onChanged?: () => void }) {
     }
   };
 
+  // Auto-Detect Duration from video stream or file
+  const autoDetectDuration = (videoUrl: string) => {
+    if (!videoUrl) return;
+    try {
+      const media = parseMediaUrl(videoUrl);
+      const src = media.streamUrl || videoUrl;
+      const v = document.createElement("video");
+      v.preload = "metadata";
+      v.src = src;
+      v.onloadedmetadata = () => {
+        if (v.duration && !isNaN(v.duration) && isFinite(v.duration)) {
+          const sec = Math.round(v.duration);
+          const m = Math.floor(sec / 60);
+          const s = sec % 60;
+          const formatted = `${m}:${s.toString().padStart(2, "0")}`;
+          setForm((prev) => ({ ...prev, duration: formatted }));
+          showToast(`⚡ Auto-grabbed duration: ${formatted}`);
+        }
+      };
+    } catch {}
+  };
+
   // 9. Frame Grabber from HTML5 Video
   const grabFrame = async (videoSrc?: string) => {
     const url = videoSrc || form.videoUrl;
@@ -842,7 +864,23 @@ export function CarouselAdmin({ onChanged }: { onChanged?: () => void }) {
               </Field>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Field label="Duration" hint="e.g. 0:30, 0:45, 1:00">
+                <Field
+                  label={
+                    <div className="flex items-center justify-between">
+                      <span>Duration</span>
+                      {form.videoUrl && (
+                        <button
+                          type="button"
+                          onClick={() => autoDetectDuration(form.videoUrl)}
+                          className="text-[10px] font-bold text-[var(--accent)] hover:underline"
+                        >
+                          ⚡ Grab from Video
+                        </button>
+                      )}
+                    </div>
+                  }
+                  hint="Auto-grabbed on upload, e.g. 0:30, 0:45, 1:00"
+                >
                   <TextInput
                     value={form.duration}
                     onChange={(val) => setForm({ ...form, duration: val })}
@@ -901,9 +939,11 @@ export function CarouselAdmin({ onChanged }: { onChanged?: () => void }) {
                     kind="video"
                     onFileSelected={(_file, localUrl) => {
                       setForm((prev) => ({ ...prev, videoUrl: localUrl, videoSource: "upload" }));
+                      autoDetectDuration(localUrl);
                     }}
                     onUploaded={(res) => {
                       setForm((prev) => ({ ...prev, videoUrl: res.url, videoSource: "upload" }));
+                      autoDetectDuration(res.url);
                       showToast("Video uploaded and attached to card.");
                     }}
                   />
@@ -918,6 +958,7 @@ export function CarouselAdmin({ onChanged }: { onChanged?: () => void }) {
                           videoUrl: val,
                           thumbnailUrl: prev.thumbnailUrl || media.thumbnailUrl || prev.thumbnailUrl,
                         }));
+                        autoDetectDuration(val);
                       }}
                       placeholder="https://youtube.com/shorts/... or https://drive.google.com/..."
                     />

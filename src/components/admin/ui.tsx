@@ -93,7 +93,7 @@ export function Field({
   hint,
   className = "",
 }: {
-  label: string;
+  label: ReactNode;
   children: ReactNode;
   error?: string;
   hint?: string;
@@ -101,7 +101,7 @@ export function Field({
 }) {
   return (
     <div className={className}>
-      <span className="label">{label}</span>
+      <div className="label">{label}</div>
       {children}
       {hint && !error && <p className="mt-1.5 text-[0.65rem] text-ink/40">{hint}</p>}
       {error && <p className="mt-1.5 text-[0.68rem] font-medium text-[#d11a4a]">{error}</p>}

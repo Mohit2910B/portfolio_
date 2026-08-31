@@ -328,6 +328,24 @@ export function PortfolioAdmin({ onChanged }: { onChanged: () => void }) {
     }
   };
 
+  const autoDetectDuration = (videoUrl: string) => {
+    if (!videoUrl) return;
+    try {
+      const media = parseMediaUrl(videoUrl);
+      const src = media.streamUrl || videoUrl;
+      const v = document.createElement("video");
+      v.preload = "metadata";
+      v.src = src;
+      v.onloadedmetadata = () => {
+        if (v.duration && !isNaN(v.duration) && isFinite(v.duration)) {
+          const sec = Math.round(v.duration);
+          patch("durationSeconds", String(sec));
+          setNotice(`⚡ Auto-grabbed video duration: ${sec}s.`);
+        }
+      };
+    } catch {}
+  };
+
   const remove = (project: AdminProject) => {
     if (!window.confirm(`Delete “${project.title}”? This cannot be undone.`)) return;
     void action(
@@ -576,6 +594,7 @@ export function PortfolioAdmin({ onChanged }: { onChanged: () => void }) {
                       }
                       setNotice("✨ YouTube video recognized! Thumbnail auto-attached.");
                     }
+                    autoDetectDuration(v);
                   }}
                   placeholder="Paste Instagram Reel, Drive, YouTube or MP4 link…"
                 />
@@ -603,10 +622,12 @@ export function PortfolioAdmin({ onChanged }: { onChanged: () => void }) {
                   onFileSelected={(_file, localUrl) => {
                     patch("videoUrl", localUrl);
                     patch("videoSource", "upload");
+                    autoDetectDuration(localUrl);
                   }}
                   onUploaded={(result) => {
                     patch("videoUrl", result.url);
                     patch("videoSource", "upload");
+                    autoDetectDuration(result.url);
                     setNotice("Video uploaded and attached to this project.");
                   }}
                 />
@@ -693,12 +714,28 @@ export function PortfolioAdmin({ onChanged }: { onChanged: () => void }) {
                   options={SIZES.map((s) => ({ value: s, label: s }))}
                 />
               </Field>
-              <Field label="Duration (seconds)">
+              <Field
+                label={
+                  <div className="flex items-center justify-between">
+                    <span>Duration (seconds)</span>
+                    {form.videoUrl && (
+                      <button
+                        type="button"
+                        onClick={() => autoDetectDuration(form.videoUrl)}
+                        className="text-[10px] font-bold text-[var(--accent)] hover:underline"
+                      >
+                        ⚡ Auto-Grab
+                      </button>
+                    )}
+                  </div>
+                }
+              >
                 <TextInput
                   value={form.durationSeconds}
                   onChange={(v) => patch("durationSeconds", v)}
                   type="number"
                   min={0}
+                  placeholder="e.g. 30"
                 />
               </Field>
               <Field label="Display width">
