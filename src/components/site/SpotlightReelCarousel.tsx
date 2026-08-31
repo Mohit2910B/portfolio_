@@ -1,18 +1,89 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import type { PublicProject } from "@/lib/data";
+import type { PublicProject, CarouselItem } from "@/lib/data";
+
+type SpotlightItem = {
+  id: number;
+  title: string;
+  category: string;
+  description: string;
+  videoUrl: string;
+  videoSource: string;
+  thumbnailUrl: string;
+  aspectRatio: string;
+  duration: string;
+  durationSeconds?: number;
+  software?: string;
+  featured?: boolean;
+  published?: boolean;
+};
 
 type Props = {
-  projects: PublicProject[];
+  carouselItems?: CarouselItem[];
+  projects?: PublicProject[];
   onSelectProject: (project: PublicProject) => void;
 };
 
-export default function SpotlightReelCarousel({ projects, onSelectProject }: Props) {
-  // Use published projects with video or thumbnail
-  const items = useMemo(() => {
-    return projects.filter((p) => p.published && (p.videoUrl || p.thumbnailUrl));
-  }, [projects]);
+export default function SpotlightReelCarousel({
+  carouselItems = [],
+  projects = [],
+  onSelectProject,
+}: Props) {
+  // Combine dedicated carousel items + active video projects without duplicates
+  const items: SpotlightItem[] = useMemo(() => {
+    const list: SpotlightItem[] = [];
+    const seenUrls = new Set<string>();
+
+    // 1. Dedicated Carousel items first
+    for (const item of carouselItems) {
+      if (item.isActive !== false && item.videoUrl && item.videoUrl.trim()) {
+        const normUrl = item.videoUrl.trim();
+        if (!seenUrls.has(normUrl)) {
+          seenUrls.add(normUrl);
+          list.push({
+            id: item.id,
+            title: item.title,
+            category: item.category || "Selected Work",
+            description: item.description || "",
+            videoUrl: normUrl,
+            videoSource: item.videoSource || "upload",
+            thumbnailUrl: item.thumbnailUrl || "",
+            aspectRatio: item.aspectRatio || "16:9",
+            duration: item.duration || "0:30",
+            published: true,
+          });
+        }
+      }
+    }
+
+    // 2. Published Video Projects from portfolio
+    for (const p of projects) {
+      if (p.published && p.videoUrl && p.videoUrl.trim()) {
+        const normUrl = p.videoUrl.trim();
+        if (!seenUrls.has(normUrl)) {
+          seenUrls.add(normUrl);
+          list.push({
+            id: p.id,
+            title: p.title,
+            category: p.categoryLabel || "Selected Work",
+            description: p.description || "",
+            videoUrl: normUrl,
+            videoSource: p.videoSource || "upload",
+            thumbnailUrl: p.thumbnailUrl || "",
+            aspectRatio: p.aspectRatio || "16:9",
+            duration: p.durationSeconds ? `0:${p.durationSeconds}` : "0:45",
+            durationSeconds: p.durationSeconds ?? undefined,
+            software: p.software,
+            featured: p.featured,
+            published: true,
+          });
+        }
+      }
+    }
+
+    return list;
+  }, [carouselItems, projects]);
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
@@ -63,8 +134,42 @@ export default function SpotlightReelCarousel({ projects, onSelectProject }: Pro
 
   if (count === 0) return null;
 
-  const currentProject = items[activeIndex];
-  const isCurrentVertical = currentProject?.aspectRatio === "9:16" || currentProject?.aspectRatio === "4:5";
+  const currentItem = items[activeIndex];
+  const isCurrentVertical = currentItem?.aspectRatio === "9:16" || currentItem?.aspectRatio === "4:5";
+
+  const handleOpenCinema = (item: SpotlightItem) => {
+    // Map to PublicProject structure for modal player
+    const projectLike: PublicProject = {
+      id: item.id,
+      title: item.title,
+      description: item.description,
+      categoryId: 1,
+      categoryLabel: item.category,
+      aiLabType: "",
+      year: 2026,
+      software: item.software || "Premiere Pro, DaVinci Resolve",
+      tags: item.category,
+      externalLink: "",
+      videoUrl: item.videoUrl,
+      videoSource: item.videoSource,
+      thumbnailUrl: item.thumbnailUrl,
+      aspectRatio: item.aspectRatio,
+      displaySize: "medium",
+      displayWidth: 1920,
+      displayHeight: 1080,
+      width: 1920,
+      height: 1080,
+      durationSeconds: item.durationSeconds || 45,
+      featured: Boolean(item.featured),
+      published: true,
+      demoStatus: "verified",
+      sortOrder: 0,
+      carouselEnabled: true,
+      carouselPinned: false,
+      carouselOrder: 0,
+    };
+    onSelectProject(projectLike);
+  };
 
   return (
     <div
@@ -106,7 +211,7 @@ export default function SpotlightReelCarousel({ projects, onSelectProject }: Pro
         }`}
         style={{ perspective: "1400px" }}
       >
-        {items.map((project, index) => {
+        {items.map((item, index) => {
           // Calculate cyclic offset from active index
           let offset = index - activeIndex;
           if (offset > count / 2) offset -= count;
@@ -117,7 +222,7 @@ export default function SpotlightReelCarousel({ projects, onSelectProject }: Pro
 
           if (!isVisible && count > 5) return null;
 
-          const isVertical = project.aspectRatio === "9:16" || project.aspectRatio === "4:5";
+          const isVertical = item.aspectRatio === "9:16" || item.aspectRatio === "4:5";
 
           // Dynamic spacing based on vertical vs horizontal
           const spreadWidth = isVertical ? 240 : 320;
@@ -130,10 +235,10 @@ export default function SpotlightReelCarousel({ projects, onSelectProject }: Pro
 
           return (
             <div
-              key={project.id}
+              key={`${item.id}-${index}`}
               onClick={() => {
                 if (isCenter) {
-                  onSelectProject(project);
+                  handleOpenCinema(item);
                 } else {
                   setActiveIndex(index);
                 }
@@ -160,30 +265,30 @@ export default function SpotlightReelCarousel({ projects, onSelectProject }: Pro
             >
               {/* Card Video / Poster Media */}
               <div className="relative flex-1 overflow-hidden bg-neutral-950 flex items-center justify-center">
-                {project.videoUrl ? (
+                {item.videoUrl ? (
                   <video
                     ref={(el) => {
                       if (el) videoRefs.current.set(index, el);
                       else videoRefs.current.delete(index);
                     }}
-                    src={project.videoUrl}
-                    poster={project.thumbnailUrl || undefined}
+                    src={item.videoUrl}
+                    poster={item.thumbnailUrl || undefined}
                     muted
                     loop
                     playsInline
                     preload="metadata"
                     className="h-full w-full object-cover"
                   />
-                ) : project.thumbnailUrl ? (
+                ) : item.thumbnailUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={project.thumbnailUrl}
-                    alt={project.title}
+                    src={item.thumbnailUrl}
+                    alt={item.title}
                     className="h-full w-full object-cover"
                   />
                 ) : (
                   <div className="grid h-full place-items-center text-xs uppercase tracking-widest text-white/40">
-                    🎬 Video Project
+                    🎬 Video Showcase
                   </div>
                 )}
 
@@ -201,14 +306,14 @@ export default function SpotlightReelCarousel({ projects, onSelectProject }: Pro
                 {/* Top Badges */}
                 <div className="absolute top-3.5 left-3.5 flex flex-wrap gap-1.5">
                   <span className="rounded-lg bg-[var(--accent,#e0147f)] px-2.5 py-1 text-[0.55rem] font-bold uppercase tracking-wider text-white shadow-md">
-                    {project.categoryLabel || "Video"}
+                    {item.category || "Video"}
                   </span>
-                  <span className="rounded-lg bg-black/60 px-2 py-1 font-mono text-[0.55rem] font-bold text-white/90 backdrop-blur-md">
-                    {project.aspectRatio || (isVertical ? "9:16" : "16:9")}
+                  <span className="rounded-lg bg-black/60 px-2.5 py-1 font-mono text-[0.55rem] font-bold text-white/90 backdrop-blur-md">
+                    {item.aspectRatio || (isVertical ? "9:16" : "16:9")}
                   </span>
-                  {project.durationSeconds ? (
-                    <span className="rounded-lg bg-black/60 px-2 py-1 font-mono text-[0.55rem] font-bold text-white/90 backdrop-blur-md">
-                      ⏱️ {project.durationSeconds}s
+                  {item.duration ? (
+                    <span className="rounded-lg bg-black/60 px-2.5 py-1 font-mono text-[0.55rem] font-bold text-white/90 backdrop-blur-md">
+                      ⏱️ {item.duration}
                     </span>
                   ) : null}
                 </div>
@@ -229,11 +334,11 @@ export default function SpotlightReelCarousel({ projects, onSelectProject }: Pro
               <div className="p-3.5 sm:p-4 bg-gradient-to-b from-neutral-900 to-black border-t border-white/10">
                 <div className="flex items-center justify-between gap-2">
                   <h4 className="font-heading text-xs sm:text-sm font-bold text-white line-clamp-1">
-                    {project.title}
+                    {item.title}
                   </h4>
-                  {project.software && (
+                  {item.software && (
                     <span className="hidden sm:inline-block text-[9px] font-mono text-white/50 bg-white/10 px-2 py-0.5 rounded-md">
-                      {project.software.split(",")[0]}
+                      {item.software.split(",")[0]}
                     </span>
                   )}
                 </div>
@@ -243,7 +348,7 @@ export default function SpotlightReelCarousel({ projects, onSelectProject }: Pro
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onSelectProject(project);
+                      handleOpenCinema(item);
                     }}
                     className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl bg-white/15 py-1.5 sm:py-2 text-center text-xs font-bold text-white transition hover:bg-[var(--accent,#e0147f)]"
                   >

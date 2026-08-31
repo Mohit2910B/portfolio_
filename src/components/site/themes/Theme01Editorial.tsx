@@ -231,6 +231,7 @@ export default function Theme01Editorial({ data }: { data: SiteData }) {
           <div className="mt-8">
             <Reveal>
               <SpotlightReelCarousel
+                carouselItems={data.carouselItems}
                 projects={filteredProjects}
                 onSelectProject={(p) => setSelectedProject(p)}
               />
