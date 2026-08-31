@@ -6,6 +6,7 @@ import WorkCarousel from "@/components/site/WorkCarousel";
 import ContactSection from "@/components/site/ContactSection";
 import SoftwareTools from "@/components/site/SoftwareTools";
 import ChatWidget from "@/components/site/ChatWidget";
+import EditorVisual from "@/components/site/EditorVisual";
 
 export default function Theme01Editorial({ data }: { data: SiteData }) {
   const { homepage, contact, services, softwareTools, projects, categories } = data;
@@ -63,15 +64,23 @@ export default function Theme01Editorial({ data }: { data: SiteData }) {
         </div>
       </header>
 
-      {/* Hero Section: Editorial Statement */}
-      <section className="relative overflow-hidden border-b border-white/10 py-24 md:py-36">
+      {/* Hero Section: Editorial Statement with Interactive Editor Mockup */}
+      <section className="relative overflow-hidden border-b border-white/10 py-16 md:py-24">
         <div className="mx-auto max-w-7xl px-6">
-          <div className="grid grid-cols-1 gap-12 lg:grid-cols-12 lg:items-end">
-            <div className="lg:col-span-8">
-              <span className="text-xs font-mono uppercase tracking-[0.3em] text-[var(--accent,#e0147f)]">
-                Creative Direction &amp; Video Editing
-              </span>
-              <h1 className="mt-6 font-heading text-5xl font-black uppercase tracking-tighter text-white sm:text-7xl md:text-8xl lg:text-9xl leading-[0.9]">
+          <div className="grid grid-cols-1 gap-12 lg:grid-cols-12 lg:items-center">
+            {/* Left Column: Typography & CTAs */}
+            <div className="lg:col-span-7 space-y-6">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/80">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent,#e0147f)] animate-pulse" />
+                  {homepage.availabilityLabel || "Available for Select Projects"}
+                </span>
+                <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-white/40">
+                  {homepage.ownerName || "MOHIT BABARIYA"}
+                </span>
+              </div>
+
+              <h1 className="font-heading text-5xl font-black uppercase tracking-tighter text-white sm:text-6xl md:text-7xl lg:text-8xl leading-[0.92]">
                 {homepage.heroTitle ? (
                   homepage.heroTitle.split("\n").map((line, idx) => (
                     <span key={idx} className="block">
@@ -88,21 +97,66 @@ export default function Theme01Editorial({ data }: { data: SiteData }) {
                   </>
                 )}
               </h1>
-            </div>
 
-            <div className="lg:col-span-4 lg:pb-4 space-y-6">
-              <p className="text-sm md:text-base leading-relaxed text-white/70">
+              <p className="font-mono text-xs uppercase tracking-[0.24em] text-white/60">
+                VIDEO EDITOR <span className="text-[var(--accent,#e0147f)]">/</span> MOTION DESIGNER <span className="text-[var(--accent,#e0147f)]">/</span> VISUAL STORYTELLER
+              </p>
+
+              <p className="max-w-xl text-base leading-relaxed text-white/70">
                 {homepage.heroDescription ||
                   "I edit films, reels and motion pieces that hold attention — clean cuts, considered pacing and a finish that feels intentional."}
               </p>
-              <div className="flex items-center gap-4 pt-2">
+
+              <div className="flex flex-wrap items-center gap-4 pt-2">
                 <a
                   href="#work"
-                  className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-xs font-bold uppercase tracking-widest text-white transition hover:border-white hover:bg-white hover:text-black"
+                  className="inline-flex items-center gap-2 rounded-full bg-white px-7 py-3 text-xs font-bold uppercase tracking-widest text-black transition hover:bg-[var(--accent,#e0147f)] hover:text-white"
                 >
-                  View Showcase ↓
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                  Explore Selected Works
+                </a>
+                <a
+                  href="#contact"
+                  className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-7 py-3 text-xs font-bold uppercase tracking-widest text-white transition hover:border-white hover:bg-white hover:text-black"
+                >
+                  Start a Project
                 </a>
               </div>
+
+              {/* 3 Stats Row */}
+              <div className="grid grid-cols-3 gap-4 border-t border-white/10 pt-6">
+                <div>
+                  <dt className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/40">
+                    Working in
+                  </dt>
+                  <dd className="font-mono mt-1 text-xs font-bold text-white/80">
+                    {categories.length > 0 ? `${categories.length} Categories` : "5 Categories"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/40">
+                    Showcase
+                  </dt>
+                  <dd className="font-mono mt-1 text-xs font-bold text-white/80">
+                    {projects.length} Works
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/40">
+                    Based in
+                  </dt>
+                  <dd className="font-mono mt-1 text-xs font-bold text-white/80">
+                    {contact.location || "Surat, Gujarat"}
+                  </dd>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: Interactive NLE Video Editor Mockup */}
+            <div className="lg:col-span-5">
+              <EditorVisual />
             </div>
           </div>
         </div>
