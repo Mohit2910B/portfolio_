@@ -13,7 +13,15 @@ import {
   Toggle,
   api,
 } from "./ui";
-import type { AdminCategory } from "./PortfolioAdmin";
+export type AdminCategory = {
+  id: number;
+  name: string;
+  slug: string;
+  description: string;
+  sortOrder: number;
+  isActive: boolean;
+  projectCount: number;
+};
 
 type Skill = {
   id: number;

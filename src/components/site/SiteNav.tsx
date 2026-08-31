@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 
 const LINKS = [
-  { id: "portfolio", label: "Selected Works" },
   { id: "grading", label: "Color Grading" },
   { id: "pipeline", label: "Pipeline" },
   { id: "tools", label: "Tools" },
   { id: "services", label: "Services" },
+  { id: "about", label: "About" },
   { id: "contact", label: "Contact" },
 ];
 

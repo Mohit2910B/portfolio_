@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { Button, Card, Notice, SectionTitle, api } from "./ui";
 
 export type Stats = {
-  projects: { total: number; published: number; drafts: number; featured: number; demo: number };
-  mediaFiles: number;
+  projects?: { total: number; published: number; drafts: number; featured: number; demo: number };
+  mediaFiles?: number;
   enquiries: { total: number; unread: number };
   chat: { total: number; unread: number };
   categories: number;
@@ -13,23 +13,13 @@ export type Stats = {
   services: number;
 };
 
-const EMPTY: Stats = {
-  projects: { total: 0, published: 0, drafts: 0, featured: 0, demo: 0 },
-  mediaFiles: 0,
-  enquiries: { total: 0, unread: 0 },
-  chat: { total: 0, unread: 0 },
-  categories: 0,
-  skills: 0,
-  services: 0,
-};
-
 const ACTIONS: { label: string; target: string; variant: "dark" | "ghost" | "accent" }[] = [
-  { label: "Add project", target: "portfolio", variant: "dark" },
-  { label: "Carousel Manager", target: "carousel", variant: "accent" },
-  { label: "Upload video", target: "media", variant: "ghost" },
-  { label: "Add category", target: "categories", variant: "ghost" },
+  { label: "Add category", target: "categories", variant: "dark" },
   { label: "Add service", target: "services", variant: "ghost" },
   { label: "Add software", target: "software", variant: "ghost" },
+  { label: "Add skill", target: "skills", variant: "ghost" },
+  { label: "View enquiries", target: "enquiries", variant: "accent" },
+  { label: "Live chat", target: "chat", variant: "ghost" },
 ];
 
 export default function DashboardAdmin({
@@ -62,18 +52,13 @@ export default function DashboardAdmin({
   }, []);
 
   const tiles = [
-    { label: "Total projects", value: loading ? "—" : stats.projects.total, target: "portfolio" },
-    { label: "Published", value: loading ? "—" : stats.projects.published, target: "portfolio" },
-    { label: "Drafts", value: loading ? "—" : stats.projects.drafts, target: "portfolio" },
-    { label: "Featured", value: loading ? "—" : stats.projects.featured, target: "portfolio" },
-    { label: "Demo projects", value: loading ? "—" : stats.projects.demo, target: "portfolio" },
-    { label: "Media files", value: loading ? "—" : stats.mediaFiles, target: "media" },
+    { label: "Categories", value: loading ? "—" : stats.categories, target: "categories" },
+    { label: "Services", value: loading ? "—" : stats.services, target: "services" },
+    { label: "Skills", value: loading ? "—" : stats.skills, target: "skills" },
     { label: "Enquiries", value: loading ? "—" : stats.enquiries.total, target: "enquiries" },
     { label: "Unread enquiries", value: loading ? "—" : stats.enquiries.unread, target: "enquiries" },
     { label: "Chat conversations", value: loading ? "—" : stats.chat.total, target: "chat" },
     { label: "Unread messages", value: loading ? "—" : stats.chat.unread, target: "chat" },
-    { label: "Categories", value: loading ? "—" : stats.categories, target: "categories" },
-    { label: "Skills / Services", value: loading ? "—" : `${stats.skills} / ${stats.services}`, target: "skills" },
   ];
 
   return (
@@ -146,14 +131,15 @@ export default function DashboardAdmin({
 
         <Card className="p-6">
           <p className="text-[0.58rem] font-semibold uppercase tracking-[0.2em] text-ink/40">
-            Workflow
+            Quick Guide
           </p>
           <ol className="mt-4 space-y-3 text-sm text-ink/70">
             {[
-              "Add or upload a project in Portfolio.",
-              "Attach a video (upload or URL) and a thumbnail.",
-              "Publish it — the website updates immediately.",
-              "Manage services, skills & tools in CMS studio.",
+              "Manage your categories in Categories CMS.",
+              "Update services, deliverables and pricing in Services.",
+              "Configure your software stack and tools in Tools & Software.",
+              "Switch between 6 premium design systems in Theme Studio.",
+              "Review and reply to incoming client inquiries and live chat messages.",
             ].map((step, index) => (
               <li key={step} className="flex gap-3">
                 <span className="mono text-[0.65rem] text-[var(--accent)]">

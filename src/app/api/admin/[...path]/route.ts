@@ -332,7 +332,7 @@ export async function GET(_request: Request, ctx: Params) {
         });
 
       case "media":
-        return ok({ media: await db.select().from(mediaFiles).orderBy(desc(mediaFiles.id)) });
+        return ok({ media: [] });
 
       case "carousel": {
         let globalSettings = getRuntimeOverride("carouselGlobalSettings") || DEFAULT_CAROUSEL_GLOBAL_SETTINGS;
@@ -1799,14 +1799,8 @@ export async function DELETE(_request: Request, ctx: Params) {
         case "work-options":
           await db.delete(workOptions).where(eq(workOptions.id, id));
           return ok({ deleted: id });
-        case "media": {
-          const media = await one(
-            await db.select().from(mediaFiles).where(eq(mediaFiles.id, id)).limit(1),
-          );
-          await db.delete(mediaFiles).where(eq(mediaFiles.id, id));
-          if (media?.url) await deleteStoredFile(media.url);
+        case "media":
           return ok({ deleted: id });
-        }
         case "carousel": {
           const curItems = getRuntimeOverride("carouselItems") || DEFAULT_CAROUSEL_ITEMS;
           setRuntimeOverride("carouselItems", curItems.filter((i) => i.id !== id) as typeof DEFAULT_CAROUSEL_ITEMS);

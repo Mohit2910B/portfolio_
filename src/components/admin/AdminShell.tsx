@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import DashboardAdmin, { type Stats } from "./DashboardAdmin";
-import { MediaAdmin, PortfolioAdmin } from "./PortfolioAdmin";
 import {
   CategoriesAdmin,
   ServicesAdmin,
@@ -20,12 +19,9 @@ import {
 } from "./SettingsAdmin";
 import { ThemeStudioAdmin } from "./ThemeStudioAdmin";
 import { ChatAdmin, EnquiriesAdmin } from "./InboxAdmin";
-import { CarouselAdmin } from "./CarouselAdmin";
 import { Button, api } from "./ui";
 
 const EMPTY_STATS: Stats = {
-  projects: { total: 0, published: 0, drafts: 0, featured: 0, demo: 0 },
-  mediaFiles: 0,
   enquiries: { total: 0, unread: 0 },
   chat: { total: 0, unread: 0 },
   categories: 0,
@@ -35,9 +31,6 @@ const EMPTY_STATS: Stats = {
 
 const NAV: { key: string; label: string; icon: string }[] = [
   { key: "dashboard", label: "Dashboard", icon: "◧" },
-  { key: "portfolio", label: "Portfolio", icon: "▶" },
-  { key: "carousel", label: "Carousel Manager", icon: "▭" },
-  { key: "media", label: "Media Library", icon: "▣" },
   { key: "enquiries", label: "Enquiries", icon: "✉" },
   { key: "categories", label: "Categories", icon: "⌗" },
   { key: "services", label: "Services", icon: "✦" },
@@ -242,9 +235,6 @@ export default function AdminShell({
               onRefresh={refresh}
             />
           )}
-          {section === "portfolio" && <PortfolioAdmin onChanged={refresh} />}
-          {section === "carousel" && <CarouselAdmin onChanged={refresh} />}
-          {section === "media" && <MediaAdmin onChanged={refresh} />}
           {section === "enquiries" && <EnquiriesAdmin onChanged={refresh} />}
           {section === "categories" && <CategoriesAdmin onChanged={refresh} />}
           {section === "services" && <ServicesAdmin onChanged={refresh} />}
