@@ -18,6 +18,7 @@ import {
   api,
   uploadBlob,
 } from "./ui";
+import { VideoAssetManager } from "./VideoAssetManager";
 
 const DEFAULT_GLOBAL: CarouselGlobalSettings = {
   id: 1,
@@ -902,167 +903,32 @@ export function CarouselAdmin({ onChanged }: { onChanged?: () => void }) {
                 </Field>
               </div>
 
-              {/* ---------------- VIDEO ASSET ---------------- */}
-              <div className="rounded-2xl border border-black/5 bg-black/[0.02] p-4 space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="font-heading text-xs font-bold uppercase tracking-wider text-ink">
-                    Video Media Asset
-                  </span>
-                  <div className="flex rounded-lg bg-black/5 p-0.5">
-                    <button
-                      type="button"
-                      onClick={() => setForm({ ...form, videoSource: "upload" })}
-                      className={`rounded-md px-2.5 py-1 text-[10px] font-bold transition ${
-                        form.videoSource === "upload"
-                          ? "bg-white text-ink shadow-sm"
-                          : "text-ink/60 hover:text-ink"
-                      }`}
-                    >
-                      File Upload (Direct)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setForm({ ...form, videoSource: "url" })}
-                      className={`rounded-md px-2.5 py-1 text-[10px] font-bold transition ${
-                        form.videoSource === "url"
-                          ? "bg-white text-ink shadow-sm"
-                          : "text-ink/60 hover:text-ink"
-                      }`}
-                    >
-                      Video URL Link
-                    </button>
-                  </div>
-                </div>
-
-                {form.videoSource === "upload" ? (
-                  <Uploader
-                    kind="video"
-                    onFileSelected={(_file, localUrl) => {
-                      setForm((prev) => ({ ...prev, videoUrl: localUrl, videoSource: "upload" }));
-                      autoDetectDuration(localUrl);
-                      if (!form.thumbnailUrl) void grabFrame(localUrl);
-                    }}
-                    onUploaded={(res) => {
-                      setForm((prev) => ({ ...prev, videoUrl: res.url, videoSource: "upload" }));
-                      autoDetectDuration(res.url);
-                      if (!form.thumbnailUrl) void grabFrame(res.url);
-                      showToast("Video uploaded and attached to card.");
-                    }}
-                  />
-                ) : (
-                  <Field label="Video Link URL" hint="YouTube Shorts, Instagram Reel, Google Drive, or MP4">
-                    <TextInput
-                      value={form.videoUrl}
-                      onChange={(val) => {
-                        const media = parseMediaUrl(val);
-                        setForm((prev) => ({
-                          ...prev,
-                          videoUrl: val,
-                          thumbnailUrl: prev.thumbnailUrl || media.thumbnailUrl || prev.thumbnailUrl,
-                        }));
-                        autoDetectDuration(val);
-                      }}
-                      placeholder="https://youtube.com/shorts/... or https://drive.google.com/..."
-                    />
-                  </Field>
-                )}
-
-                {/* Video Player Preview inside Modal */}
-                {form.videoUrl && (
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-semibold text-ink/70">Live Video Preview:</span>
-                      {(() => {
-                        const media = parseMediaUrl(form.videoUrl);
-                        if (media.type === "youtube") return <span className="text-[10px] font-semibold text-red-500">🔴 YouTube {media.isVertical ? "Shorts (9:16)" : "Video"}</span>;
-                        if (media.type === "drive") return <span className="text-[10px] font-semibold text-emerald-500">📁 Google Drive Stream</span>;
-                        if (media.type === "instagram") return <span className="text-[10px] font-semibold text-pink-500">🟣 Instagram Reel</span>;
-                        if (media.type === "vimeo") return <span className="text-[10px] font-semibold text-sky-500">🔵 Vimeo Player</span>;
-                        return <span className="text-[10px] font-semibold text-emerald-600">🎬 Direct Video Stream</span>;
-                      })()}
-                    </div>
-                    <div className="mt-1.5 overflow-hidden rounded-xl bg-black max-h-56 aspect-video flex items-center justify-center border border-black/10 shadow-inner">
-                      {(() => {
-                        const media = parseMediaUrl(form.videoUrl);
-                        if (media.embedUrl) {
-                          return (
-                            <iframe
-                              src={media.embedUrl}
-                              title="Preview"
-                              className="h-full w-full border-0"
-                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                              allowFullScreen
-                            />
-                          );
-                        }
-                        return (
-                          <video
-                            key={form.videoUrl}
-                            src={media.streamUrl || form.videoUrl}
-                            controls
-                            preload="metadata"
-                            playsInline
-                            className="h-full w-full object-contain"
-                          />
-                        );
-                      })()}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* ---------------- THUMBNAIL ASSET ---------------- */}
-              <div className="rounded-2xl border border-black/5 bg-black/[0.02] p-4 space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="font-heading text-xs font-bold uppercase tracking-wider text-ink">
-                    Thumbnail / Poster Image
-                  </span>
-                  {form.videoUrl && (
-                    <Button
-                      variant="ghost"
-                      disabled={grabbingFrame}
-                      onClick={() => void grabFrame()}
-                      className="!px-2.5 !py-1 text-[10px] font-semibold"
-                    >
-                      {grabbingFrame ? "Extracting frame…" : "⚡ Grab Frame from Video"}
-                    </Button>
-                  )}
-                </div>
-
-                <Uploader
-                  kind="image"
-                  onUploaded={(res) => {
-                    setForm((prev) => ({ ...prev, thumbnailUrl: res.url }));
-                    showToast("Thumbnail image attached.");
-                  }}
-                />
-
-                <Field label="Or Custom Thumbnail URL" hint="Direct image link">
-                  <TextInput
-                    value={form.thumbnailUrl}
-                    onChange={(val) => setForm({ ...form, thumbnailUrl: val })}
-                    placeholder="https://images.unsplash.com/..."
-                  />
-                </Field>
-
-                {form.thumbnailUrl && (
-                  <div className="relative h-28 w-20 overflow-hidden rounded-xl border border-black/10">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={form.thumbnailUrl}
-                      alt="Thumbnail preview"
-                      className="h-full w-full object-cover"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setForm({ ...form, thumbnailUrl: "" })}
-                      className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-[9px] text-white hover:bg-black"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                )}
-              </div>
+              {/* ---------------- UNIFIED VIDEO & POSTER ASSET MANAGER ---------------- */}
+              <VideoAssetManager
+                videoUrl={form.videoUrl}
+                videoSource={form.videoSource === "url" ? "url" : "upload"}
+                thumbnailUrl={form.thumbnailUrl}
+                duration={form.duration}
+                aspectRatio={form.aspectRatio}
+                onVideoChange={(url, source, meta) => {
+                  setForm((prev) => ({
+                    ...prev,
+                    videoUrl: url,
+                    videoSource: source,
+                    duration: meta?.durationFormatted || prev.duration,
+                    aspectRatio: meta?.aspectRatio || prev.aspectRatio,
+                  }));
+                }}
+                onThumbnailChange={(url) => {
+                  setForm((prev) => ({ ...prev, thumbnailUrl: url }));
+                }}
+                onDurationChange={(formatted) => {
+                  setForm((prev) => ({ ...prev, duration: formatted }));
+                }}
+                onAspectRatioChange={(ratio) => {
+                  setForm((prev) => ({ ...prev, aspectRatio: ratio }));
+                }}
+              />
 
               <Toggle
                 label="Published / Visible in Carousel"

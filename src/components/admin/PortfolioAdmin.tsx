@@ -16,6 +16,7 @@ import {
   api,
   uploadBlob,
 } from "./ui";
+import { VideoAssetManager } from "./VideoAssetManager";
 
 export type AdminProject = {
   id: number;
@@ -557,148 +558,32 @@ export function PortfolioAdmin({ onChanged }: { onChanged: () => void }) {
               </Field>
             </div>
 
-            <div className="hairline grid gap-5 pt-5 sm:grid-cols-2">
-              <Field label="Video source">
-                <Select
-                  value={form.videoSource}
-                  onChange={(v) => patch("videoSource", v)}
-                  options={[
-                    { value: "url", label: "External URL" },
-                    { value: "upload", label: "Local upload" },
-                  ]}
-                />
-              </Field>
-              <Field
-                label="Video URL"
-                hint="Instagram Reel, Google Drive, YouTube, Vimeo, or direct MP4/WebM link."
-              >
-                <TextInput
-                  value={form.videoUrl}
-                  onChange={(v) => {
-                    patch("videoUrl", v);
-                    const media = parseMediaUrl(v);
-                    if (media.type === "instagram") {
-                      patch("aspectRatio", media.suggestedRatio);
-                      setNotice("✨ Instagram Reel / Post recognized! Aspect ratio automatically adjusted.");
-                    } else if (media.type === "drive") {
-                      if (!form.thumbnailUrl && media.thumbnailUrl) {
-                        patch("thumbnailUrl", media.thumbnailUrl);
-                      }
-                      setNotice("✨ Google Drive video recognized! Ready to play.");
-                    } else if (media.type === "youtube") {
-                      if (!form.thumbnailUrl && media.thumbnailUrl) {
-                        patch("thumbnailUrl", media.thumbnailUrl);
-                      }
-                      if (media.isVertical) {
-                        patch("aspectRatio", "9:16");
-                      }
-                      setNotice("✨ YouTube video recognized! Thumbnail auto-attached.");
-                    }
-                    autoDetectDuration(v);
-                  }}
-                  placeholder="Paste Instagram Reel, Drive, YouTube or MP4 link…"
-                />
-                {(() => {
-                  const media = parseMediaUrl(form.videoUrl);
-                  if (media.type === "instagram") {
-                    return <p className="mt-1 text-[0.7rem] font-medium text-pink-400">✨ Instagram {media.isVertical ? "Reel (9:16)" : "Post"} detected</p>;
-                  }
-                  if (media.type === "drive") {
-                    return <p className="mt-1 text-[0.7rem] font-medium text-emerald-400">✨ Google Drive video stream detected</p>;
-                  }
-                  if (media.type === "youtube") {
-                    return <p className="mt-1 text-[0.7rem] font-medium text-red-400">✨ YouTube {media.isVertical ? "Shorts" : "Video"} detected</p>;
-                  }
-                  if (media.type === "vimeo") {
-                    return <p className="mt-1 text-[0.7rem] font-medium text-sky-400">✨ Vimeo video detected</p>;
-                  }
-                  return null;
-                })()}
-              </Field>
-              <div className="sm:col-span-2">
-                <Uploader
-                  kind="video"
-                  projectId={editingId ?? undefined}
-                  onFileSelected={(_file, localUrl) => {
-                    patch("videoUrl", localUrl);
-                    patch("videoSource", "upload");
-                    autoDetectDuration(localUrl);
-                    if (!form.thumbnailUrl) void grabFrame(localUrl);
-                  }}
-                  onUploaded={(result) => {
-                    patch("videoUrl", result.url);
-                    patch("videoSource", "upload");
-                    autoDetectDuration(result.url);
-                    if (!form.thumbnailUrl) void grabFrame(result.url);
-                    setNotice("Video uploaded and attached to this project.");
-                  }}
-                />
-              </div>
-              <Field label="Video preview">
-                {(() => {
-                  if (!form.videoUrl) {
-                    return <p className="text-sm text-ink/45">No video attached yet.</p>;
-                  }
-                  const media = parseMediaUrl(form.videoUrl);
-                  if (media.embedUrl) {
-                    return (
-                      <div className="overflow-hidden rounded-2xl border border-white/10 bg-black aspect-video max-h-56">
-                        <iframe
-                          src={media.embedUrl}
-                          title="Preview"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                          className="h-full w-full border-0"
-                        />
-                      </div>
-                    );
-                  }
-                  return (
-                    <video
-                      key={form.videoUrl}
-                      src={media.streamUrl || form.videoUrl}
-                      controls
-                      preload="metadata"
-                      playsInline
-                      className="w-full rounded-2xl bg-black max-h-56"
-                    />
-                  );
-                })()}
-              </Field>
-              <Field label="Thumbnail URL">
-                <TextInput
-                  value={form.thumbnailUrl}
-                  onChange={(v) => patch("thumbnailUrl", v)}
-                  placeholder="https://…/thumb.jpg"
-                />
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Button variant="light" onClick={() => void grabFrame(form.videoUrl)} disabled={grabbing}>
-                    {grabbing ? "Grabbing…" : "Grab frame from video"}
-                  </Button>
-                  {form.thumbnailUrl && (
-                    <Button variant="ghost" onClick={() => patch("thumbnailUrl", "")}>
-                      Remove thumbnail
-                    </Button>
-                  )}
-                </div>
-                {form.thumbnailUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={form.thumbnailUrl}
-                    alt="Thumbnail preview"
-                    className="mt-3 w-full max-w-xs rounded-2xl object-cover"
-                  />
-                )}
-              </Field>
-              <div className="sm:col-span-2">
-                <Uploader
-                  kind="image"
-                  projectId={editingId ?? undefined}
-                  label="Drag & drop thumbnail here"
-                  hint="JPG, PNG or WEBP"
-                  onUploaded={(result) => patch("thumbnailUrl", result.url)}
-                />
-              </div>
+            <div className="pt-2">
+              <VideoAssetManager
+                videoUrl={form.videoUrl}
+                videoSource={form.videoSource === "url" ? "url" : "upload"}
+                thumbnailUrl={form.thumbnailUrl}
+                duration={form.durationSeconds}
+                aspectRatio={form.aspectRatio}
+                projectId={editingId ?? undefined}
+                onVideoChange={(url, source, meta) => {
+                  patch("videoUrl", url);
+                  patch("videoSource", source);
+                  if (meta?.durationSeconds) patch("durationSeconds", String(meta.durationSeconds));
+                  if (meta?.aspectRatio) patch("aspectRatio", meta.aspectRatio);
+                  if (meta?.width) patch("width", String(meta.width));
+                  if (meta?.height) patch("height", String(meta.height));
+                }}
+                onThumbnailChange={(url) => {
+                  patch("thumbnailUrl", url);
+                }}
+                onDurationChange={(_formatted, seconds) => {
+                  patch("durationSeconds", String(seconds));
+                }}
+                onAspectRatioChange={(ratio) => {
+                  patch("aspectRatio", ratio);
+                }}
+              />
             </div>
 
             <div className="hairline grid gap-5 pt-5 sm:grid-cols-3">
