@@ -836,13 +836,10 @@ export function PortfolioAdmin({ onChanged }: { onChanged: () => void }) {
                       View
                     </Button>
                     <Button
-                      variant="ghost"
-                      onClick={() => {
-                        setReplaceId(replaceId === project.id ? null : project.id);
-                        setReplaceUrl(project.videoUrl);
-                      }}
+                      variant="light"
+                      onClick={() => openEdit(project)}
                     >
-                      Replace video
+                      Replace video / edit
                     </Button>
                     <Button
                       variant="ghost"
@@ -869,52 +866,6 @@ export function PortfolioAdmin({ onChanged }: { onChanged: () => void }) {
                       Delete
                     </Button>
                   </div>
-
-                  {replaceId === project.id && (
-                    <div className="fade-in mt-4 rounded-2xl border border-ink/10 bg-white/70 p-4">
-                      <p className="text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-ink/45">
-                        Replace video / demo
-                      </p>
-                      <div className="mt-3 grid gap-3">
-                        <Field label="New video URL">
-                          <TextInput value={replaceUrl} onChange={setReplaceUrl} placeholder="https://…" />
-                        </Field>
-                        <Uploader
-                          kind="video"
-                          projectId={project.id}
-                          onUploaded={(result) => {
-                            setReplaceUrl(result.url);
-                            void action(
-                              () =>
-                                api(`/api/admin/projects/${project.id}/replace-video`, {
-                                  method: "PATCH",
-                                  body: JSON.stringify({ videoUrl: result.url, videoSource: "upload" }),
-                                }),
-                              "Video replaced — the website shows the new video.",
-                            );
-                          }}
-                        />
-                        <Button
-                          variant="accent"
-                          onClick={() =>
-                            action(
-                              () =>
-                                api(`/api/admin/projects/${project.id}/replace-video`, {
-                                  method: "PATCH",
-                                  body: JSON.stringify({
-                                    videoUrl: replaceUrl,
-                                    videoSource: replaceUrl.startsWith("/api/files/") ? "upload" : "url",
-                                  }),
-                                }),
-                              "Video replaced — the website shows the new video.",
-                            )
-                          }
-                        >
-                          Save replacement
-                        </Button>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </article>
             ))}

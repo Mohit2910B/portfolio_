@@ -36,14 +36,16 @@ function ProjectCard({
     }
   };
 
+  const isVertical = project.aspectRatio === "9:16" || project.aspectRatio === "4:5";
+
   return (
     <article
       onClick={onSelect}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className="group glass-soft cursor-pointer overflow-hidden rounded-[26px] border border-ink/8 transition duration-500 hover:-translate-y-1.5 hover:shadow-2xl"
+      className="group glass-soft cursor-pointer overflow-hidden rounded-[28px] border border-ink/8 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:border-ink/20"
     >
-      <div className="relative aspect-video overflow-hidden bg-ink/5">
+      <div className={`relative overflow-hidden bg-ink/5 ${isVertical ? "aspect-[9/16] max-h-[480px] mx-auto" : "aspect-video"}`}>
         {project.videoUrl ? (
           <video
             ref={videoRef}
@@ -69,34 +71,39 @@ function ProjectCard({
           </div>
         )}
 
-        {/* Play Badge */}
-        <div className="absolute inset-0 grid place-items-center bg-black/30 opacity-0 backdrop-blur-[2px] transition duration-300 group-hover:opacity-100">
-          <div className="grid h-12 w-12 place-items-center rounded-full bg-white text-ink shadow-2xl transition duration-300 group-hover:scale-110">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        {/* Cinematic Gradient Vignette */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent opacity-60 transition duration-300 group-hover:opacity-40" />
+
+        {/* Center Hover Play Badge with Soundwave Ring */}
+        <div className="absolute inset-0 grid place-items-center bg-black/25 opacity-0 backdrop-blur-[2px] transition duration-300 group-hover:opacity-100">
+          <div className="relative grid h-14 w-14 place-items-center rounded-full bg-white text-ink shadow-2xl transition duration-300 group-hover:scale-110">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
               <path d="M8 5v14l11-7z" />
             </svg>
+            <span className="absolute -inset-1.5 animate-ping rounded-full border border-white/50 opacity-40" />
           </div>
         </div>
 
         {/* Live Motion Sound Wave Pill on Hover */}
         {isHovered && project.videoUrl && (
-          <div className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-black/75 px-2.5 py-1 text-[9px] font-bold text-white shadow-lg backdrop-blur-md">
+          <div className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-black/80 px-3 py-1 text-[9px] font-bold text-white shadow-xl backdrop-blur-md">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span>LIVE PREVIEW</span>
+            <span>PLAYING PREVIEW</span>
           </div>
         )}
 
+        {/* Top Badges */}
         <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
-          <span className="rounded-md bg-black/60 px-2 py-1 text-[0.55rem] font-semibold uppercase tracking-[0.12em] text-white backdrop-blur-md">
+          <span className="rounded-lg bg-black/65 px-2.5 py-1 text-[0.55rem] font-bold uppercase tracking-[0.12em] text-white backdrop-blur-md shadow-sm">
             {project.aspectRatio || "16:9"}
           </span>
           {project.durationSeconds ? (
-            <span className="rounded-md bg-black/60 px-2 py-1 font-mono text-[0.55rem] font-semibold text-white/90 backdrop-blur-md">
+            <span className="rounded-lg bg-black/65 px-2.5 py-1 font-mono text-[0.55rem] font-semibold text-white/90 backdrop-blur-md shadow-sm">
               ⏱️ {project.durationSeconds}s
             </span>
           ) : null}
           {project.featured && (
-            <span className="rounded-md bg-[var(--accent,#e0147f)] px-2 py-1 text-[0.55rem] font-semibold uppercase tracking-[0.12em] text-white shadow-sm">
+            <span className="rounded-lg bg-[var(--accent,#e0147f)] px-2.5 py-1 text-[0.55rem] font-bold uppercase tracking-[0.12em] text-white shadow-md">
               ★ Spotlight
             </span>
           )}
@@ -105,21 +112,21 @@ function ProjectCard({
 
       <div className="p-5">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-ink/40">
+          <p className="text-[0.58rem] font-bold uppercase tracking-[0.18em] text-[var(--accent,#e0147f)]">
             {project.categoryLabel || "Video Project"}
             {project.year ? ` · ${project.year}` : ""}
           </p>
           {project.software && (
-            <span className="text-[9px] font-mono text-ink/50 bg-black/5 px-2 py-0.5 rounded-md">
+            <span className="text-[9px] font-mono font-semibold text-ink/60 bg-black/5 px-2 py-0.5 rounded-md">
               {project.software.split(",")[0]}
             </span>
           )}
         </div>
-        <h3 className="display mt-2 text-lg text-ink group-hover:text-[var(--accent,#e0147f)] transition">
+        <h3 className="display mt-2 text-lg text-ink font-bold group-hover:text-[var(--accent,#e0147f)] transition">
           {project.title}
         </h3>
         {project.description && (
-          <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-ink/60">
+          <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-ink/65">
             {project.description}
           </p>
         )}
@@ -156,6 +163,11 @@ export default function Theme01Editorial({ data }: { data: SiteData }) {
     });
   }, [projects, activeCatIds, activeCategory]);
 
+  // Find top spotlight featured project
+  const spotlightProject = useMemo(() => {
+    return filteredProjects.find((p) => p.featured) || filteredProjects[0] || null;
+  }, [filteredProjects]);
+
   return (
     <div className="min-h-screen bg-[var(--paper,#f7f5f2)] text-[var(--ink,#0b0b0c)] font-sans antialiased selection:bg-black selection:text-white">
       {/* Primary Floating Navigation Bar */}
@@ -184,7 +196,7 @@ export default function Theme01Editorial({ data }: { data: SiteData }) {
         <div className="mx-auto max-w-[1400px]">
           <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <SectionHeading
-              eyebrow="Portfolio & Showcase"
+              eyebrow="Portfolio & Films"
               title="SELECTED WORKS"
               description="A curated collection of viral reels, commercial brand films, motion graphics, and color grades."
             />
@@ -194,10 +206,10 @@ export default function Theme01Editorial({ data }: { data: SiteData }) {
               <button
                 type="button"
                 onClick={() => setActiveCategory("all")}
-                className={`rounded-full px-4 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.16em] transition ${
+                className={`rounded-full px-4 py-2 text-[0.65rem] font-bold uppercase tracking-[0.16em] transition ${
                   activeCategory === "all"
-                    ? "bg-ink text-white shadow-sm"
-                    : "glass text-ink/70 hover:text-ink"
+                    ? "bg-ink text-white shadow-md scale-105"
+                    : "glass text-ink/70 hover:text-ink hover:bg-white"
                 }`}
               >
                 All Works ({projects.filter((p) => p.published).length})
@@ -207,10 +219,10 @@ export default function Theme01Editorial({ data }: { data: SiteData }) {
                   key={cat.id}
                   type="button"
                   onClick={() => setActiveCategory(String(cat.id))}
-                  className={`rounded-full px-4 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.16em] transition ${
+                  className={`rounded-full px-4 py-2 text-[0.65rem] font-bold uppercase tracking-[0.16em] transition ${
                     activeCategory === String(cat.id)
-                      ? "bg-ink text-white shadow-sm"
-                      : "glass text-ink/70 hover:text-ink"
+                      ? "bg-ink text-white shadow-md scale-105"
+                      : "glass text-ink/70 hover:text-ink hover:bg-white"
                   }`}
                 >
                   {cat.name}
@@ -219,8 +231,107 @@ export default function Theme01Editorial({ data }: { data: SiteData }) {
             </div>
           </div>
 
+          {/* 🌟 Spotlight Featured Premiere Card (When in All Works view) */}
+          {activeCategory === "all" && spotlightProject && (
+            <div className="mt-12">
+              <Reveal>
+                <div
+                  onClick={() => setSelectedProject(spotlightProject)}
+                  className="group relative cursor-pointer overflow-hidden rounded-[32px] border border-ink/10 bg-black text-white shadow-2xl transition duration-500 hover:border-ink/30"
+                >
+                  <div className="grid lg:grid-cols-12">
+                    {/* Left: Cinematic Visualizer Frame */}
+                    <div className="lg:col-span-7 relative aspect-video overflow-hidden bg-black flex items-center justify-center">
+                      {spotlightProject.thumbnailUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={spotlightProject.thumbnailUrl}
+                          alt={spotlightProject.title}
+                          className="h-full w-full object-cover opacity-90 transition duration-700 group-hover:scale-105"
+                        />
+                      ) : spotlightProject.videoUrl ? (
+                        <video
+                          src={spotlightProject.videoUrl}
+                          muted
+                          playsInline
+                          preload="metadata"
+                          className="h-full w-full object-cover opacity-90 transition duration-700 group-hover:scale-105"
+                        />
+                      ) : null}
+
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-black/80 hidden lg:block" />
+
+                      {/* Giant Cinema Play Icon */}
+                      <div className="absolute inset-0 grid place-items-center bg-black/30 opacity-0 backdrop-blur-[2px] transition duration-300 group-hover:opacity-100">
+                        <div className="grid h-16 w-16 place-items-center rounded-full bg-white text-ink shadow-2xl transition duration-300 group-hover:scale-110">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8 5v14l11-7z" />
+                          </svg>
+                        </div>
+                      </div>
+
+                      <div className="absolute left-4 top-4 flex gap-2">
+                        <span className="rounded-lg bg-[var(--accent,#e0147f)] px-3 py-1 text-[0.62rem] font-bold uppercase tracking-[0.14em] text-white shadow-lg">
+                          ★ Featured Premiere
+                        </span>
+                        <span className="rounded-lg bg-black/70 px-3 py-1 font-mono text-[0.62rem] font-bold text-white backdrop-blur-md">
+                          {spotlightProject.aspectRatio || "16:9"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Right: Editorial Showcase Description */}
+                    <div className="lg:col-span-5 flex flex-col justify-between p-8 sm:p-10 bg-gradient-to-br from-neutral-900 to-black">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                          <span className="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-[var(--accent,#e0147f)]">
+                            {spotlightProject.categoryLabel || "Selected Work"}
+                          </span>
+                        </div>
+                        <h3 className="display mt-3 text-2xl sm:text-3xl font-bold leading-tight text-white group-hover:text-[var(--accent,#e0147f)] transition">
+                          {spotlightProject.title}
+                        </h3>
+                        {spotlightProject.description && (
+                          <p className="mt-4 text-sm leading-relaxed text-white/70">
+                            {spotlightProject.description}
+                          </p>
+                        )}
+
+                        {spotlightProject.software && (
+                          <div className="mt-6 flex flex-wrap gap-2">
+                            {spotlightProject.software.split(",").map((tool) => (
+                              <span
+                                key={tool}
+                                className="rounded-md bg-white/10 px-2.5 py-1 text-[10px] font-mono font-medium text-white/80"
+                              >
+                                {tool.trim()}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-8 flex items-center justify-between border-t border-white/10 pt-6">
+                        <span className="text-xs font-bold uppercase tracking-wider text-white/60">
+                          {spotlightProject.year ? `Year: ${spotlightProject.year}` : "Cinema Edition"}
+                        </span>
+                        <button
+                          type="button"
+                          className="flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-xs font-bold text-ink shadow-lg transition duration-300 hover:bg-[var(--accent,#e0147f)] hover:text-white"
+                        >
+                          <span>▶ Watch Project</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Reveal>
+            </div>
+          )}
+
           {/* Clean Responsive Project Grid with Live Hover Previews */}
-          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {filteredProjects.map((project, index) => (
               <Reveal key={project.id} delay={index * 35}>
                 <ProjectCard
