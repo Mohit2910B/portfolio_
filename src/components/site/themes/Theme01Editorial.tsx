@@ -11,6 +11,8 @@ import ProjectViewer from "@/components/site/ProjectViewer";
 import ChatWidget from "@/components/site/ChatWidget";
 import Reveal from "@/components/site/Reveal";
 import SpotlightReelCarousel from "@/components/site/SpotlightReelCarousel";
+import BeforeAfterSlider from "@/components/site/BeforeAfterSlider";
+import ProcessTimeline from "@/components/site/ProcessTimeline";
 
 function ProjectCard({
   project,
@@ -172,29 +174,55 @@ export default function Theme01Editorial({ data }: { data: SiteData }) {
         availability={homepage.availabilityLabel || "Available for select commissions"}
       />
 
-      {/* Hero Section with Interactive NLE Video Editor Mockup */}
+      {/* 1. Hero Section with Interactive NLE Video Editor Mockup */}
       <Hero data={data} />
 
-      {/* Marquee Ticker Banner */}
+      {/* 2. Marquee Ticker Banner */}
       <Marquee text={typeof homepage.marqueeText === "string" ? homepage.marqueeText : undefined} />
 
-      {/* About / Manifesto Section */}
-      <About data={data} />
+      {/* 3. 🌟 3D KINETIC SPOTLIGHT REEL CAROUSEL */}
+      <section className="overflow-hidden px-4 py-12 sm:px-6 lg:py-20 bg-black text-white">
+        <div className="mx-auto max-w-[1400px]">
+          <div className="flex flex-col gap-4 text-center items-center">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-[var(--accent,#e0147f)] animate-pulse" />
+              <p className="font-mono text-xs font-bold uppercase tracking-[0.25em] text-[var(--accent,#e0147f)]">
+                3D Kinetic Showcase
+              </p>
+            </div>
+            <h2 className="display text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white">
+              SPOTLIGHT <span className="text-white/40">SHOWREELS</span>
+            </h2>
+            <p className="max-w-xl text-sm leading-relaxed text-white/60">
+              Drag, swipe, or click any card to rotate through high-impact vertical reels and widescreen commercial films.
+            </p>
+          </div>
 
-      {/* Tools & Software Stack */}
-      <SoftwareTools data={data} />
+          <div className="mt-8">
+            <Reveal>
+              <SpotlightReelCarousel
+                carouselItems={data.carouselItems}
+                projects={filteredProjects}
+                onSelectProject={(p) => setSelectedProject(p)}
+              />
+            </Reveal>
+          </div>
+        </div>
+      </section>
 
-      {/* Services & Capabilities Section */}
-      <Services data={data} />
+      {/* 4. ✨ INTERACTIVE BEFORE / AFTER COLOR GRADING SLIDER */}
+      <div id="grading">
+        <BeforeAfterSlider />
+      </div>
 
-      {/* ----------------- UNIFIED WORKS & PORTFOLIO SHOWCASE ----------------- */}
+      {/* 5. ----------------- SELECTED WORKS PORTFOLIO GRID ----------------- */}
       <section id="portfolio" className="px-4 py-20 sm:px-6 lg:py-28">
         <div className="mx-auto max-w-[1400px]">
           <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <SectionHeading
-              eyebrow="Kinetic Showcase & Films"
+              eyebrow="Curated Films & Reels"
               title="SELECTED WORKS"
-              description="Rotate through high-retention vertical reels, commercials, and visual storytelling."
+              description="A master archive of commercial edits, social reels, motion graphics, and color grades."
             />
 
             {/* Category Filter Pills */}
@@ -227,35 +255,16 @@ export default function Theme01Editorial({ data }: { data: SiteData }) {
             </div>
           </div>
 
-          {/* 🌟 3D Kinetic Spotlight Reel Carousel */}
-          <div className="mt-8">
-            <Reveal>
-              <SpotlightReelCarousel
-                carouselItems={data.carouselItems}
-                projects={filteredProjects}
-                onSelectProject={(p) => setSelectedProject(p)}
-              />
-            </Reveal>
-          </div>
-
           {/* Clean Responsive Project Grid with Live Hover Previews */}
-          <div className="mt-14 border-t border-black/5 pt-12">
-            <div className="mb-8 flex items-center justify-between">
-              <h3 className="font-heading text-sm font-bold uppercase tracking-wider text-ink/60">
-                Explore All Projects ({filteredProjects.length})
-              </h3>
-            </div>
-
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredProjects.map((project, index) => (
-                <Reveal key={project.id} delay={index * 35}>
-                  <ProjectCard
-                    project={project}
-                    onSelect={() => setSelectedProject(project)}
-                  />
-                </Reveal>
-              ))}
-            </div>
+          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {filteredProjects.map((project, index) => (
+              <Reveal key={project.id} delay={index * 35}>
+                <ProjectCard
+                  project={project}
+                  onSelect={() => setSelectedProject(project)}
+                />
+              </Reveal>
+            ))}
           </div>
 
           {filteredProjects.length === 0 && (
@@ -266,15 +275,35 @@ export default function Theme01Editorial({ data }: { data: SiteData }) {
         </div>
       </section>
 
-      {/* Contact & Project Enquiry Section */}
+      {/* 6. 🛠️ 5-STEP POST-PRODUCTION EDITING PIPELINE */}
+      <div id="pipeline">
+        <ProcessTimeline />
+      </div>
+
+      {/* 7. Tools & Software Stack */}
+      <div id="tools">
+        <SoftwareTools data={data} />
+      </div>
+
+      {/* 8. About / Manifesto Section */}
+      <div id="about">
+        <About data={data} />
+      </div>
+
+      {/* 9. Services & Deliverables Packages */}
+      <div id="services">
+        <Services data={data} />
+      </div>
+
+      {/* 10. Contact & Project Enquiry Section */}
       <div id="contact">
         <ContactSection data={data} />
       </div>
 
-      {/* Footer */}
+      {/* 11. Footer */}
       <Footer data={data} />
 
-      {/* Interactive Project Video Player Modal */}
+      {/* 12. Interactive Project Video Player Modal */}
       {selectedProject && (
         <ProjectViewer
           project={selectedProject}
@@ -282,7 +311,7 @@ export default function Theme01Editorial({ data }: { data: SiteData }) {
         />
       )}
 
-      {/* Live AI Studio Chat Widget */}
+      {/* 13. Live AI Studio Chat Widget */}
       <ChatWidget />
     </div>
   );
