@@ -135,6 +135,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${cormorant.variable} ${plusJakarta.variable} ${spaceMono.variable}`}
     >
       <head>
@@ -149,7 +150,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body className="antialiased font-sans bg-[#08090B] text-[#F5F3EE] selection:bg-[#C9A66B]/30 selection:text-[#F5F3EE]">
+      <body
+        suppressHydrationWarning
+        className="antialiased font-sans bg-[#08090B] text-[#F5F3EE] selection:bg-[#C9A66B]/30 selection:text-[#F5F3EE]"
+      >
         {children}
       </body>
     </html>
