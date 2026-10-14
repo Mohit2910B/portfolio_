@@ -108,9 +108,9 @@ export default function Hero({ content, onOpenVideo }: HeroProps) {
             {/* The Exact Monitor Screen Frame */}
             <div className="relative aspect-video w-full rounded-[18px] overflow-hidden bg-black border border-white/10 shadow-inner">
               <img
-                src="/images/mohit-portrait.jpg"
+                src="/images/mohit-portrait.png"
                 alt="Mohit Babariya — Video Editor, 3D Artist & Creative Producer"
-                className="w-full h-full object-cover object-[center_18%] transition-transform duration-700 group-hover:scale-105"
+                className="w-full h-full object-cover object-[center_25%] transition-transform duration-700 group-hover:scale-105"
                 loading="eager"
               />
 
