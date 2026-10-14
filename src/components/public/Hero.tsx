@@ -97,34 +97,30 @@ export default function Hero({ content, onOpenVideo }: HeroProps) {
           </div>
         </div>
 
-        {/* Right Column: Layered Video Frame */}
+        {/* Right Column: Exact Portrait Frame */}
         <div className="lg:col-span-5 relative">
-          <div className="absolute -inset-4 bg-gradient-to-r from-[var(--accent)]/20 to-[var(--accent-cool)]/20 rounded-[32px] blur-2xl opacity-60" />
+          <div className="absolute -inset-4 bg-gradient-to-r from-[var(--accent)]/15 to-[var(--accent-cool)]/10 rounded-[32px] blur-2xl opacity-50 pointer-events-none" />
 
           <div
             onClick={() => onOpenVideo && onOpenVideo(videoUrl, "MOHIT BABARIYA — REEL SHOWREEL")}
-            className="relative glass-panel-strong p-3 space-y-3 cursor-pointer group transform hover:scale-[1.02] transition-transform duration-500"
+            className="relative bg-[#111111] border border-[rgba(243,240,232,0.15)] p-3 space-y-3 cursor-pointer group transform hover:scale-[1.01] transition-transform duration-500 rounded-[26px] shadow-2xl"
           >
-            <div className="relative aspect-video w-full rounded-[18px] overflow-hidden bg-black">
-              {videoUrl ? (
-                <video
-                  src={videoUrl}
-                  autoPlay={isPlaying}
-                  loop
-                  muted
-                  playsInline
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                />
-              ) : (
-                <div className="w-full h-full bg-[var(--bg-surface)] flex items-center justify-center font-mono text-xs text-[var(--text-secondary)]">
-                  NO REEL MEDIA LOADED
-                </div>
-              )}
+            {/* Screen Frame with Portrait Photo */}
+            <div className="relative aspect-[4/5] sm:aspect-[3/4] w-full rounded-[20px] overflow-hidden bg-[#0a0a0a]">
+              <img
+                src="/images/mohit-portrait.jpg"
+                alt="Mohit Babariya — Video Editor, 3D Artist & Creative Producer"
+                className="w-full h-full object-cover object-[center_18%] transition-transform duration-700 group-hover:scale-105"
+              />
 
-              {/* Glass Play Overlay */}
+              {/* Bottom Subtle Vignette Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+
+              {/* Play Showreel Overlay on Hover */}
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                <button className="px-6 py-3 bg-[var(--accent)] text-[var(--bg-main)] font-mono text-xs font-bold tracking-widest uppercase rounded-full shadow-2xl">
-                  PLAY FULL REEL ↗
+                <button className="px-6 py-3 bg-[var(--accent)] text-[var(--bg-main)] font-mono text-xs font-bold tracking-widest uppercase rounded-full shadow-2xl flex items-center space-x-2">
+                  <span>▶</span>
+                  <span>PLAY SHOWREEL</span>
                 </button>
               </div>
             </div>
@@ -136,10 +132,10 @@ export default function Hero({ content, onOpenVideo }: HeroProps) {
             </div>
           </div>
 
-          {/* Floating Badge */}
+          {/* Floating Badge: Fully Solid Opaque Dark Charcoal, Zero Glassmorphism */}
           <div
             onClick={() => onOpenVideo && onOpenVideo(videoUrl, "FEATURED SHOWREEL")}
-            className="absolute -bottom-6 -left-6 glass-panel-strong p-4 space-y-1 cursor-pointer animate-float hidden sm:block max-w-[220px]"
+            className="absolute -bottom-6 -left-6 bg-[#161616] border border-[#2e2e2e] p-4 space-y-1 cursor-pointer animate-float hidden sm:block max-w-[220px] rounded-xl shadow-[0_16px_36px_rgba(0,0,0,0.95)] z-20"
           >
             <div className="font-mono text-[9px] text-[var(--accent)] tracking-widest uppercase font-bold">
               FEATURED WORK
