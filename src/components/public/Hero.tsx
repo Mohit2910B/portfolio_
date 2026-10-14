@@ -131,9 +131,8 @@ export default function Hero({ content, onOpenVideo }: HeroProps) {
             </div>
 
             {/* Bottom Metadata Bar */}
-            <div className="flex items-center justify-between px-2 font-mono text-[10px] text-[var(--text-secondary)] uppercase">
-              <span>PREMIERE PRO / AFTER EFFECTS</span>
-              <span className="text-[var(--accent)] font-bold">9:16 4K</span>
+            <div className="flex items-center justify-between px-2 font-mono text-[10px] text-[var(--text-secondary)] uppercase tracking-wider">
+              <span>MOHIT BABARIYA</span>
             </div>
           </div>
 
