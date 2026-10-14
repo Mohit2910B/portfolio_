@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 
 export interface UnifiedPortfolioItem {
   id: number;
+  categoryId?: number;
   title: string;
   category?: string;
   categoryLabel?: string;
@@ -49,22 +50,52 @@ export default function SingleVerticalPortfolio({
   const combined = projects.length > 0 ? projects : carouselItems;
   const list = combined;
 
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedCategory, setSelectedCategory] = useState<string>(() => {
+    if (categories.length > 0) {
+      return categories[0].slug || categories[0].name;
+    }
+    return "bansari-resort";
+  });
   const [activeIndex, setActiveIndex] = useState(0);
 
   const touchStartX = useRef<number | null>(null);
 
+  // Sync selectedCategory when categories arrive
+  useEffect(() => {
+    if (categories.length > 0) {
+      const match = categories.find(
+        (c) =>
+          c.slug.toLowerCase() === selectedCategory.toLowerCase() ||
+          c.name.toLowerCase() === selectedCategory.toLowerCase()
+      );
+      if (!match) {
+        setSelectedCategory(categories[0].slug || categories[0].name);
+      }
+    }
+  }, [categories, selectedCategory]);
+
   // Match items with selected category slug or name
+  const selectedCatObj = categories.find(
+    (c) =>
+      c.slug.toLowerCase() === selectedCategory.toLowerCase() ||
+      c.name.toLowerCase() === selectedCategory.toLowerCase()
+  );
+
   const filteredItems = list.filter((item) => {
-    if (selectedCategory === "all") return true;
-    const target = selectedCategory.toLowerCase().trim();
-    const cat = (item.category || item.categoryLabel || item.tags || "").toLowerCase().trim();
+    if (selectedCatObj && item.categoryId && item.categoryId === selectedCatObj.id) {
+      return true;
+    }
+    const targetName = (selectedCatObj?.name || selectedCategory).toLowerCase().trim();
+    const targetSlug = (selectedCatObj?.slug || selectedCategory).toLowerCase().trim();
+    const cat = (item.categoryLabel || item.category || item.tags || "").toLowerCase().trim();
     const slug = cat.replace(/\s+/g, "-").replace(/[^\w\-]+/g, "");
     return (
-      cat.includes(target) ||
-      target.includes(cat) ||
-      slug.includes(target) ||
-      target.includes(slug)
+      cat === targetName ||
+      slug === targetSlug ||
+      cat.includes(targetName) ||
+      targetName.includes(cat) ||
+      slug.includes(targetSlug) ||
+      targetSlug.includes(slug)
     );
   });
 
@@ -176,30 +207,9 @@ export default function SingleVerticalPortfolio({
 
         {/* Dynamic Category Filter Pills */}
         <div className="flex flex-wrap items-center justify-center gap-2.5 font-mono text-xs tracking-wider uppercase">
-          <button
-            onClick={() => setSelectedCategory("all")}
-            className={`px-5 py-2.5 rounded-full transition-all flex items-center space-x-2 ${
-              selectedCategory === "all"
-                ? "bg-[var(--accent)] text-[var(--bg-main)] font-bold shadow-xl scale-105"
-                : "glass-panel text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-            }`}
-          >
-            <span>ALL SHOWREELS</span>
-            <span
-              className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
-                selectedCategory === "all"
-                  ? "bg-[var(--bg-main)] text-[var(--accent)] font-bold"
-                  : "bg-white/10 text-[var(--text-secondary)]"
-              }`}
-            >
-              {list.length}
-            </span>
-          </button>
-
           {categoryPills.map((cat) => {
             const isActive =
-              selectedCategory === cat.slug ||
-              selectedCategory === cat.name ||
+              selectedCategory.toLowerCase() === (cat.slug || "").toLowerCase() ||
               selectedCategory.toLowerCase() === cat.name.toLowerCase();
 
             return (
