@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { categories, portfolioProjects } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { badRequest, guard, notFound, ok } from "@/lib/http";
+import { DEFAULT_PROJECTS } from "@/lib/defaultPortfolioData";
 
 export async function GET(req: Request) {
   return guard(async () => {
@@ -34,30 +35,47 @@ export async function GET(req: Request) {
       }
     }
 
-    const projects = await db
-      .select({
-        id: portfolioProjects.id,
-        title: portfolioProjects.title,
-        description: portfolioProjects.description,
-        categoryId: portfolioProjects.categoryId,
-        categoryLabel: portfolioProjects.categoryLabel,
-        year: portfolioProjects.year,
-        software: portfolioProjects.software,
-        tags: portfolioProjects.tags,
-        externalUrl: portfolioProjects.externalUrl,
-        videoUrl: portfolioProjects.videoUrl,
-        thumbnailUrl: portfolioProjects.thumbnailUrl,
-        aspectRatio: portfolioProjects.aspectRatio,
-        displaySize: portfolioProjects.displaySize,
-        isFeatured: portfolioProjects.isFeatured,
-        isPublished: portfolioProjects.isPublished,
-        sortOrder: portfolioProjects.sortOrder,
-        createdAt: portfolioProjects.createdAt,
-        updatedAt: portfolioProjects.updatedAt,
-      })
-      .from(portfolioProjects)
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(asc(portfolioProjects.sortOrder), desc(portfolioProjects.id));
+    let projects: any[] = [];
+    try {
+      projects = await db
+        .select({
+          id: portfolioProjects.id,
+          title: portfolioProjects.title,
+          description: portfolioProjects.description,
+          categoryId: portfolioProjects.categoryId,
+          categoryLabel: portfolioProjects.categoryLabel,
+          year: portfolioProjects.year,
+          software: portfolioProjects.software,
+          tags: portfolioProjects.tags,
+          externalUrl: portfolioProjects.externalUrl,
+          videoUrl: portfolioProjects.videoUrl,
+          thumbnailUrl: portfolioProjects.thumbnailUrl,
+          aspectRatio: portfolioProjects.aspectRatio,
+          displaySize: portfolioProjects.displaySize,
+          isFeatured: portfolioProjects.isFeatured,
+          isPublished: portfolioProjects.isPublished,
+          sortOrder: portfolioProjects.sortOrder,
+          createdAt: portfolioProjects.createdAt,
+          updatedAt: portfolioProjects.updatedAt,
+        })
+        .from(portfolioProjects)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(asc(portfolioProjects.sortOrder), desc(portfolioProjects.id));
+    } catch {
+      projects = [];
+    }
+
+    if (projects.length === 0) {
+      let fallback = DEFAULT_PROJECTS;
+      if (categorySlug && categorySlug !== "all") {
+        fallback = fallback.filter(
+          (p) =>
+            (p.categoryLabel || p.category || "").toLowerCase() === categorySlug.toLowerCase() ||
+            (p.categoryLabel || p.category || "").toLowerCase().replace(/\s+/g, "-") === categorySlug.toLowerCase()
+        );
+      }
+      return ok({ projects: fallback });
+    }
 
     return ok({ projects });
   });

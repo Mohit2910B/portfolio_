@@ -4,12 +4,23 @@ import { categories } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { badRequest, guard, notFound, ok, slugify } from "@/lib/http";
 
+import { DEFAULT_CATEGORIES } from "@/lib/defaultPortfolioData";
+
 export async function GET() {
   return guard(async () => {
-    const list = await db
-      .select()
-      .from(categories)
-      .orderBy(asc(categories.sortOrder), asc(categories.id));
+    let list: any[] = [];
+    try {
+      list = await db
+        .select()
+        .from(categories)
+        .orderBy(asc(categories.sortOrder), asc(categories.id));
+    } catch {
+      list = [];
+    }
+
+    if (list.length === 0) {
+      return ok({ categories: DEFAULT_CATEGORIES });
+    }
 
     return ok({ categories: list });
   });

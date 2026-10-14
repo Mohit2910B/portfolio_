@@ -7,18 +7,27 @@ import { badRequest, guard, ok } from "@/lib/http";
 
 export async function GET() {
   return guard(async () => {
-    const rows = await db
-      .select()
-      .from(themeSettings)
-      .where(eq(themeSettings.id, 1))
-      .limit(1);
-
-    const theme = rows[0] || {
+    let theme = {
       id: 1,
       activeTheme: 1,
       accentColor: "#C8A66A",
       customConfigJson: "{}",
     };
+
+    try {
+      const rows = await db
+        .select()
+        .from(themeSettings)
+        .where(eq(themeSettings.id, 1))
+        .limit(1);
+
+      if (rows[0]) {
+        theme = rows[0];
+      }
+    } catch {
+      // Use default theme
+    }
+
     return ok({ theme });
   });
 }
