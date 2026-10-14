@@ -1,236 +1,169 @@
-import { and, desc, eq, sql } from "drizzle-orm";
-import { cookies } from "next/headers";
+import { and, desc, eq, ilike, or } from "drizzle-orm";
 import { db } from "@/db";
 import { enquiries } from "@/db/schema";
-import { ensureDatabase } from "@/lib/bootstrap";
-import { getCurrentAdmin } from "@/lib/auth";
-import {
-  badRequest,
-  clientIp,
-  created,
-  guard,
-  ok,
-  rateLimit,
-  serverError,
-  str,
-} from "@/lib/http";
-import { sendAdminNotification } from "@/lib/notifications";
-import { verifyVerifiedSession } from "@/lib/otp";
-import { validatePhone } from "@/lib/phone";
-import { emailOtpChallenges } from "@/db/schema";
+import { requireAdmin } from "@/lib/auth";
+import { badRequest, guard, notFound, ok } from "@/lib/http";
 
-export const dynamic = "force-dynamic";
+async function sendEmailNotification(enquiry: {
+  name: string;
+  email: string;
+  phone: string;
+  projectType: string;
+  description: string;
+}) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return;
 
-type Payload = {
-  name?: unknown;
-  email?: unknown;
-  countryCode?: unknown;
-  phoneNumber?: unknown;
-  company?: unknown;
-  selectedWork?: unknown;
-  description?: unknown;
-  referenceUrl?: unknown;
-  deadline?: unknown;
-  source?: unknown;
-};
+  try {
+    const from = process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
+    const to = process.env.NOTIFICATION_EMAIL || "mohitbabariyaa@gmail.com";
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
-
-export function validateEnquiry(payload: Payload) {
-  const errors: Record<string, string> = {};
-  const name = str(payload.name);
-  const email = str(payload.email).toLowerCase();
-  const countryCode = str(payload.countryCode, "+91") || "+91";
-  const phoneRaw = str(payload.phoneNumber).replace(/[\s-()]/g, "");
-  const description = str(payload.description);
-  const work = Array.isArray(payload.selectedWork)
-    ? payload.selectedWork.map((w) => str(w)).filter(Boolean)
-    : [];
-
-  if (name.length < 2) errors.name = "Please enter your full name.";
-  if (!EMAIL_RE.test(email)) errors.email = "Enter a valid email address.";
-  if (!/^\+?[0-9]{1,4}$/.test(countryCode)) errors.countryCode = "Select a country code.";
-  const phoneError = validatePhone(countryCode, phoneRaw);
-  if (phoneError) errors.phoneNumber = phoneError;
-  if (work.length === 0) errors.selectedWork = "Select at least one type of work.";
-  if (description.length < 15) errors.description = "Tell me a little more (min. 15 characters).";
-
-  return {
-    errors,
-    values: {
-      name,
-      email,
-      countryCode,
-      phoneNumber: phoneRaw,
-      company: str(payload.company),
-      selectedWork: JSON.stringify(work),
-      description,
-      referenceUrl: str(payload.referenceUrl),
-      deadline: str(payload.deadline),
-      source: str(payload.source),
-    },
-  };
-}
-
-/** Public: submit an enquiry. */
-export async function POST(request: Request) {
-  return guard(async () => {
-    if (!rateLimit(`enquiry:${clientIp(request)}`, 8, 10 * 60 * 1000)) {
-      return badRequest("Too many submissions. Please try again in a few minutes.");
-    }
-
-    let payload: Payload;
-    try {
-      payload = (await request.json()) as Payload;
-    } catch {
-      return badRequest("Invalid request body.");
-    }
-
-    const { errors, values } = validateEnquiry(payload);
-    if (Object.keys(errors).length > 0) {
-      return badRequest("Please fix the highlighted fields.", errors);
-    }
-
-    const jar = await cookies();
-    const verifiedValue = jar.get("enquiry_otp_verified")?.value || "";
-    const verifiedToken = jar.get("enquiry_otp_verified_token")?.value || "";
-
-    let isVerified = false;
-
-    // Check signed cryptographic session token
-    if (
-      verifyVerifiedSession(verifiedValue, values.email) ||
-      verifyVerifiedSession(verifiedToken, values.email)
-    ) {
-      isVerified = true;
-    }
-
-    // Also check database challenge record if numeric ID
-    const verifiedId = Number(verifiedValue);
-    if (!isVerified && Number.isInteger(verifiedId) && verifiedId > 0) {
-      try {
-        await ensureDatabase();
-        const verified = await db
-          .select({
-            id: emailOtpChallenges.id,
-            email: emailOtpChallenges.email,
-            verifiedAt: emailOtpChallenges.verifiedAt,
-          })
-          .from(emailOtpChallenges)
-          .where(eq(emailOtpChallenges.id, verifiedId))
-          .limit(1);
-        if (verified[0]?.verifiedAt && verified[0].email === values.email) {
-          isVerified = true;
-        }
-      } catch {
-        // DB check skipped
-      }
-    }
-
-    if (!isVerified) {
-      return badRequest("Please verify your email address with OTP first.", {
-        email: "Email OTP verification is required.",
-      });
-    }
-
-    let insertedRecord = null;
-    try {
-      await ensureDatabase();
-      const inserted = await db.insert(enquiries).values(values).returning();
-      insertedRecord = inserted[0];
-    } catch (err) {
-      console.warn("[enquiries] Database save failed, sending email notification:", err);
-    }
-
-    const workList = (() => {
-      try {
-        const parsed = JSON.parse(values.selectedWork || "[]");
-        return Array.isArray(parsed) && parsed.length > 0 ? parsed.join(", ") : values.selectedWork;
-      } catch {
-        return values.selectedWork;
-      }
-    })();
-
-    const emailSubject = `🔔 New Project Enquiry: ${values.name}${values.company ? ` (${values.company})` : ""}`;
-
-    const emailHtml = `
-      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;padding:28px 24px;border-radius:16px;background:#ffffff;border:1px solid #e5e5e5;color:#111111;">
-        <div style="margin-bottom:20px;border-bottom:1px solid #f0f0f0;padding-bottom:16px;">
-          <span style="font-size:11px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#e0147f;">NEW CLIENT ENQUIRY</span>
-          <h1 style="margin:8px 0 0;font-size:22px;font-weight:700;color:#0b0b0c;">${values.name}</h1>
-          ${values.company ? `<p style="margin:4px 0 0;font-size:13px;color:#666666;">${values.company}</p>` : ""}
-        </div>
-
-        <div style="background:#f9f8f6;border:1px solid #eae7e1;border-radius:12px;padding:18px 20px;margin-bottom:20px;">
-          <table style="width:100%;border-collapse:collapse;font-size:13px;">
-            <tr>
-              <td style="padding:6px 0;color:#888888;width:110px;font-weight:600;">Email:</td>
-              <td style="padding:6px 0;"><a href="mailto:${values.email}" style="color:#e0147f;text-decoration:none;font-weight:600;">${values.email}</a></td>
-            </tr>
-            <tr>
-              <td style="padding:6px 0;color:#888888;font-weight:600;">Phone:</td>
-              <td style="padding:6px 0;"><a href="tel:${values.countryCode}${values.phoneNumber}" style="color:#111111;text-decoration:none;font-weight:600;">${values.countryCode} ${values.phoneNumber}</a></td>
-            </tr>
-            <tr>
-              <td style="padding:6px 0;color:#888888;font-weight:600;">Services:</td>
-              <td style="padding:6px 0;color:#111111;font-weight:600;">${workList}</td>
-            </tr>
-            ${values.deadline ? `<tr><td style="padding:6px 0;color:#888888;font-weight:600;">Deadline:</td><td style="padding:6px 0;color:#111111;">${values.deadline}</td></tr>` : ""}
-            ${values.referenceUrl ? `<tr><td style="padding:6px 0;color:#888888;font-weight:600;">Reference:</td><td style="padding:6px 0;"><a href="${values.referenceUrl}" target="_blank" style="color:#e0147f;">${values.referenceUrl}</a></td></tr>` : ""}
-          </table>
-        </div>
-
-        <div style="margin-bottom:24px;">
-          <h3 style="margin:0 0 8px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#888888;">Project Details:</h3>
-          <div style="background:#ffffff;border:1px solid #e5e5e5;border-radius:10px;padding:16px;font-size:14px;line-height:1.6;color:#222222;white-space:pre-wrap;">${values.description}</div>
-        </div>
-
-        <div style="text-align:center;padding-top:12px;border-top:1px solid #f0f0f0;">
-          <a href="https://mohitbabariya.in/admin?section=enquiries" style="display:inline-block;background:#0b0b0c;color:#ffffff;text-decoration:none;padding:11px 24px;border-radius:999px;font-size:12px;font-weight:600;letter-spacing:0.05em;">Open in Admin Panel</a>
-        </div>
-      </div>
-    `;
-
-    try {
-      await sendAdminNotification(emailSubject, emailHtml);
-    } catch (notifyErr) {
-      console.error("[enquiries] Error dispatching admin notification email:", notifyErr);
-    }
-
-    return created({
-      enquiry: insertedRecord || { id: Date.now(), ...values },
-      message: "Enquiry received. I will reply shortly.",
+    await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to,
+        subject: `New Project Enquiry from ${enquiry.name}`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; background: #0b0b0c; color: #f3f0e8; padding: 30px; border-radius: 8px;">
+            <h2 style="color: #c7a56a; margin-top: 0;">NEW PROJECT ENQUIRY</h2>
+            <p><strong>Name:</strong> ${enquiry.name}</p>
+            <p><strong>Email:</strong> ${enquiry.email}</p>
+            <p><strong>Phone:</strong> ${enquiry.phone || 'N/A'}</p>
+            <p><strong>Project Type:</strong> ${enquiry.projectType || 'General'}</p>
+            <p><strong>Message / Brief:</strong></p>
+            <div style="background: #141416; padding: 15px; border-left: 3px solid #c7a56a; border-radius: 4px;">
+              ${enquiry.description.replace(/\n/g, '<br/>')}
+            </div>
+            <hr style="border: none; border-top: 1px solid #222; margin: 25px 0;" />
+            <p style="font-size: 12px; color: #8a8a8a;">Received via Mohit Babariya Creative Portfolio CMS.</p>
+          </div>
+        `,
+      }),
     });
+  } catch (err) {
+    console.warn("[enquiry email] Failed to send email via Resend (safe ignore, enquiry saved in DB):", err);
+  }
+}
+
+export async function GET(req: Request) {
+  return guard(async () => {
+    await requireAdmin();
+    const { searchParams } = new URL(req.url);
+    const status = searchParams.get("status");
+    const query = searchParams.get("q")?.trim();
+
+    const conditions = [];
+
+    if (status && status !== "all") {
+      conditions.push(eq(enquiries.status, status));
+    }
+
+    if (query) {
+      conditions.push(
+        or(
+          ilike(enquiries.name, `%${query}%`),
+          ilike(enquiries.email, `%${query}%`),
+          ilike(enquiries.company, `%${query}%`),
+          ilike(enquiries.description, `%${query}%`)
+        )
+      );
+    }
+
+    const list = await db
+      .select()
+      .from(enquiries)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(enquiries.createdAt));
+
+    return ok({ enquiries: list });
   });
 }
 
-/** Admin-only listing (guarded here so the public API stays closed). */
-export async function GET() {
+export async function POST(req: Request) {
   return guard(async () => {
-    const admin = await getCurrentAdmin();
-    if (!admin) return serverError("Authentication required");
-    const rows = await db.select().from(enquiries).orderBy(desc(enquiries.createdAt));
-    const unread = rows.filter((r) => r.status === "new").length;
-    return ok({ enquiries: rows, unread });
+    const body = await req.json().catch(() => ({}));
+
+    const name = (body.name || "").toString().trim();
+    const email = (body.email || "").toString().trim();
+    const description = (body.description || body.message || "").toString().trim();
+
+    if (!name || !email || !description) {
+      return badRequest("Name, Email, and Message/Brief are required.");
+    }
+
+    const inserted = await db
+      .insert(enquiries)
+      .values({
+        name,
+        email,
+        countryCode: (body.countryCode || "+91").toString(),
+        phone: (body.phone || body.phoneNumber || "").toString(),
+        company: (body.company || "").toString(),
+        projectType: (body.projectType || body.selectedWork || "").toString(),
+        description,
+        budget: (body.budget || "").toString(),
+        deadline: (body.deadline || "").toString(),
+        status: "new",
+      })
+      .returning();
+
+    const record = inserted[0];
+
+    // Fire email notification in background safely
+    sendEmailNotification({
+      name: record.name,
+      email: record.email,
+      phone: record.phone,
+      projectType: record.projectType,
+      description: record.description,
+    }).catch(() => {});
+
+    return ok({ success: true, enquiry: record });
   });
 }
 
-/** Admin-only status updates. */
-export async function PATCH(request: Request) {
+export async function PATCH(req: Request) {
   return guard(async () => {
-    const admin = await getCurrentAdmin();
-    if (!admin) return serverError("Authentication required");
-    const body = (await request.json()) as { id?: unknown; status?: unknown };
+    await requireAdmin();
+    const body = await req.json().catch(() => ({}));
+
     const id = Number(body.id);
-    const status = str(body.status);
-    if (!Number.isInteger(id)) return badRequest("Invalid enquiry id.");
-    if (!["new", "read", "archived"].includes(status)) return badRequest("Invalid status.");
+    const status = (body.status || "read").toString();
+
+    if (!id) return badRequest("Enquiry ID is required.");
+
     const updated = await db
       .update(enquiries)
       .set({ status })
-      .where(and(eq(enquiries.id, id), sql`true`))
+      .where(eq(enquiries.id, id))
       .returning();
-    if (!updated[0]) return badRequest("Enquiry not found.");
+
+    if (!updated.length) return notFound("Enquiry not found.");
+
     return ok({ enquiry: updated[0] });
+  });
+}
+
+export async function DELETE(req: Request) {
+  return guard(async () => {
+    await requireAdmin();
+    const { searchParams } = new URL(req.url);
+    const id = Number(searchParams.get("id"));
+
+    if (!id) return badRequest("Enquiry ID is required.");
+
+    const deleted = await db
+      .delete(enquiries)
+      .where(eq(enquiries.id, id))
+      .returning();
+
+    if (!deleted.length) return notFound("Enquiry not found.");
+
+    return ok({ success: true, deleted: deleted[0] });
   });
 }

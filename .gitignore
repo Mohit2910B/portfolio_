@@ -1,4 +1,4 @@
-﻿node_modules/
+node_modules/
 .env
 dist/
 build/
@@ -11,3 +11,7 @@ build/
 .env.*
 !.env.example
 storage/uploads/
+*.apk
+*.zip
+radhe-pan-app/
+scratch/

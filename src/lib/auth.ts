@@ -94,12 +94,24 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 export async function verifyPassword(password: string, stored: string): Promise<boolean> {
-  const [scheme, salt, hash] = stored.split(":");
-  if (scheme !== "scrypt" || !salt || !hash) return false;
-  const derived = await scrypt(password, salt, 64);
-  const expected = Buffer.from(hash, "hex");
-  if (expected.length !== derived.length) return false;
-  return timingSafeEqual(derived, expected);
+  if (!stored) return false;
+  const parts = stored.split(":");
+  if (parts.length === 2) {
+    const [salt, hash] = parts;
+    const derived = await scrypt(password, salt, 64);
+    const expected = Buffer.from(hash, "hex");
+    if (expected.length !== derived.length) return false;
+    return timingSafeEqual(derived, expected);
+  }
+  if (parts.length === 3) {
+    const [scheme, salt, hash] = parts;
+    if (scheme !== "scrypt" || !salt || !hash) return false;
+    const derived = await scrypt(password, salt, 64);
+    const expected = Buffer.from(hash, "hex");
+    if (expected.length !== derived.length) return false;
+    return timingSafeEqual(derived, expected);
+  }
+  return false;
 }
 
 export function newSessionToken(): string {

@@ -1,50 +1,24 @@
-async function testAdmin() {
-  console.log('Testing Admin Login and Carousel Manager APIs...');
-  
-  // 1. Admin login
-  const loginRes = await fetch('https://mohitbabariya.in/api/admin/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username: 'mohit2409', password: 'Mohit@2409' }),
-  });
-  console.log('Login Status:', loginRes.status);
-  const cookie = loginRes.headers.get('set-cookie');
-  console.log('Set-Cookie received:', Boolean(cookie));
+import { getPool } from "../src/db/index.js";
 
-  const authHeaders = {
-    'Content-Type': 'application/json',
-    ...(cookie ? { 'Cookie': cookie.split(';')[0] } : {}),
-  };
+async function main() {
+  console.log("Checking production database connection...");
+  const pool = getPool();
+  const res = await pool.query("SELECT 1 AS ok");
+  console.log("Database connection successful:", res.rows[0]);
 
-  // 2. GET /api/admin/carousel
-  const getRes = await fetch('https://mohitbabariya.in/api/admin/carousel', {
-    headers: authHeaders,
-  });
-  console.log('GET /api/admin/carousel status:', getRes.status);
-  const getData = await getRes.json();
-  console.log('Carousel Items returned:', getData.items?.length);
-  console.log('Global Settings returned:', getData.globalSettings?.sectionTitle);
+  // Query records count
+  const counts = await pool.query(`
+    SELECT
+      (SELECT count(*)::int FROM projects) AS projects,
+      (SELECT count(*)::int FROM carousel_items) AS carousel_items,
+      (SELECT count(*)::int FROM media_files) AS media_files
+  `);
 
-  // 3. PATCH /api/admin/carousel/settings
-  const patchRes = await fetch('https://mohitbabariya.in/api/admin/carousel/settings', {
-    method: 'PATCH',
-    headers: authHeaders,
-    body: JSON.stringify({
-      sectionTitle: 'Engage Audiences with Stunning Videos',
-      sectionSubtitle: 'Boost your brand with high-impact short videos & cinematic visual storytelling.',
-      autoplaySpeed: 5,
-    }),
-  });
-  console.log('PATCH /api/admin/carousel/settings status:', patchRes.status);
-  const patchData = await patchRes.json();
-  console.log('Updated Section Title:', patchData.globalSettings?.sectionTitle);
-
-  // 4. Test other admin sections (Enquiries, Categories, Services, Skills, etc.)
-  const secTests = ['enquiries', 'categories', 'services', 'skills', 'software-tools', 'media'];
-  for (const sec of secTests) {
-    const r = await fetch(`https://mohitbabariya.in/api/admin/${sec}`, { headers: authHeaders });
-    console.log(`GET /api/admin/${sec} status:`, r.status);
-  }
+  console.log("Current Database Record Counts:", counts.rows[0]);
+  process.exit(0);
 }
 
-testAdmin().catch(console.error);
+main().catch((err) => {
+  console.error("Test failed:", err);
+  process.exit(1);
+});

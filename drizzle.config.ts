@@ -1,5 +1,8 @@
-import "dotenv/config";
+import { config } from "dotenv";
 import type { Config } from "drizzle-kit";
+
+config({ path: ".env.local" });
+config();
 
 export default {
   dialect: "postgresql",

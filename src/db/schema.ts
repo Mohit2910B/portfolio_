@@ -10,7 +10,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 /* ------------------------------------------------------------------ */
-/* ADMINS + SESSIONS                                                   */
+/* 1. ADMINS + SESSIONS                                                */
 /* ------------------------------------------------------------------ */
 
 export const admins = pgTable(
@@ -19,7 +19,7 @@ export const admins = pgTable(
     id: serial("id").primaryKey(),
     name: text("name").notNull(),
     email: text("email").notNull(),
-    username: text("username").notNull(),
+    username: text("username").notNull().default("admin"),
     passwordHash: text("password_hash").notNull(),
     role: text("role").notNull().default("admin"),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
@@ -29,7 +29,7 @@ export const admins = pgTable(
   (t) => [
     uniqueIndex("admins_email_key").on(t.email),
     uniqueIndex("admins_username_key").on(t.username),
-  ],
+  ]
 );
 
 export const adminSessions = pgTable(
@@ -42,11 +42,11 @@ export const adminSessions = pgTable(
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("admin_sessions_admin_id_idx").on(t.adminId)],
+  (t) => [index("admin_sessions_admin_id_idx").on(t.adminId)]
 );
 
 /* ------------------------------------------------------------------ */
-/* TAXONOMY                                                            */
+/* 2. CATEGORIES                                                      */
 /* ------------------------------------------------------------------ */
 
 export const categories = pgTable(
@@ -55,330 +55,79 @@ export const categories = pgTable(
     id: serial("id").primaryKey(),
     name: text("name").notNull(),
     slug: text("slug").notNull(),
-    description: text("description").default("").notNull(),
+    description: text("description").notNull().default(""),
     sortOrder: integer("sort_order").notNull().default(0),
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("categories_slug_key").on(t.slug)],
+  (t) => [uniqueIndex("categories_slug_key").on(t.slug)]
 );
-
-export const workOptions = pgTable(
-  "work_options",
-  {
-    id: serial("id").primaryKey(),
-    label: text("label").notNull(),
-    value: text("value").notNull(),
-    sortOrder: integer("sort_order").notNull().default(0),
-    isActive: boolean("is_active").notNull().default(true),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [uniqueIndex("work_options_value_key").on(t.value)],
-);
-
-
 
 /* ------------------------------------------------------------------ */
-/* CMS CONTENT                                                         */
+/* 3. PORTFOLIO PROJECTS                                              */
 /* ------------------------------------------------------------------ */
 
-export const skills = pgTable(
-  "skills",
-  {
-    id: serial("id").primaryKey(),
-    name: text("name").notNull(),
-    category: text("category").default("").notNull(),
-    description: text("description").default("").notNull(),
-    level: integer("level"),
-    sortOrder: integer("sort_order").notNull().default(0),
-    isActive: boolean("is_active").notNull().default(true),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [index("skills_sort_order_idx").on(t.sortOrder)],
-);
-
-export const softwareTools = pgTable(
-  "software_tools",
-  {
-    id: serial("id").primaryKey(),
-    name: text("name").notNull(),
-    category: text("category").default("").notNull(),
-    icon: text("icon").default("generic").notNull(),
-    proficiency: integer("proficiency"),
-    sortOrder: integer("sort_order").notNull().default(0),
-    isActive: boolean("is_active").notNull().default(true),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [index("software_tools_sort_order_idx").on(t.sortOrder)],
-);
-
-export const services = pgTable(
-  "services",
+export const portfolioProjects = pgTable(
+  "portfolio_projects",
   {
     id: serial("id").primaryKey(),
     title: text("title").notNull(),
-    description: text("description").default("").notNull(),
-    deliverables: text("deliverables").default("").notNull(),
-    icon: text("icon").default("").notNull(),
-    priceFrom: text("price_from").default("").notNull(),
-    sortOrder: integer("sort_order").notNull().default(0),
-    isActive: boolean("is_active").notNull().default(true),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [index("services_sort_order_idx").on(t.sortOrder)],
-);
-
-
-
-export const layoutSections = pgTable(
-  "layout_sections",
-  {
-    id: serial("id").primaryKey(),
-    sectionKey: text("section_key").notNull(),
-    label: text("label").notNull(),
-    sortOrder: integer("sort_order").notNull().default(0),
-    isVisible: boolean("is_visible").notNull().default(true),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [uniqueIndex("layout_sections_key_key").on(t.sectionKey)],
-);
-
-export const homepageSettings = pgTable("homepage_settings", {
-  id: integer("id").primaryKey().default(1),
-  ownerName: text("owner_name").notNull().default("Mohit Babariya"),
-  heroName: text("hero_name").notNull().default("MOHIT BABARIYA"),
-  heroTitle: text("hero_title").notNull().default("MAKE\nVISUALS\nMOVE."),
-  heroSubtitle: text("hero_subtitle").notNull().default(""),
-  heroDescription: text("hero_description").notNull().default(""),
-  availabilityLabel: text("availability_label").notNull().default("Available for projects"),
-  ctaPrimaryLabel: text("cta_primary_label").notNull().default("WATCH REEL"),
-  ctaSecondaryLabel: text("cta_secondary_label").notNull().default("START PROJECT"),
-  reelUrl: text("reel_url").notNull().default(""),
-  aboutIntro: text("about_intro").notNull().default(""),
-  aboutExperience: text("about_experience").notNull().default(""),
-  aboutFocus: text("about_focus").notNull().default(""),
-  aboutWorkflow: text("about_workflow").notNull().default(""),
-  aboutTools: text("about_tools").notNull().default(""),
-  aboutStrengths: text("about_strengths").notNull().default(""),
-  footerNote: text("footer_note").notNull().default(""),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
-export const contactSettings = pgTable("contact_settings", {
-  id: integer("id").primaryKey().default(1),
-  email: text("email").notNull().default(""),
-  countryCode: text("country_code").notNull().default("+91"),
-  phone: text("phone").notNull().default(""),
-  whatsapp: text("whatsapp").notNull().default(""),
-  location: text("location").notNull().default(""),
-  instagram: text("instagram").notNull().default(""),
-  youtube: text("youtube").notNull().default(""),
-  linkedin: text("linkedin").notNull().default(""),
-  responseTime: text("response_time").notNull().default(""),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
-
-export const notificationSettings = pgTable("notification_settings", {
-  id: integer("id").primaryKey().default(1),
-  emailEnabled: boolean("email_enabled").notNull().default(true),
-  notificationEmail: text("notification_email").notNull().default("mohitbabariyaa@gmail.com"),
-  adminStatus: text("admin_status").notNull().default("offline"),
-  aiAutoReply: boolean("ai_auto_reply").notNull().default(true),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
-export const adminOtpChallenges = pgTable("admin_otp_challenges", {
-  id: serial("id").primaryKey(),
-  email: text("email").notNull(),
-  name: text("name").notNull(),
-  username: text("username").notNull(),
-  passwordHash: text("password_hash").notNull(),
-  role: text("role").notNull().default("admin"),
-  otpHash: text("otp_hash").notNull(),
-  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-  attempts: integer("attempts").notNull().default(0),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
-export const emailOtpChallenges = pgTable("email_otp_challenges", {
-  id: serial("id").primaryKey(),
-  email: text("email").notNull(),
-  purpose: text("purpose").notNull(),
-  otpHash: text("otp_hash").notNull(),
-  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-  attempts: integer("attempts").notNull().default(0),
-  verifiedAt: timestamp("verified_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
-export const mobileOtpChallenges = pgTable("mobile_otp_challenges", {
-  id: serial("id").primaryKey(),
-  phone: text("phone").notNull(),
-  purpose: text("purpose").notNull(),
-  otpHash: text("otp_hash").notNull(),
-  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-  attempts: integer("attempts").notNull().default(0),
-  verifiedAt: timestamp("verified_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
-export const themeSettings = pgTable("theme_settings", {
-  id: integer("id").primaryKey().default(1),
-  activeTheme: text("active_theme").notNull().default("theme01"),
-  accent: text("accent").notNull().default("#e0147f"),
-  fontPairing: text("font_pairing").notNull().default("default"),
-  borderRadius: text("border_radius").notNull().default("rounded"),
-  animationSpeed: text("animation_speed").notNull().default("normal"),
-  cursorEffect: boolean("cursor_effect").notNull().default(true),
-  glassOpacity: integer("glass_opacity").notNull().default(45),
-  glassBlur: integer("glass_blur").notNull().default(20),
-  grain: boolean("grain").notNull().default(true),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
-/* ------------------------------------------------------------------ */
-/* ENQUIRIES + LIVE CHAT                                               */
-/* ------------------------------------------------------------------ */
-
-export const enquiries = pgTable(
-  "inquiries",
-  {
-    id: serial("id").primaryKey(),
-    name: text("name").notNull(),
-    email: text("email").notNull(),
-    countryCode: text("country_code").notNull().default("+91"),
-    phoneNumber: text("phone_number").notNull(),
-    company: text("company").default("").notNull(),
-    selectedWork: text("selected_work").default("[]").notNull(),
-    description: text("description").notNull(),
-    referenceUrl: text("reference_url").default("").notNull(),
-    deadline: text("deadline").default("").notNull(),
-    source: text("source").default("").notNull(),
-    status: text("status").notNull().default("new"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [index("enquiries_status_idx").on(t.status)],
-);
-
-export const chatConversations = pgTable(
-  "chat_conversations",
-  {
-    id: serial("id").primaryKey(),
-    name: text("name").notNull(),
-    email: text("email").notNull(),
-    countryCode: text("country_code").notNull().default("+91"),
-    phone: text("phone").notNull(),
-    status: text("status").notNull().default("open"),
-    lastMessage: text("last_message").default("").notNull(),
-    adminUnread: integer("admin_unread").notNull().default(0),
-    customerUnread: integer("customer_unread").notNull().default(0),
-    customerSeenAt: timestamp("customer_seen_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [
-    index("chat_conversations_email_idx").on(t.email),
-    index("chat_conversations_updated_at_idx").on(t.updatedAt),
-  ],
-);
-
-export const chatMessages = pgTable(
-  "chat_messages",
-  {
-    id: serial("id").primaryKey(),
-    conversationId: integer("conversation_id")
-      .notNull()
-      .references(() => chatConversations.id, { onDelete: "cascade" }),
-    senderType: text("sender_type").notNull(),
-    message: text("message").notNull(),
-    isRead: boolean("is_read").notNull().default(false),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [index("chat_messages_conversation_id_idx").on(t.conversationId)],
-);
-
-export const projects = pgTable(
-  "projects",
-  {
-    id: serial("id").primaryKey(),
-    title: text("title").notNull(),
-    description: text("description").default("").notNull(),
+    description: text("description").notNull().default(""),
     categoryId: integer("category_id").references(() => categories.id, { onDelete: "set null" }),
-    categoryLabel: text("category_label").default("").notNull(),
-    aiLabType: text("ai_lab_type").default("").notNull(),
-    year: integer("year").default(2026).notNull(),
-    software: text("software").default("").notNull(),
-    tags: text("tags").default("").notNull(),
-    externalLink: text("external_link").default("").notNull(),
-    videoSource: text("video_source").default("upload").notNull(),
-    videoUrl: text("video_url").default("").notNull(),
-    thumbnailUrl: text("thumbnail_url").default("").notNull(),
-    aspectRatio: text("aspect_ratio").default("16:9").notNull(),
-    displaySize: text("display_size").default("medium").notNull(),
-    displayWidth: integer("display_width").default(540).notNull(),
-    displayHeight: integer("display_height").default(960).notNull(),
-    width: integer("width").default(1080).notNull(),
-    height: integer("height").default(1920).notNull(),
-    durationSeconds: integer("duration_seconds").default(30).notNull(),
-    featured: boolean("featured").default(true).notNull(),
-    published: boolean("published").default(true).notNull(),
-    sortOrder: integer("sort_order").default(0).notNull(),
-    demoStatus: text("demo_status").default("verified").notNull(),
-    carouselEnabled: boolean("carousel_enabled").default(true).notNull(),
-    carouselPinned: boolean("carousel_pinned").default(false).notNull(),
-    carouselOrder: integer("carousel_order").default(0).notNull(),
+    categoryLabel: text("category_label").notNull().default(""),
+    year: integer("year").notNull().default(2026),
+    software: text("software").notNull().default(""),
+    tags: text("tags").notNull().default(""),
+    externalUrl: text("external_url").notNull().default(""),
+    videoUrl: text("video_url").notNull().default(""),
+    thumbnailUrl: text("thumbnail_url").notNull().default(""),
+    aspectRatio: text("aspect_ratio").notNull().default("16:9"),
+    displaySize: text("display_size").notNull().default("medium"),
+    isFeatured: boolean("is_featured").notNull().default(false),
+    isPublished: boolean("is_published").notNull().default(true),
+    sortOrder: integer("sort_order").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    index("projects_category_id_idx").on(t.categoryId),
-    index("projects_published_idx").on(t.published),
-    index("projects_sort_order_idx").on(t.sortOrder),
-  ],
+    index("portfolio_projects_category_id_idx").on(t.categoryId),
+    index("portfolio_projects_sort_order_idx").on(t.sortOrder),
+    index("portfolio_projects_is_published_idx").on(t.isPublished),
+  ]
 );
 
-export const carouselGlobalSettings = pgTable("carousel_global_settings", {
-  id: integer("id").primaryKey().default(1),
-  enabled: boolean("enabled").default(true).notNull(),
-  sectionBadge: text("section_badge").default("VIDEO SHOWCASE").notNull(),
-  sectionTitle: text("section_title").default("SELECTED WORKS").notNull(),
-  sectionSubtitle: text("section_subtitle").default("").notNull(),
-  textColor: text("text_color").default("black").notNull(),
-  autoplay: boolean("autoplay").default(true).notNull(),
-  autoplaySpeed: integer("autoplay_speed").default(5).notNull(),
-  infiniteLoop: boolean("infinite_loop").default(true).notNull(),
-  showArrows: boolean("show_arrows").default(true).notNull(),
-  showDots: boolean("show_dots").default(true).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+/* ------------------------------------------------------------------ */
+/* 4. CAROUSEL ITEMS (SHOWREEL)                                       */
+/* ------------------------------------------------------------------ */
 
 export const carouselItems = pgTable(
   "carousel_items",
   {
     id: serial("id").primaryKey(),
+    projectId: integer("project_id").references(() => portfolioProjects.id, { onDelete: "set null" }),
     title: text("title").notNull(),
-    category: text("category").default("Reel").notNull(),
-    description: text("description").default("").notNull(),
-    duration: text("duration").default("0:30").notNull(),
-    videoUrl: text("video_url").default("").notNull(),
-    videoSource: text("video_source").default("upload").notNull(),
-    thumbnailUrl: text("thumbnail_url").default("").notNull(),
-    aspectRatio: text("aspect_ratio").default("9:16").notNull(),
-    isActive: boolean("is_active").default(true).notNull(),
-    featured: boolean("featured").default(true).notNull(),
-    sortOrder: integer("sort_order").default(0).notNull(),
-    projectId: integer("project_id").references(() => projects.id, { onDelete: "cascade" }),
+    category: text("category").notNull().default(""),
+    badge: text("badge").notNull().default(""),
+    videoUrl: text("video_url").notNull().default(""),
+    thumbnailUrl: text("thumbnail_url").notNull().default(""),
+    duration: text("duration").notNull().default(""),
+    aspectRatio: text("aspect_ratio").notNull().default("16:9"),
+    description: text("description").notNull().default(""),
+    sortOrder: integer("sort_order").notNull().default(0),
+    isPublished: boolean("is_published").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("carousel_items_sort_order_idx").on(t.sortOrder)],
+  (t) => [
+    index("carousel_items_sort_order_idx").on(t.sortOrder),
+    index("carousel_items_is_published_idx").on(t.isPublished),
+  ]
 );
+
+/* ------------------------------------------------------------------ */
+/* 5. MEDIA FILES                                                     */
+/* ------------------------------------------------------------------ */
 
 export const mediaFiles = pgTable(
   "media_files",
@@ -394,43 +143,262 @@ export const mediaFiles = pgTable(
     height: integer("height"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("media_files_kind_idx").on(t.kind)],
+  (t) => [
+    uniqueIndex("media_files_filename_key").on(t.filename),
+    index("media_files_kind_idx").on(t.kind),
+  ]
 );
 
-export const carouselSettings = pgTable(
-  "carousel_settings",
+/* ------------------------------------------------------------------ */
+/* 6. SERVICES                                                        */
+/* ------------------------------------------------------------------ */
+
+export const services = pgTable(
+  "services",
   {
     id: serial("id").primaryKey(),
-    categoryId: integer("category_id").references(() => categories.id, { onDelete: "cascade" }),
-    slots: integer("slots").notNull().default(6),
-    centerSize: text("center_size").notNull().default("large"),
-    sideSize: text("side_size").notNull().default("medium"),
-    autoFill: boolean("auto_fill").notNull().default(true),
-    projectIds: text("project_ids").notNull().default("[]"),
+    title: text("title").notNull(),
+    description: text("description").notNull().default(""),
+    deliverables: text("deliverables").notNull().default(""),
+    icon: text("icon").notNull().default(""),
+    priceFrom: text("price_from").notNull().default(""),
     sortOrder: integer("sort_order").notNull().default(0),
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("carousel_settings_category_id_key").on(t.categoryId)],
+  (t) => [index("services_sort_order_idx").on(t.sortOrder)]
 );
 
+/* ------------------------------------------------------------------ */
+/* 7. SKILLS                                                          */
+/* ------------------------------------------------------------------ */
+
+export const skills = pgTable(
+  "skills",
+  {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull(),
+    category: text("category").notNull().default(""),
+    description: text("description").notNull().default(""),
+    level: integer("level").notNull().default(90),
+    sortOrder: integer("sort_order").notNull().default(0),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("skills_sort_order_idx").on(t.sortOrder)]
+);
+
+/* ------------------------------------------------------------------ */
+/* 8. TOOLS & SOFTWARE                                                */
+/* ------------------------------------------------------------------ */
+
+export const toolsSoftware = pgTable(
+  "tools_software",
+  {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull(),
+    category: text("category").notNull().default(""),
+    description: text("description").notNull().default(""),
+    iconUrl: text("icon_url").notNull().default(""),
+    proficiency: integer("proficiency").notNull().default(95),
+    sortOrder: integer("sort_order").notNull().default(0),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("tools_software_sort_order_idx").on(t.sortOrder)]
+);
+
+/* ------------------------------------------------------------------ */
+/* 9. EXPERIENCE                                                      */
+/* ------------------------------------------------------------------ */
+
+export const experience = pgTable(
+  "experience",
+  {
+    id: serial("id").primaryKey(),
+    company: text("company").notNull(),
+    role: text("role").notNull(),
+    description: text("description").notNull().default(""),
+    startDate: text("start_date").notNull().default(""),
+    endDate: text("end_date").notNull().default(""),
+    location: text("location").notNull().default(""),
+    sortOrder: integer("sort_order").notNull().default(0),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("experience_sort_order_idx").on(t.sortOrder)]
+);
+
+/* ------------------------------------------------------------------ */
+/* 10. CREATIVE PROCESS                                               */
+/* ------------------------------------------------------------------ */
+
+export const creativeProcess = pgTable(
+  "creative_process",
+  {
+    id: serial("id").primaryKey(),
+    stepNumber: text("step_number").notNull(),
+    title: text("title").notNull(),
+    description: text("description").notNull().default(""),
+    sortOrder: integer("sort_order").notNull().default(0),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("creative_process_sort_order_idx").on(t.sortOrder)]
+);
+
+/* ------------------------------------------------------------------ */
+/* 11. HOMEPAGE CONTENT                                               */
+/* ------------------------------------------------------------------ */
+
+export const homepageContent = pgTable("homepage_content", {
+  id: integer("id").primaryKey().default(1),
+  heroEyebrow: text("hero_eyebrow").notNull().default("VIDEO EDITOR / MOTION DESIGNER"),
+  heroHeading: text("hero_heading").notNull().default("MOHIT BABARIYA"),
+  heroSubtitle: text("hero_subtitle").notNull().default("Professional Video Editor & Motion Designer"),
+  heroDescription: text("hero_description").notNull().default("Crafting high-converting short-form reels, cinematic real estate films, YouTube edits, and commercial motion graphics worldwide."),
+  heroCtaPrimary: text("hero_cta_primary").notNull().default("VIEW MY WORK"),
+  heroCtaSecondary: text("hero_cta_secondary").notNull().default("LET'S WORK TOGETHER"),
+  heroMediaUrl: text("hero_media_url").notNull().default(""),
+  aboutHeading: text("about_heading").notNull().default("THE PERSON BEHIND THE WORK"),
+  aboutSubheading: text("about_subheading").notNull().default("Passionate Storyteller & Visual Craftsman"),
+  aboutDescription: text("about_description").notNull().default("I specialize in transforming raw footage into compelling visual narratives."),
+  aboutExperienceYears: text("about_experience_years").notNull().default("6+"),
+  aboutProjectsCompleted: text("about_projects_completed").notNull().default("450+"),
+  aboutClientsCount: text("about_clients_count").notNull().default("120+"),
+  servicesIntro: text("services_intro").notNull().default("Tailored video editing, motion graphics, and post-production solutions."),
+  portfolioIntro: text("portfolio_intro").notNull().default("Selected commercial, narrative, and motion graphics projects."),
+  processIntro: text("process_intro").notNull().default("A proven, collaborative workflow..."),
+  contactIntro: text("contact_intro").notNull().default("Have an upcoming video project? Let's create something exceptional together."),
+  footerTagline: text("footer_tagline").notNull().default("CRAFTING VISUAL EXCELLENCE WORLDWIDE"),
+  footerCopyright: text("footer_copyright").notNull().default("© 2026 MOHIT BABARIYA. ALL RIGHTS RESERVED."),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/* ------------------------------------------------------------------ */
+/* 12. CONTACT SETTINGS                                               */
+/* ------------------------------------------------------------------ */
+
+export const contactSettings = pgTable("contact_settings", {
+  id: integer("id").primaryKey().default(1),
+  email: text("email").notNull().default("mohitbabariyaa@gmail.com"),
+  countryCode: text("country_code").notNull().default("+91"),
+  phone: text("phone").notNull().default("+91 98765 43210"),
+  whatsapp: text("whatsapp").notNull().default("+91 98765 43210"),
+  location: text("location").notNull().default("Mumbai, India / Remote Worldwide"),
+  instagram: text("instagram").notNull().default("https://instagram.com/mohitbabariya"),
+  youtube: text("youtube").notNull().default("https://youtube.com/@mohitbabariya"),
+  linkedin: text("linkedin").notNull().default("https://linkedin.com/in/mohitbabariya"),
+  responseTime: text("response_time").notNull().default("Within 24 Hours"),
+  notificationEmail: text("notification_email").notNull().default("mohitbabariyaa@gmail.com"),
+  isEmailEnabled: boolean("is_email_enabled").notNull().default(true),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/* ------------------------------------------------------------------ */
+/* 13. THEME SETTINGS                                                 */
+/* ------------------------------------------------------------------ */
+
+export const themeSettings = pgTable("theme_settings", {
+  id: integer("id").primaryKey().default(1),
+  activeTheme: integer("active_theme").notNull().default(1),
+  accentColor: text("accent_color").notNull().default("#C8A66A"),
+  customConfigJson: text("custom_config_json").notNull().default("{}"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/* ------------------------------------------------------------------ */
+/* 14. LAYOUT ORDER                                                   */
+/* ------------------------------------------------------------------ */
+
+export const layoutOrder = pgTable("layout_order", {
+  id: serial("id").primaryKey(),
+  sectionKey: text("section_key").notNull(),
+  label: text("label").notNull().default(""),
+  sortOrder: integer("sort_order").notNull().default(0),
+  isVisible: boolean("is_visible").notNull().default(true),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("layout_order_section_key_key").on(t.sectionKey),
+]);
+
+/* ------------------------------------------------------------------ */
+/* 15. ENQUIRIES                                                      */
+/* ------------------------------------------------------------------ */
+
+export const enquiries = pgTable("enquiries", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  countryCode: text("country_code").notNull().default("+91"),
+  phone: text("phone").notNull().default(""),
+  company: text("company").notNull().default(""),
+  projectType: text("project_type").notNull().default(""),
+  description: text("description").notNull().default(""),
+  budget: text("budget").notNull().default(""),
+  deadline: text("deadline").notNull().default(""),
+  status: text("status").notNull().default("new"), // 'new' | 'read' | 'archived'
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("enquiries_status_idx").on(t.status),
+]);
+
+/* ------------------------------------------------------------------ */
+/* 16. CHAT CONVERSATIONS                                             */
+/* ------------------------------------------------------------------ */
+
+export const chatConversations = pgTable("chat_conversations", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().default(""),
+  countryCode: text("country_code").notNull().default("+91"),
+  phone: text("phone").notNull().default(""),
+  status: text("status").notNull().default("open"),
+  lastMessage: text("last_message").notNull().default(""),
+  adminUnread: integer("admin_unread").notNull().default(0),
+  customerUnread: integer("customer_unread").notNull().default(0),
+  customerToken: text("customer_token").notNull().default(""),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("chat_conversations_updated_at_idx").on(t.updatedAt),
+]);
+
+/* ------------------------------------------------------------------ */
+/* 17. CHAT MESSAGES                                                  */
+/* ------------------------------------------------------------------ */
+
+export const chatMessages = pgTable("chat_messages", {
+  id: serial("id").primaryKey(),
+  conversationId: integer("conversation_id").notNull().references(() => chatConversations.id, { onDelete: "cascade" }),
+  senderType: text("sender_type").notNull(), // 'customer' | 'admin'
+  message: text("message").notNull(),
+  isRead: boolean("is_read").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("chat_messages_conversation_id_idx").on(t.conversationId),
+]);
+
+/* Export types */
+export type Admin = typeof admins.$inferSelect;
+export type PortfolioProject = typeof portfolioProjects.$inferSelect;
+export type CarouselItem = typeof carouselItems.$inferSelect;
 export type Category = typeof categories.$inferSelect;
-export type Skill = typeof skills.$inferSelect;
-export type SoftwareTool = typeof softwareTools.$inferSelect;
+export type MediaFile = typeof mediaFiles.$inferSelect;
 export type Service = typeof services.$inferSelect;
+export type Skill = typeof skills.$inferSelect;
+export type ToolSoftware = typeof toolsSoftware.$inferSelect;
+export type Experience = typeof experience.$inferSelect;
+export type CreativeProcessItem = typeof creativeProcess.$inferSelect;
+export type HomepageContent = typeof homepageContent.$inferSelect;
+export type ContactSetting = typeof contactSettings.$inferSelect;
+export type ThemeSetting = typeof themeSettings.$inferSelect;
+export type LayoutOrderItem = typeof layoutOrder.$inferSelect;
 export type Enquiry = typeof enquiries.$inferSelect;
 export type ChatConversation = typeof chatConversations.$inferSelect;
 export type ChatMessage = typeof chatMessages.$inferSelect;
-export type HomepageSettings = typeof homepageSettings.$inferSelect;
-export type ContactSettings = typeof contactSettings.$inferSelect;
-export type ThemeSettings = typeof themeSettings.$inferSelect;
-export type LayoutSection = typeof layoutSections.$inferSelect;
-export type WorkOption = typeof workOptions.$inferSelect;
-export type Admin = typeof admins.$inferSelect;
-export type Project = typeof projects.$inferSelect;
-export type CarouselItem = typeof carouselItems.$inferSelect;
-export type CarouselGlobalSettings = typeof carouselGlobalSettings.$inferSelect;
-export type MediaFile = typeof mediaFiles.$inferSelect;
-export type CarouselSetting = typeof carouselSettings.$inferSelect;
-

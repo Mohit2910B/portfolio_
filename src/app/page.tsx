@@ -1,38 +1,103 @@
-import { Suspense } from "react";
-import ThemeDispatcher from "@/components/site/themes/ThemeDispatcher";
-import { getSiteData } from "@/lib/data";
+import { asc, desc, eq } from "drizzle-orm";
+import { db } from "@/db";
+import {
+  carouselItems,
+  categories,
+  contactSettings,
+  creativeProcess,
+  experience,
+  homepageContent,
+  layoutOrder,
+  portfolioProjects,
+  services,
+  skills,
+  themeSettings,
+  toolsSoftware,
+} from "@/db/schema";
 
+import PublicPageClient from "@/components/public/PublicPageClient";
+import {
+  DEFAULT_CATEGORIES,
+  DEFAULT_PROJECTS,
+  DEFAULT_CONTENT,
+  DEFAULT_SERVICES,
+} from "@/lib/defaultPortfolioData";
+
+export const revalidate = 0; // Dynamic database data
 export const dynamic = "force-dynamic";
-export const revalidate = 0;
-export const fetchCache = "force-no-store";
 
 export default async function HomePage() {
-  const data = await getSiteData();
-  const theme = data?.theme || {
-    id: 1,
-    activeTheme: "theme01",
-    accent: "#e0147f",
-    fontPairing: "default",
-    borderRadius: "rounded",
-    animationSpeed: "normal",
-    cursorEffect: true,
-    glassOpacity: 45,
-    glassBlur: 20,
-    grain: true,
-    updatedAt: new Date(),
-  };
+  // 1. Fetch content & theme settings
+  const [
+    contentRows,
+    contactRows,
+    themeRows,
+    layoutRows,
+    projectRows,
+    carouselRows,
+    categoryRows,
+    serviceRows,
+    skillRows,
+    toolRows,
+    experienceRows,
+    processRows,
+  ] = await Promise.all([
+    db.select().from(homepageContent).where(eq(homepageContent.id, 1)).limit(1).catch(() => []),
+    db.select().from(contactSettings).where(eq(contactSettings.id, 1)).limit(1).catch(() => []),
+    db.select().from(themeSettings).where(eq(themeSettings.id, 1)).limit(1).catch(() => []),
+    db.select().from(layoutOrder).orderBy(asc(layoutOrder.sortOrder)).catch(() => []),
+    db.select().from(portfolioProjects).where(eq(portfolioProjects.isPublished, true)).orderBy(asc(portfolioProjects.sortOrder), desc(portfolioProjects.id)).catch(() => []),
+    db.select().from(carouselItems).where(eq(carouselItems.isPublished, true)).orderBy(asc(carouselItems.sortOrder), desc(carouselItems.id)).catch(() => []),
+    db.select().from(categories).where(eq(categories.isActive, true)).orderBy(asc(categories.sortOrder)).catch(() => []),
+    db.select().from(services).where(eq(services.isActive, true)).orderBy(asc(services.sortOrder)).catch(() => []),
+    db.select().from(skills).where(eq(skills.isActive, true)).orderBy(asc(skills.sortOrder)).catch(() => []),
+    db.select().from(toolsSoftware).where(eq(toolsSoftware.isActive, true)).orderBy(asc(toolsSoftware.sortOrder)).catch(() => []),
+    db.select().from(experience).where(eq(experience.isActive, true)).orderBy(asc(experience.sortOrder)).catch(() => []),
+    db.select().from(creativeProcess).where(eq(creativeProcess.isActive, true)).orderBy(asc(creativeProcess.sortOrder)).catch(() => []),
+  ]);
 
-  const themeStyle = {
-    "--accent": theme.accent || "#e0147f",
-    "--glass-alpha": String((theme.glassOpacity ?? 45) / 100),
-    "--glass-blur": `${theme.glassBlur ?? 20}px`,
-  } as React.CSSProperties;
+  const content = contentRows[0] || (DEFAULT_CONTENT as unknown as typeof contentRows[0]);
+  const contact = contactRows[0] || undefined;
+  const theme = themeRows[0] || { activeTheme: 1, accentColor: "#C8A66A", customConfigJson: "{}" };
+  const sections = layoutRows.length > 0 ? layoutRows : [
+    { sectionKey: "hero", label: "Hero", sortOrder: 1, isVisible: true },
+    { sectionKey: "showreel", label: "Showreel", sortOrder: 2, isVisible: true },
+    { sectionKey: "work", label: "Work", sortOrder: 3, isVisible: true },
+    { sectionKey: "about", label: "About", sortOrder: 4, isVisible: true },
+    { sectionKey: "experience", label: "Experience", sortOrder: 5, isVisible: true },
+    { sectionKey: "services", label: "Services", sortOrder: 6, isVisible: true },
+    { sectionKey: "skills", label: "Skills", sortOrder: 7, isVisible: true },
+    { sectionKey: "tools", label: "Tools", sortOrder: 8, isVisible: true },
+    { sectionKey: "process", label: "Process", sortOrder: 9, isVisible: true },
+    { sectionKey: "contact", label: "Contact", sortOrder: 10, isVisible: true },
+  ];
+
+  let customConfig = {};
+  try {
+    if (theme.customConfigJson) {
+      customConfig = JSON.parse(theme.customConfigJson);
+    }
+  } catch {}
+
+  const activeProjects = projectRows.length > 0 ? projectRows : (DEFAULT_PROJECTS as unknown as typeof projectRows);
+  const activeCategories = categoryRows.length > 0 ? categoryRows : (DEFAULT_CATEGORIES as unknown as typeof categoryRows);
+  const activeServices = serviceRows.length > 0 ? serviceRows : (DEFAULT_SERVICES as unknown as typeof serviceRows);
 
   return (
-    <div style={themeStyle} className={theme.grain ? "grain relative" : "relative"}>
-      <Suspense fallback={<div className="min-h-screen bg-[#0a0a0a]" />}>
-        <ThemeDispatcher data={data} />
-      </Suspense>
-    </div>
+    <PublicPageClient
+      content={content}
+      contact={contact}
+      activeTheme={theme.activeTheme || 1}
+      customThemeConfig={customConfig}
+      layoutOrder={sections}
+      projects={activeProjects}
+      carouselItems={carouselRows.length > 0 ? carouselRows : activeProjects}
+      categories={activeCategories}
+      services={activeServices}
+      skills={skillRows}
+      tools={toolRows}
+      experience={experienceRows}
+      creativeProcess={processRows}
+    />
   );
 }

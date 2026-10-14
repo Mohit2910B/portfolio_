@@ -1,22 +1,42 @@
 import type { Metadata, Viewport } from "next";
+import { Cormorant_Garamond, Plus_Jakarta_Sans, Space_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 import "./globals.css";
+
+const cormorant = Cormorant_Garamond({
+  subsets: ["latin"],
+  weight: ["400", "600", "700"],
+  variable: "--font-serif",
+});
+
+const plusJakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-sans",
+});
+
+const spaceMono = Space_Mono({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  variable: "--font-mono",
+});
 
 const SITE_URL = "https://mohitbabariya.in";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Mohit Babariya — Video Editor, Motion Graphics & AI Video Specialist",
+    default: "Mohit Babariya — Video Editor, Motion Designer & 3D Artist",
     template: "%s | Mohit Babariya",
   },
   description:
-    "Official portfolio of Mohit Babariya — Professional Video Editor, Motion Graphics Designer & AI Video Creator. Crafting high-converting short-form reels, cinematic real estate films, YouTube edits, and commercial motion graphics worldwide.",
+    "Official portfolio of Mohit Babariya — Professional Video Editor, Motion Graphics Designer, 3D Artist & AI Creator. Crafting commercial brand edits, cinematic real estate films, high-retention short-form reels, and visual effects worldwide.",
   keywords: [
     "Mohit Babariya",
     "Mohit Babariya Video Editor",
     "Video Editor Portfolio",
     "Motion Graphics Designer",
+    "3D Artist",
     "AI Video Creator",
     "Real Estate Video Editor",
     "Instagram Reels Editor",
@@ -26,7 +46,6 @@ export const metadata: Metadata = {
     "DaVinci Resolve Colorist",
     "Freelance Video Editor India",
     "Commercial Video Editing",
-    "Creative Director",
   ],
   authors: [{ name: "Mohit Babariya", url: SITE_URL }],
   creator: "Mohit Babariya",
@@ -50,34 +69,33 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: SITE_URL,
     siteName: "Mohit Babariya — Creative Video & Motion Portfolio",
-    title: "Mohit Babariya — Video Editor, Motion Graphics & AI Video Specialist",
+    title: "Mohit Babariya — Video Editor, Motion Designer & 3D Artist",
     description:
-      "I edit films, reels and motion pieces that hold attention — clean cuts, considered pacing and visual storytelling.",
+      "Crafting high-impact video edits, motion graphics, 3D animation, and AI video workflows that captivate audiences.",
     images: [
       {
         url: "/icon.svg",
         width: 1200,
         height: 630,
-        alt: "Mohit Babariya — Creative Portfolio",
+        alt: "Mohit Babariya Portfolio",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Mohit Babariya — Video Editor · Motion Graphics · AI Video",
-    description:
-      "Crafting high-impact video edits, motion graphics, and AI video workflows that captivate audiences.",
+    title: "Mohit Babariya — Video Editor · Motion Designer · 3D Artist",
+    description: "Crafting high-impact video edits, motion graphics, and AI video workflows.",
     images: ["/icon.svg"],
   },
   icons: {
     icon: "/icon.svg",
     apple: "/icon.svg",
   },
-  category: "technology",
+  category: "creative",
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0b0b0c",
+  themeColor: "#08090B",
   width: "device-width",
   initialScale: 1,
 };
@@ -89,59 +107,25 @@ const jsonLd = {
       "@type": "Person",
       "@id": `${SITE_URL}/#person`,
       name: "Mohit Babariya",
-      jobTitle: "Video Editor & Motion Graphics Designer",
+      jobTitle: "Video Editor, Motion Designer & 3D Artist",
       url: SITE_URL,
       image: `${SITE_URL}/icon.svg`,
       sameAs: [
-        "https://www.instagram.com",
-        "https://www.youtube.com",
-        "https://www.linkedin.com",
+        "https://instagram.com/mohitbabariya",
+        "https://youtube.com/@mohitbabariya",
+        "https://linkedin.com/in/mohitbabariya",
       ],
       knowsAbout: [
         "Video Editing",
         "Motion Graphics",
+        "3D Animation",
         "AI Video Generation",
         "Color Grading",
         "Sound Design",
         "Adobe Premiere Pro",
         "Adobe After Effects",
         "DaVinci Resolve",
-      ],
-      description:
-        "Professional Video Editor and Motion Graphics Specialist creating high-converting video content worldwide.",
-    },
-    {
-      "@type": "WebSite",
-      "@id": `${SITE_URL}/#website`,
-      url: SITE_URL,
-      name: "Mohit Babariya Portfolio",
-      publisher: { "@id": `${SITE_URL}/#person` },
-      description:
-        "Official Portfolio of Mohit Babariya — Video Editor, Motion Graphics Artist & AI Video Creator.",
-      inLanguage: "en-US",
-    },
-    {
-      "@type": "ProfessionalService",
-      "@id": `${SITE_URL}/#service`,
-      name: "Mohit Babariya Video Editing & Motion Studio",
-      url: SITE_URL,
-      founder: { "@id": `${SITE_URL}/#person` },
-      areaServed: "Worldwide",
-      priceRange: "$$",
-      openingHoursSpecification: [
-        {
-          "@type": "OpeningHoursSpecification",
-          dayOfWeek: [
-            "Monday",
-            "Tuesday",
-            "Wednesday",
-            "Thursday",
-            "Friday",
-            "Saturday",
-          ],
-          opens: "09:00",
-          closes: "21:00",
-        },
+        "Blender",
       ],
     },
   ],
@@ -149,14 +133,25 @@ const jsonLd = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html
+      lang="en"
+      className={`${cormorant.variable} ${plusJakarta.variable} ${spaceMono.variable}`}
+    >
       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@500;700;800&display=swap"
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased font-sans bg-[#08090B] text-[#F5F3EE] selection:bg-[#C9A66B]/30 selection:text-[#F5F3EE]">
+        {children}
+      </body>
     </html>
   );
 }

@@ -3,22 +3,40 @@ const path = require('path');
 const { execSync } = require('child_process');
 
 const rootDir = path.resolve(__dirname, '..');
-const zipName = 'mohit-portfolio-complete-backup.zip';
-const zipPath = path.join(rootDir, zipName);
+const downloadsDir = path.join(process.env.USERPROFILE || 'C:\\Users\\Angel', 'Downloads');
+const zipName = 'mohit-web-portfolio.zip';
+const targetZip = path.join(downloadsDir, zipName);
 
-console.log(`📦 Packaging complete project backup to: ${zipName}...`);
-
-const psCommand = "$exclude = @('.git', 'node_modules', '.next', 'mohit-portfolio-complete-backup.zip'); $items = Get-ChildItem -Path . | Where-Object { $exclude -notcontains $_.Name } | Select-Object -ExpandProperty FullName; Compress-Archive -Path $items -DestinationPath 'mohit-portfolio-complete-backup.zip' -Force";
+console.log(`📦 Creating clean ZIP of Web Portfolio ONLY...`);
+console.log(`🎯 Destination: ${targetZip}`);
 
 try {
-  if (fs.existsSync(zipPath)) {
-    fs.unlinkSync(zipPath);
+  if (fs.existsSync(targetZip)) {
+    fs.unlinkSync(targetZip);
   }
-  execSync(`powershell -Command "${psCommand}"`, { cwd: rootDir, stdio: 'inherit' });
-  const stats = fs.statSync(zipPath);
-  console.log(`🎉 ZIP backup successfully created!`);
-  console.log(`📁 File: ${zipName}`);
-  console.log(`📊 Size: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
+
+  // bsdtar natively creates zip on Windows without including unwanted files
+  const excludeFlags = [
+    '--exclude="node_modules"',
+    '--exclude=".next"',
+    '--exclude=".git"',
+    '--exclude="radhe-pan-app"',
+    '--exclude="*.apk"',
+    '--exclude="*.zip"'
+  ].join(' ');
+
+  const command = `tar -a -c -f "${targetZip}" ${excludeFlags} *`;
+  
+  execSync(command, { cwd: rootDir, stdio: 'inherit' });
+
+  if (fs.existsSync(targetZip)) {
+    const stats = fs.statSync(targetZip);
+    console.log(`\n🎉 Portfolio ZIP successfully created!`);
+    console.log(`📁 Saved to: ${targetZip}`);
+    console.log(`📊 File Size: ${(stats.size / (1024 * 1024)).toFixed(2)} MB`);
+  } else {
+    console.error('ZIP file was not created.');
+  }
 } catch (error) {
   console.error('Error creating zip backup:', error.message);
 }
