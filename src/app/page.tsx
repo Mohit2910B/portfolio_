@@ -21,13 +21,18 @@ import {
   DEFAULT_PROJECTS,
   DEFAULT_CONTENT,
   DEFAULT_SERVICES,
+  DEFAULT_EXPERIENCE,
+  DEFAULT_TOOLS,
+  DEFAULT_PROCESS,
+  DEFAULT_CONTACT,
 } from "@/lib/defaultPortfolioData";
+import { syncGoogleDriveFolders } from "@/lib/driveSync";
 
 export const revalidate = 0; // Dynamic database data
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  // 1. Fetch content & theme settings
+  // 1. Fetch content, theme settings, and live Google Drive folders
   const [
     contentRows,
     contactRows,
@@ -41,6 +46,7 @@ export default async function HomePage() {
     toolRows,
     experienceRows,
     processRows,
+    driveData,
   ] = await Promise.all([
     db.select().from(homepageContent).where(eq(homepageContent.id, 1)).limit(1).catch(() => []),
     db.select().from(contactSettings).where(eq(contactSettings.id, 1)).limit(1).catch(() => []),
@@ -54,6 +60,7 @@ export default async function HomePage() {
     db.select().from(toolsSoftware).where(eq(toolsSoftware.isActive, true)).orderBy(asc(toolsSoftware.sortOrder)).catch(() => []),
     db.select().from(experience).where(eq(experience.isActive, true)).orderBy(asc(experience.sortOrder)).catch(() => []),
     db.select().from(creativeProcess).where(eq(creativeProcess.isActive, true)).orderBy(asc(creativeProcess.sortOrder)).catch(() => []),
+    syncGoogleDriveFolders().catch(() => null),
   ]);
 
   const content = contentRows[0] || (DEFAULT_CONTENT as unknown as typeof contentRows[0]);
@@ -79,14 +86,25 @@ export default async function HomePage() {
     }
   } catch {}
 
-  const activeProjects = projectRows.length > 0 ? projectRows : (DEFAULT_PROJECTS as unknown as typeof projectRows);
-  const activeCategories = categoryRows.length > 0 ? categoryRows : (DEFAULT_CATEGORIES as unknown as typeof categoryRows);
+  // Google Drive folders & videos automatically populate categories & portfolio!
+  const activeCategories = (driveData && driveData.categories.length > 0)
+    ? (driveData.categories as unknown as typeof categoryRows)
+    : (categoryRows.length > 0 ? categoryRows : (DEFAULT_CATEGORIES as unknown as typeof categoryRows));
+
+  const activeProjects = (driveData && driveData.projects.length > 0)
+    ? (driveData.projects as unknown as typeof projectRows)
+    : (projectRows.length > 0 ? projectRows : (DEFAULT_PROJECTS as unknown as typeof projectRows));
+
   const activeServices = serviceRows.length > 0 ? serviceRows : (DEFAULT_SERVICES as unknown as typeof serviceRows);
+  const activeExperience = experienceRows.length > 0 ? experienceRows : (DEFAULT_EXPERIENCE as unknown as typeof experienceRows);
+  const activeTools = toolRows.length > 0 ? toolRows : (DEFAULT_TOOLS as unknown as typeof toolRows);
+  const activeProcess = processRows.length > 0 ? processRows : (DEFAULT_PROCESS as unknown as typeof processRows);
+  const activeContact = contactRows[0] || (DEFAULT_CONTACT as unknown as typeof contactRows[0]);
 
   return (
     <PublicPageClient
       content={content}
-      contact={contact}
+      contact={activeContact}
       activeTheme={theme.activeTheme || 1}
       customThemeConfig={customConfig}
       layoutOrder={sections}
@@ -95,9 +113,9 @@ export default async function HomePage() {
       categories={activeCategories}
       services={activeServices}
       skills={skillRows}
-      tools={toolRows}
-      experience={experienceRows}
-      creativeProcess={processRows}
+      tools={activeTools}
+      experience={activeExperience}
+      creativeProcess={activeProcess}
     />
   );
 }

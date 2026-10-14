@@ -13,35 +13,47 @@ interface ServicesProps {
   introText?: string;
 }
 
-const DEFAULT_SERVICES: ServiceItem[] = [
+const DEFAULT_SERVICES_LIST: ServiceItem[] = [
   {
-    id: 101,
-    title: "Short-Form Reel & TikTok Editing",
-    description: "High-retention vertical edits with engaging hook captions, dynamic sound effects, B-roll transitions, and visual pop-ups.",
-    deliverables: "Vertical 9:16 Video, Custom Subtitles, Sound Design, Color Grading",
+    id: 1,
+    title: "Video Editing",
+    description: "Professional editing for social media reels, commercial advertisements, promotional videos, brand films, and digital campaigns.",
+    deliverables: "Reels, Commercials, Promotional Videos, Brand Films",
   },
   {
-    id: 102,
-    title: "Cinematic Real Estate Showcase",
-    description: "Smooth architectural walkthroughs featuring ultra-clean speed ramps, sky replacements, color correction, and ambient acoustic mixing.",
-    deliverables: "4K Master File, Social Cutdowns, Drone Stabilization, Color Grading",
+    id: 2,
+    title: "Graphic Design",
+    description: "Creative posters, advertising banners, thumbnails, marketing creatives, and visually engaging brand collateral.",
+    deliverables: "Posters, Advertising Banners, Thumbnails, Marketing Creatives",
   },
   {
-    id: 103,
-    title: "YouTube Long-Form & Documentary Edits",
-    description: "Paced storytelling for talking head, tech, travel, and documentary content with graphic callouts, maps, and kinetic titles.",
-    deliverables: "Full HD/4K Render, Custom Thumbnail Graphic, Chapter Markers",
+    id: 3,
+    title: "Motion Graphics & VFX",
+    description: "Dynamic animations, visual effects compositing, animated typography, seamless transitions, and motion-driven narratives.",
+    deliverables: "Animations, Visual Effects, Animated Typography, Transitions",
   },
   {
-    id: 104,
-    title: "Commercial Ad Films & Motion FX",
-    description: "High-impact promo videos with 3D product callouts, custom logo intros, VFX tracking, and broadcast-ready audio mixing.",
-    deliverables: "3D Product Intros, Kinetic Motion Titles, Commercial License SFX",
+    id: 4,
+    title: "3D Design & Visualization",
+    description: "Creative 3D modeling, product visualization, photorealistic renders, and immersive visual presentations.",
+    deliverables: "3D Modeling, Product Visualization, Realistic Renders",
+  },
+  {
+    id: 5,
+    title: "AI-Powered Content Creation",
+    description: "AI-generated images, synthetic video clips, virtual models/characters, and innovative digital creative concepts.",
+    deliverables: "AI Images, AI Videos, Virtual Models, Creative Concepts",
+  },
+  {
+    id: 6,
+    title: "Social Media Content",
+    description: "Platform-optimized video edits, promotional creatives, and viral visual content designed for high retention and engagement.",
+    deliverables: "Platform-Ready Edits, Promotional Creatives, High-Retention Formats",
   },
 ];
 
 export default function Services({ services = [], introText }: ServicesProps) {
-  const displayServices = services.length > 0 ? services : DEFAULT_SERVICES;
+  const displayServices = services.length > 0 ? services : DEFAULT_SERVICES_LIST;
 
   return (
     <section id="services" className="py-24 border-b border-[var(--border-glass)] relative">
@@ -49,13 +61,13 @@ export default function Services({ services = [], introText }: ServicesProps) {
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
           <div className="space-y-3 max-w-xl">
             <span className="font-mono text-xs tracking-[0.2em] text-[var(--accent)] uppercase font-bold">
-              03 // WHAT I DO
+              04 // MY SERVICES
             </span>
             <h2 className="font-serif font-bold text-4xl sm:text-6xl tracking-tight text-[var(--text-primary)]">
               Creative Services.
             </h2>
             <p className="text-sm text-[var(--text-secondary)] font-light leading-relaxed">
-              {introText || "Tailored video editing, motion graphics, and post-production solutions for creators, brands, and agencies worldwide."}
+              {introText || "Professional creative services tailored for brands, businesses, creators, and agencies worldwide."}
             </p>
           </div>
         </div>
@@ -64,8 +76,8 @@ export default function Services({ services = [], introText }: ServicesProps) {
         <div className="space-y-4">
           {displayServices.map((service, idx) => (
             <div
-              key={service.id}
-              className="glass-panel p-8 group hover:border-[var(--accent)]/60 transition-all duration-300 grid grid-cols-1 md:grid-cols-12 gap-6 items-center"
+              key={service.id || idx}
+              className="glass-panel p-8 group hover:border-[var(--accent)]/60 transition-all duration-300 grid grid-cols-1 md:grid-cols-12 gap-6 items-center rounded-2xl"
             >
               <div className="md:col-span-1 font-mono text-sm text-[var(--accent)] font-bold">
                 0{idx + 1}

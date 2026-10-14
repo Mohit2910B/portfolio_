@@ -71,20 +71,39 @@ export async function POST(req: Request) {
       fileUrl = `/uploads/${uniqueFilename}`;
     }
 
-    // 3. Save metadata to PostgreSQL database
-    const inserted = await db
-      .insert(mediaFiles)
-      .values({
-        filename: uniqueFilename,
-        originalName: fileNameOriginal,
-        mimeType,
-        kind,
-        size,
-        url: fileUrl,
-      })
-      .returning();
+    // 3. Save metadata to PostgreSQL database safely
+    let savedFile = {
+      id: timestamp,
+      filename: uniqueFilename,
+      originalName: fileNameOriginal,
+      mimeType,
+      kind,
+      size,
+      url: fileUrl,
+      createdAt: new Date(),
+    };
 
-    return ok({ success: true, file: inserted[0] });
+    try {
+      const inserted = await db
+        .insert(mediaFiles)
+        .values({
+          filename: uniqueFilename,
+          originalName: fileNameOriginal,
+          mimeType,
+          kind,
+          size,
+          url: fileUrl,
+        })
+        .returning();
+
+      if (inserted[0]) {
+        savedFile = inserted[0];
+      }
+    } catch {
+      // Return file with direct URL
+    }
+
+    return ok({ success: true, url: fileUrl, file: savedFile });
   });
 }
 

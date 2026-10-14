@@ -915,63 +915,220 @@ export const DEFAULT_PROJECTS = [
 ];
 
 export const DEFAULT_CONTENT = {
-  "heroHeading": "MOHIT BABARIYA",
-  "heroSubtitle": "PROFESSIONAL VIDEO EDITOR & MOTION DESIGNER",
-  "heroBio": "Crafting cinematic edits, dynamic motion graphics, and high-converting visual stories. Transforming raw footage into visual masterpieces for top creators, agencies, and brands worldwide.",
-  "aboutTitle": "ABOUT ME",
-  "aboutSubtitle": "CINEMATIC VISIONARY",
-  "aboutBio": "With over 5 years of experience in video editing, color grading, motion graphics, and sound design, I specialize in bringing stories to life through rhythm, atmosphere, and visual impact.",
-  "statYearsExperience": "5+",
-  "statProjectsCompleted": "500+",
-  "statSatisfiedClients": "120+",
-  "statRevisionsRate": "99%",
-  "footerTagline": "CRAFTING CINEMATIC VISUALS THAT CAPTIVATE AND CONVERT.",
-  "footerCopyright": "© 2026 MOHIT BABARIYA. ALL RIGHTS RESERVED."
+  heroHeading: "MOHIT BABARIYA",
+  heroSubtitle: "Video Editor | Graphic Designer | 3D Artist | AI Creator",
+  heroEyebrow: "TURNING IDEAS INTO VISUAL EXPERIENCES",
+  heroTagline: "Turning Ideas Into Visual Experiences",
+  heroDescription:
+    "With 2+ years of experience in creative production, I transform ideas into engaging videos, impactful graphics, stunning 3D visuals, and innovative AI-powered content. I help brands and businesses communicate their stories through creative visuals, professional editing, and modern digital content.",
+  heroCtaPrimary: "EXPLORE MY WORK",
+  heroCtaSecondary: "LET'S WORK TOGETHER",
+  aboutHeading: "CREATIVITY MEETS TECHNOLOGY",
+  aboutSubtitle: "Video Editor | Graphic Designer | 3D Artist | AI Creator",
+  aboutDescription:
+    "I'm Mohit Babariya, a passionate Video Editor, Graphic Designer, 3D Artist, and AI Creator with over 2 years of experience in visual content creation. My work combines creative storytelling, technical expertise, and attention to detail to produce engaging digital experiences. From professional video editing and advertising creatives to 3D visualization and AI-powered content, I focus on creating visuals that capture attention and communicate ideas effectively. I continuously explore new creative techniques and technologies to deliver innovative, high-quality results for brands, businesses, and individual clients worldwide.",
+  aboutExperienceYears: "2+",
+  aboutProjectsCompleted: "500+",
+  aboutClientsCount: "100+",
+  statYearsExperience: "2+",
+  statProjectsCompleted: "500+",
+  statSatisfiedClients: "100+",
+  statRevisionsRate: "99%",
+  servicesIntro:
+    "Professional creative services tailored for brands, businesses, creators, and agencies worldwide.",
+  portfolioIntro:
+    "Selected Works. Creative Stories. Explore my creative projects across different industries and visual styles. Every project reflects my passion for visual storytelling, creativity, and delivering engaging digital experiences.",
+  contactHeading: "Have a Project in Mind?",
+  contactDescription:
+    "Looking for professional video editing, graphic design, motion graphics, 3D visuals, or AI-powered content? I'm available to collaborate with businesses, brands, agencies, and individuals worldwide. Let's turn your ideas into powerful visual experiences.",
+  contactLocation: "Working Worldwide 🌍",
+  contactEmail: "Mohitbabariyaa@gmail.com",
+  contactPhone: "+91 9033828412",
+  contactAvailability: "Worldwide Projects & Remote Collaboration",
+  footerTagline:
+    "Creative Solutions. Powerful Visual Stories. Worldwide Collaboration.",
+  footerCopyright: "© 2026 Mohit Babariya. All Rights Reserved.",
 };
 
 export const DEFAULT_SERVICES = [
   {
-    "id": 1,
-    "title": "Cinematic Video Editing",
-    "slug": "cinematic-video-editing",
-    "shortDescription": "High-end visual storytelling with precision pacing, dynamic cutaways, and seamless rhythm.",
-    "fullDescription": "From corporate brand videos to social reels, I craft edits that hold audience attention from start to finish.",
-    "featuresJson": "[\"Pacing & narrative flow\",\"Sound design & mixing\",\"Dynamic transitions\",\"Custom graphics\"]",
-    "softwareUsed": "Premiere Pro, DaVinci Resolve",
-    "isActive": true,
-    "sortOrder": 1
+    id: 1,
+    title: "Video Editing",
+    slug: "video-editing",
+    description:
+      "Professional editing for social media reels, commercial advertisements, promotional videos, brand films, and digital campaigns.",
+    deliverables: "Reels, Commercials, Promotional Videos, Brand Films",
+    isActive: true,
+    sortOrder: 1,
   },
   {
-    "id": 2,
-    "title": "Color Grading & Finishing",
-    "slug": "color-grading-finishing",
-    "shortDescription": "Industry-standard color grading delivering rich cinematic looks, mood matching, and skin-tone perfection.",
-    "fullDescription": "Professional color correction and creative grading using DaVinci Resolve.",
-    "featuresJson": "[\"Shot-to-shot matching\",\"Creative look design (LUTs)\",\"Skin tone isolation\",\"HDR finishing\"]",
-    "softwareUsed": "DaVinci Resolve Studio",
-    "isActive": true,
-    "sortOrder": 2
+    id: 2,
+    title: "Graphic Design",
+    slug: "graphic-design",
+    description:
+      "Creative posters, advertising banners, thumbnails, marketing creatives, and visually engaging brand content.",
+    deliverables: "Posters, Advertising Banners, Thumbnails, Marketing Creatives",
+    isActive: true,
+    sortOrder: 2,
   },
   {
-    "id": 3,
-    "title": "Motion Graphics & VFX",
-    "slug": "motion-graphics-vfx",
-    "shortDescription": "Impactful motion graphics, sleek title sequences, lower thirds, 3D camera tracking, and clean VFX composites.",
-    "fullDescription": "Bring complex concepts to life with stunning animation and graphics.",
-    "featuresJson": "[\"Kinetic typography\",\"Logo animations\",\"Object tracking & removals\",\"Explainer elements\"]",
-    "softwareUsed": "After Effects, Blender",
-    "isActive": true,
-    "sortOrder": 3
+    id: 3,
+    title: "Motion Graphics & VFX",
+    slug: "motion-graphics-vfx",
+    description:
+      "Dynamic animations, visual effects, animated typography, transitions, and engaging motion-driven content.",
+    deliverables: "Animations, Visual Effects, Animated Typography, Transitions",
+    isActive: true,
+    sortOrder: 3,
   },
   {
-    "id": 4,
-    "title": "Social Media & Reels Optimization",
-    "slug": "social-media-reels-optimization",
-    "shortDescription": "Scroll-stopping vertical video content engineered for Instagram Reels, YouTube Shorts, and TikTok.",
-    "fullDescription": "Format-tailored edits optimized for retention, algorithm performance, and audience engagement.",
-    "featuresJson": "[\"9:16 vertical formatting\",\"Viral hook framing\",\"Captions & sound effects\",\"Speed ramps\"]",
-    "softwareUsed": "Premiere Pro, CapCut Pro",
-    "isActive": true,
-    "sortOrder": 4
-  }
+    id: 4,
+    title: "3D Design & Visualization",
+    slug: "3d-design-visualization",
+    description:
+      "Creative 3D modeling, product visualization, realistic renders, and immersive visual presentations.",
+    deliverables: "3D Modeling, Product Visualization, Realistic Renders",
+    isActive: true,
+    sortOrder: 4,
+  },
+  {
+    id: 5,
+    title: "AI-Powered Content Creation",
+    slug: "ai-content-creation",
+    description:
+      "AI-generated images, videos, virtual models, creative concepts, and innovative digital content.",
+    deliverables: "AI Images, AI Videos, Virtual Models, Creative Concepts",
+    isActive: true,
+    sortOrder: 5,
+  },
+  {
+    id: 6,
+    title: "Social Media Content",
+    slug: "social-media-content",
+    description:
+      "Platform-ready video edits, promotional creatives, and engaging visual content for digital marketing.",
+    deliverables: "Platform-Ready Edits, Promotional Creatives, Viral Content",
+    isActive: true,
+    sortOrder: 6,
+  },
 ];
+
+export const DEFAULT_EXPERIENCE = [
+  {
+    id: 1,
+    role: "Video Editing",
+    company: "Reels, Commercials & Promotional Videos",
+    description:
+      "Delivering high-retention social media reels, corporate commercial campaigns, and engaging brand promotional videos.",
+    startDate: "2024",
+    endDate: "PRESENT",
+    location: "Worldwide / Remote",
+    sortOrder: 1,
+    isActive: true,
+  },
+  {
+    id: 2,
+    role: "Graphic Design",
+    company: "Posters, Advertisements & Marketing Creatives",
+    description:
+      "Designing high-conversion visual marketing collateral, YouTube thumbnails, and eye-catching event posters.",
+    startDate: "2024",
+    endDate: "PRESENT",
+    location: "Worldwide / Remote",
+    sortOrder: 2,
+    isActive: true,
+  },
+  {
+    id: 3,
+    role: "Motion Graphics & VFX",
+    company: "Animation, Visual Effects & Transitions",
+    description:
+      "Crafting custom kinetic typography, dynamic intro animations, clean VFX composites, and seamless camera tracking.",
+    startDate: "2024",
+    endDate: "PRESENT",
+    location: "Worldwide / Remote",
+    sortOrder: 3,
+    isActive: true,
+  },
+  {
+    id: 4,
+    role: "3D Art & Design",
+    company: "Product Visualization & 3D Modeling",
+    description:
+      "Building detailed 3D models, photorealistic product renders, and engaging spatial presentations using Blender & Maya.",
+    startDate: "2024",
+    endDate: "PRESENT",
+    location: "Worldwide / Remote",
+    sortOrder: 4,
+    isActive: true,
+  },
+  {
+    id: 5,
+    role: "AI Creation",
+    company: "AI Images, Videos & Virtual Characters",
+    description:
+      "Leveraging cutting-edge generative AI models to create hyper-realistic visuals, AI character animations, and innovative digital art.",
+    startDate: "2025",
+    endDate: "PRESENT",
+    location: "Worldwide / Remote",
+    sortOrder: 5,
+    isActive: true,
+  },
+];
+
+export const DEFAULT_TOOLS = [
+  { id: 1, name: "Premiere Pro", category: "Video Editing", proficiency: 98, description: "Adobe Premiere Pro" },
+  { id: 2, name: "After Effects", category: "Motion Graphics", proficiency: 96, description: "Adobe After Effects" },
+  { id: 3, name: "DaVinci Resolve", category: "Color & Finishing", proficiency: 95, description: "DaVinci Resolve Studio" },
+  { id: 4, name: "CapCut Pro", category: "Short-Form / Reels", proficiency: 99, description: "CapCut Pro" },
+  { id: 5, name: "Photoshop", category: "Graphic Design", proficiency: 98, description: "Adobe Photoshop" },
+  { id: 6, name: "Illustrator", category: "Vector / Branding", proficiency: 94, description: "Adobe Illustrator" },
+  { id: 7, name: "Canva Pro", category: "Marketing Creatives", proficiency: 96, description: "Canva Pro" },
+  { id: 8, name: "Blender", category: "3D Art & Modeling", proficiency: 92, description: "Blender 3D" },
+  { id: 9, name: "Autodesk Maya", category: "3D Visualization", proficiency: 90, description: "Autodesk Maya" },
+  { id: 10, name: "AI Image Generation", category: "Creative Technologies", proficiency: 98, description: "Midjourney, Stable Diffusion" },
+  { id: 11, name: "AI Video Creation", category: "Creative Technologies", proficiency: 97, description: "Runway, Luma AI, Kling" },
+  { id: 12, name: "Color Grading & VFX", category: "Post-Production", proficiency: 95, description: "Visual Effects & Compositing" },
+];
+
+export const DEFAULT_PROCESS = [
+  {
+    id: 1,
+    stepNumber: "01",
+    title: "Discover",
+    description:
+      "Understand your goals, audience, vision, and project requirements to set a solid creative foundation.",
+  },
+  {
+    id: 2,
+    stepNumber: "02",
+    title: "Conceptualize",
+    description:
+      "Develop creative ideas, visual directions, moodboards, and a clear production plan.",
+  },
+  {
+    id: 3,
+    stepNumber: "03",
+    title: "Create",
+    description:
+      "Bring concepts to life through editing, design, animation, 3D modeling, and cutting-edge AI tools.",
+  },
+  {
+    id: 4,
+    stepNumber: "04",
+    title: "Refine & Deliver",
+    description:
+      "Polish every detail, color grade, mix audio, and deliver professional, high-quality creative work.",
+  },
+];
+
+export const DEFAULT_CONTACT = {
+  name: "Mohit Babariya",
+  email: "Mohitbabariyaa@gmail.com",
+  phone: "+91 9033828412",
+  location: "Working Worldwide 🌍",
+  availability: "Worldwide Projects & Remote Collaboration",
+  responseTime: "Within 2 Hours",
+  whatsappUrl: "https://wa.me/919033828412",
+};
+

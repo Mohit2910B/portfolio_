@@ -47,27 +47,27 @@ export default function Header({ ownerName = "MOHIT BABARIYA", activeTheme = 1, 
           <span className="font-serif font-bold tracking-wider text-lg sm:text-xl text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors">
             {ownerName.toUpperCase()}
           </span>
-          <span className="font-mono text-[9px] tracking-[0.25em] text-[var(--text-secondary)] uppercase">
-            VIDEO EDITOR / MOTION DESIGNER
+          <span className="font-mono text-[9px] tracking-[0.18em] text-[var(--accent)] uppercase font-semibold">
+            Video Editor | Graphic Designer | 3D Artist | AI Creator
           </span>
         </Link>
 
         {/* Center: Navigation Links */}
         <nav className="hidden lg:flex items-center space-x-7 font-mono text-[11px] tracking-[0.2em] uppercase text-[var(--text-secondary)]">
           <a href="#work" className="hover:text-[var(--text-primary)] transition-colors">
-            WORK
+            PORTFOLIO
           </a>
-          <a href="#showreel" className="hover:text-[var(--text-primary)] transition-colors">
-            SHOWREEL
+          <a href="#about" className="hover:text-[var(--text-primary)] transition-colors">
+            ABOUT
           </a>
-          <a href="#quote-calculator" className="hover:text-[var(--accent)] transition-colors text-[var(--accent)] font-semibold">
-            ESTIMATE
+          <a href="#experience" className="hover:text-[var(--text-primary)] transition-colors">
+            EXPERIENCE
           </a>
           <a href="#services" className="hover:text-[var(--text-primary)] transition-colors">
             SERVICES
           </a>
-          <a href="#about" className="hover:text-[var(--text-primary)] transition-colors">
-            ABOUT
+          <a href="#tools" className="hover:text-[var(--text-primary)] transition-colors">
+            TOOLS
           </a>
           <a href="#process" className="hover:text-[var(--text-primary)] transition-colors">
             PROCESS
@@ -122,19 +122,19 @@ export default function Header({ ownerName = "MOHIT BABARIYA", activeTheme = 1, 
       {mobileMenuOpen && (
         <div className="lg:hidden mt-3 max-w-7xl mx-auto glass-panel p-6 animate-fade-in font-mono text-xs tracking-widest uppercase space-y-4 text-[var(--text-secondary)]">
           <a href="#work" onClick={() => setMobileMenuOpen(false)} className="block py-2 hover:text-[var(--text-primary)]">
-            WORK
+            PORTFOLIO
           </a>
-          <a href="#showreel" onClick={() => setMobileMenuOpen(false)} className="block py-2 hover:text-[var(--text-primary)]">
-            SHOWREEL
+          <a href="#about" onClick={() => setMobileMenuOpen(false)} className="block py-2 hover:text-[var(--text-primary)]">
+            ABOUT
           </a>
-          <a href="#quote-calculator" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-[var(--accent)] font-bold">
-            ESTIMATE COST ⚡
+          <a href="#experience" onClick={() => setMobileMenuOpen(false)} className="block py-2 hover:text-[var(--text-primary)]">
+            EXPERIENCE
           </a>
           <a href="#services" onClick={() => setMobileMenuOpen(false)} className="block py-2 hover:text-[var(--text-primary)]">
             SERVICES
           </a>
-          <a href="#about" onClick={() => setMobileMenuOpen(false)} className="block py-2 hover:text-[var(--text-primary)]">
-            ABOUT
+          <a href="#tools" onClick={() => setMobileMenuOpen(false)} className="block py-2 hover:text-[var(--text-primary)]">
+            TOOLS
           </a>
           <a href="#process" onClick={() => setMobileMenuOpen(false)} className="block py-2 hover:text-[var(--text-primary)]">
             PROCESS

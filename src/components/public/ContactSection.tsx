@@ -22,7 +22,7 @@ export default function ContactSection({ settings, introText }: ContactSectionPr
     countryCode: "+91",
     phone: "",
     company: "",
-    projectType: "Commercial Edit",
+    projectType: "Video Editing",
     description: "",
     budget: "$1,000 - $3,000",
     deadline: "Within 2 Weeks",
@@ -31,6 +31,10 @@ export default function ContactSection({ settings, introText }: ContactSectionPr
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+
+  const email = settings?.email || "Mohitbabariyaa@gmail.com";
+  const phone = settings?.phone || "+91 9033828412";
+  const location = settings?.location || "Working Worldwide 🌍";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +61,7 @@ export default function ContactSection({ settings, introText }: ContactSectionPr
         countryCode: "+91",
         phone: "",
         company: "",
-        projectType: "Commercial Edit",
+        projectType: "Video Editing",
         description: "",
         budget: "$1,000 - $3,000",
         deadline: "Within 2 Weeks",
@@ -75,92 +79,90 @@ export default function ContactSection({ settings, introText }: ContactSectionPr
         {/* Left Column */}
         <div className="lg:col-span-5 space-y-8">
           <span className="font-mono text-xs tracking-[0.2em] text-[var(--accent)] uppercase font-bold">
-            09 // INITIATE A PROJECT
+            07 // GET IN TOUCH
           </span>
 
-          <div className="space-y-1">
-            <h2 className="font-serif font-bold text-4xl sm:text-6xl tracking-tight text-[var(--text-primary)] uppercase leading-[1.05]">
-              Let's Make Something
+          <div className="space-y-2">
+            <h2 className="font-serif font-bold text-4xl sm:text-6xl tracking-tight text-[var(--text-primary)] leading-[1.05]">
+              Have a Project in Mind?
             </h2>
-            <h2 className="font-serif italic font-light text-4xl sm:text-6xl tracking-tight text-[var(--accent)]">
-              Move.
-            </h2>
+            <div className="font-serif italic font-light text-2xl sm:text-3xl text-[var(--accent)]">
+              Let's turn ideas into visual experiences.
+            </div>
           </div>
 
           <p className="text-sm sm:text-base text-[var(--text-secondary)] font-light leading-relaxed">
             {introText ||
-              "Have an upcoming video, commercial, or motion graphics project? Send over your brief and let's craft something extraordinary together."}
+              "Looking for professional video editing, graphic design, motion graphics, 3D visuals, or AI-powered content? I'm available to collaborate with businesses, brands, agencies, and individuals worldwide. Let's turn your ideas into powerful visual experiences."}
           </p>
 
-          <div className="space-y-6 pt-4 font-mono text-xs text-[var(--text-secondary)] border-t border-[var(--border-glass)]">
+          {/* Quick Contact Buttons */}
+          <div className="flex flex-wrap gap-3 pt-2">
+            <a
+              href={`https://wa.me/919033828412?text=${encodeURIComponent("Hi Mohit, I came across your portfolio and would like to discuss a project!")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs font-bold tracking-wider uppercase rounded-full shadow-lg transition-all flex items-center space-x-2"
+            >
+              <span>💬</span>
+              <span>CHAT ON WHATSAPP</span>
+            </a>
+
+            <a
+              href={`mailto:${email}?subject=${encodeURIComponent("New Project Inquiry // Mohit Babariya")}`}
+              className="px-6 py-3 bg-[#1c1c1c] hover:bg-[#2a2a2a] border border-[var(--border-glass)] text-white font-mono text-xs font-bold tracking-wider uppercase rounded-full transition-all flex items-center space-x-2"
+            >
+              <span>✉</span>
+              <span>DIRECT EMAIL</span>
+            </a>
+          </div>
+
+          <div className="space-y-5 pt-6 font-mono text-xs text-[var(--text-secondary)] border-t border-[var(--border-glass)]">
+            <div>
+              <div className="text-[var(--accent)] uppercase mb-1 font-bold">CREATOR</div>
+              <div className="text-lg text-[var(--text-primary)] font-serif font-bold">
+                Mohit Babariya
+              </div>
+            </div>
+
             <div>
               <div className="text-[var(--accent)] uppercase mb-1 font-bold">DIRECT EMAIL</div>
               <a
-                href={`mailto:${settings?.email || "mohitbabariyaa@gmail.com"}`}
+                href={`mailto:${email}`}
                 className="text-base text-[var(--text-primary)] hover:text-[var(--accent)] transition-colors font-sans"
               >
-                {settings?.email || "mohitbabariyaa@gmail.com"}
+                {email}
               </a>
             </div>
 
             <div>
-              <div className="text-[var(--accent)] uppercase mb-1 font-bold">PHONE / WHATSAPP</div>
-              <div className="text-base text-[var(--text-primary)] font-sans">
-                {settings?.phone || "+91 98765 43210"}
-              </div>
+              <div className="text-[var(--accent)] uppercase mb-1 font-bold">PHONE & WHATSAPP</div>
+              <a
+                href="tel:+919033828412"
+                className="text-base text-[var(--text-primary)] hover:text-[var(--accent)] transition-colors font-sans"
+              >
+                {phone}
+              </a>
             </div>
 
             <div>
-              <div className="text-[var(--accent)] uppercase mb-1 font-bold">LOCATION</div>
+              <div className="text-[var(--accent)] uppercase mb-1 font-bold">LOCATION / AVAILABILITY</div>
               <div className="text-sm text-[var(--text-primary)] font-sans">
-                {settings?.location || "Mumbai, India / Remote Worldwide"}
+                {location}
               </div>
-            </div>
-
-            <div className="pt-2 flex items-center space-x-6">
-              {settings?.instagram && (
-                <a
-                  href={settings.instagram}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:text-[var(--accent)] transition-colors"
-                >
-                  INSTAGRAM ↗
-                </a>
-              )}
-              {settings?.youtube && (
-                <a
-                  href={settings.youtube}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:text-[var(--accent)] transition-colors"
-                >
-                  YOUTUBE ↗
-                </a>
-              )}
-              {settings?.linkedin && (
-                <a
-                  href={settings.linkedin}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:text-[var(--accent)] transition-colors"
-                >
-                  LINKEDIN ↗
-                </a>
-              )}
             </div>
           </div>
         </div>
 
-        {/* Right Glass Contact Panel */}
+        {/* Right Contact Form Panel */}
         <div className="lg:col-span-7">
           <form
             onSubmit={handleSubmit}
-            className="glass-panel-strong p-8 space-y-6"
+            className="glass-panel-strong p-8 space-y-6 rounded-3xl"
           >
             {success && (
               <div className="p-4 bg-emerald-950/50 border border-emerald-500/50 text-emerald-300 text-xs font-mono uppercase tracking-widest rounded-xl">
-                ✓ THANK YOU! YOUR PROJECT BRIEF HAS BEEN RECEIVED. MOHIT WILL RESPOND SHORTLY.
+                ✓ THANK YOU! YOUR PROJECT INQUIRY HAS BEEN RECEIVED. MOHIT WILL GET BACK TO YOU PROMPTLY.
               </div>
             )}
 
@@ -178,7 +180,7 @@ export default function ContactSection({ settings, introText }: ContactSectionPr
                 <input
                   type="text"
                   required
-                  placeholder="Alex Morgan"
+                  placeholder="e.g. Rahul Sharma"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full bg-black/40 border border-[var(--border-glass)] px-4 py-3 text-sm text-[var(--text-primary)] rounded-xl focus:border-[var(--accent)] focus:outline-none"
@@ -192,7 +194,7 @@ export default function ContactSection({ settings, introText }: ContactSectionPr
                 <input
                   type="email"
                   required
-                  placeholder="alex@brand.com"
+                  placeholder="name@company.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className="w-full bg-black/40 border border-[var(--border-glass)] px-4 py-3 text-sm text-[var(--text-primary)] rounded-xl focus:border-[var(--accent)] focus:outline-none"
@@ -203,11 +205,11 @@ export default function ContactSection({ settings, introText }: ContactSectionPr
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="block font-mono text-xs uppercase tracking-widest text-[var(--text-secondary)]">
-                  PHONE NUMBER
+                  PHONE / WHATSAPP NUMBER
                 </label>
                 <input
                   type="text"
-                  placeholder="+91 98765 43210"
+                  placeholder="+91 90338 28412"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   className="w-full bg-black/40 border border-[var(--border-glass)] px-4 py-3 text-sm text-[var(--text-primary)] rounded-xl focus:border-[var(--accent)] focus:outline-none"
@@ -216,11 +218,11 @@ export default function ContactSection({ settings, introText }: ContactSectionPr
 
               <div className="space-y-2">
                 <label className="block font-mono text-xs uppercase tracking-widest text-[var(--text-secondary)]">
-                  COMPANY / BRAND
+                  COMPANY / BRAND NAME
                 </label>
                 <input
                   type="text"
-                  placeholder="Apex Studios"
+                  placeholder="Brand / Channel Name"
                   value={formData.company}
                   onChange={(e) => setFormData({ ...formData, company: e.target.value })}
                   className="w-full bg-black/40 border border-[var(--border-glass)] px-4 py-3 text-sm text-[var(--text-primary)] rounded-xl focus:border-[var(--accent)] focus:outline-none"
@@ -228,66 +230,50 @@ export default function ContactSection({ settings, introText }: ContactSectionPr
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="block font-mono text-xs uppercase tracking-widest text-[var(--text-secondary)]">
-                  PROJECT TYPE
+                  PROJECT CATEGORY
                 </label>
                 <select
                   value={formData.projectType}
                   onChange={(e) => setFormData({ ...formData, projectType: e.target.value })}
                   className="w-full bg-black/40 border border-[var(--border-glass)] px-4 py-3 text-xs text-[var(--text-primary)] rounded-xl focus:border-[var(--accent)] focus:outline-none"
                 >
-                  <option value="Commercial Edit">Commercial Brand Edit</option>
-                  <option value="Motion Graphics">Motion Graphics & 3D</option>
-                  <option value="Social Media Reels">Social Media / Reels</option>
-                  <option value="Real Estate Video">Real Estate Film</option>
-                  <option value="YouTube Long-Form">YouTube Masterclass</option>
-                  <option value="AI Video Workflow">AI Video & VFX</option>
+                  <option value="Video Editing">Video Editing (Reels, Commercials)</option>
+                  <option value="Graphic Design">Graphic Design (Posters, Ads)</option>
+                  <option value="Motion Graphics & VFX">Motion Graphics & VFX</option>
+                  <option value="3D Design & Visualization">3D Design & Visualization</option>
+                  <option value="AI Content Creation">AI-Powered Content Creation</option>
+                  <option value="Social Media Content">Social Media Campaigns</option>
                 </select>
               </div>
 
               <div className="space-y-2">
                 <label className="block font-mono text-xs uppercase tracking-widest text-[var(--text-secondary)]">
-                  BUDGET RANGE
-                </label>
-                <select
-                  value={formData.budget}
-                  onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
-                  className="w-full bg-black/40 border border-[var(--border-glass)] px-4 py-3 text-xs text-[var(--text-primary)] rounded-xl focus:border-[var(--accent)] focus:outline-none"
-                >
-                  <option value="Under $1,000">Under $1,000</option>
-                  <option value="$1,000 - $3,000">$1,000 - $3,000</option>
-                  <option value="$3,000 - $5,000">$3,000 - $5,000</option>
-                  <option value="$5,000+">$5,000+</option>
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="block font-mono text-xs uppercase tracking-widest text-[var(--text-secondary)]">
-                  DEADLINE
+                  ESTIMATED TIMELINE
                 </label>
                 <select
                   value={formData.deadline}
                   onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
                   className="w-full bg-black/40 border border-[var(--border-glass)] px-4 py-3 text-xs text-[var(--text-primary)] rounded-xl focus:border-[var(--accent)] focus:outline-none"
                 >
-                  <option value="ASAP (Urgent)">ASAP (Urgent)</option>
-                  <option value="Within 2 Weeks">Within 2 Weeks</option>
-                  <option value="Within 1 Month">Within 1 Month</option>
-                  <option value="Flexible">Flexible</option>
+                  <option value="Urgent (1-3 Days)">Urgent (1-3 Days)</option>
+                  <option value="Within 1 Week">Within 1 Week</option>
+                  <option value="Within 2-3 Weeks">Within 2-3 Weeks</option>
+                  <option value="Ongoing Monthly Retainer">Ongoing Monthly Retainer</option>
                 </select>
               </div>
             </div>
 
             <div className="space-y-2">
               <label className="block font-mono text-xs uppercase tracking-widest text-[var(--text-secondary)]">
-                PROJECT BRIEF / MESSAGE *
+                PROJECT DETAILS & REQUIREMENTS *
               </label>
               <textarea
                 required
-                rows={5}
-                placeholder="Describe your project brief, visual aesthetic requirements..."
+                rows={4}
+                placeholder="Share your video vision, style references, number of videos needed, or project brief..."
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 className="w-full bg-black/40 border border-[var(--border-glass)] p-4 text-sm text-[var(--text-primary)] rounded-xl focus:border-[var(--accent)] focus:outline-none"
@@ -297,8 +283,7 @@ export default function ContactSection({ settings, introText }: ContactSectionPr
             <button
               type="submit"
               disabled={loading}
-              data-cursor-button
-              className="w-full py-4 bg-[var(--accent)] text-[var(--bg-main)] font-mono text-xs font-bold tracking-[0.2em] uppercase rounded-full hover:bg-[var(--accent-hover)] transition-all disabled:opacity-50 shadow-xl"
+              className="w-full py-4 bg-gradient-to-r from-amber-600 to-[var(--accent)] text-[var(--bg-main)] font-mono text-xs font-bold tracking-[0.2em] uppercase rounded-full hover:brightness-110 transition-all disabled:opacity-50 shadow-xl"
             >
               {loading ? "SENDING BRIEF..." : "SUBMIT PROJECT BRIEF ↗"}
             </button>

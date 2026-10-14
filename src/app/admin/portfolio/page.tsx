@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import MediaPickerModal from "@/components/admin/MediaPickerModal";
 
 interface Project {
@@ -37,6 +37,65 @@ export default function AdminPortfolioPage() {
   const [message, setMessage] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<"video" | "thumbnail">("video");
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [uploadProgressMsg, setUploadProgressMsg] = useState("");
+  const [syncingDrive, setSyncingDrive] = useState(false);
+
+  const videoFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDirectVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editingProject) return;
+
+    setUploadingVideo(true);
+    setUploadProgressMsg(`Uploading high quality video "${file.name}" (${(file.size / (1024 * 1024)).toFixed(1)} MB)...`);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/media", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || "Upload failed");
+      }
+
+      setEditingProject({ ...editingProject, videoUrl: data.url });
+      setUploadProgressMsg("✓ High quality video uploaded successfully!");
+      setTimeout(() => {
+        setUploadProgressMsg("");
+        setUploadingVideo(false);
+      }, 2500);
+    } catch (err: unknown) {
+      setUploadProgressMsg(`⚠ Upload failed: ${err instanceof Error ? err.message : "Error"}`);
+      setTimeout(() => setUploadingVideo(false), 3000);
+    }
+  };
+
+  const handleSyncDrive = async () => {
+    setSyncingDrive(true);
+    setMessage("");
+    try {
+      const res = await fetch("/api/drive/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ force: true }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage(`✓ Synced ${data.projectsCount} videos from Google Drive!`);
+        await fetchProjects();
+      }
+    } catch {
+      setMessage("⚠ Drive sync encountered an issue.");
+    } finally {
+      setSyncingDrive(false);
+    }
+  };
 
   const openMediaPicker = (target: "video" | "thumbnail") => {
     setPickerTarget(target);
@@ -207,24 +266,35 @@ export default function AdminPortfolioPage() {
           </h1>
         </div>
 
-        <button
-          onClick={() =>
-            setEditingProject({
-              title: "",
-              description: "",
-              year: 2026,
-              software: "Premiere Pro, After Effects",
-              tags: "Commercial",
-              aspectRatio: "16:9",
-              displaySize: "medium",
-              isFeatured: false,
-              isPublished: true,
-            })
-          }
-          className="px-5 py-2.5 bg-[#C7A56A] text-[#080808] font-mono text-xs font-bold tracking-widest uppercase hover:bg-[#D8B77C] transition-all self-start"
-        >
-          + CREATE NEW PROJECT
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={handleSyncDrive}
+            disabled={syncingDrive}
+            className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-mono text-xs font-bold tracking-widest uppercase hover:brightness-110 transition-all shadow-md flex items-center space-x-2 disabled:opacity-50"
+          >
+            <span className={syncingDrive ? "animate-spin" : ""}>🔄</span>
+            <span>{syncingDrive ? "SYNCING..." : "SYNC WITH GOOGLE DRIVE"}</span>
+          </button>
+
+          <button
+            onClick={() =>
+              setEditingProject({
+                title: "",
+                description: "",
+                year: 2026,
+                software: "Premiere Pro, After Effects",
+                tags: "Commercial",
+                aspectRatio: "9:16",
+                displaySize: "medium",
+                isFeatured: false,
+                isPublished: true,
+              })
+            }
+            className="px-5 py-2.5 bg-[#C7A56A] text-[#080808] font-mono text-xs font-bold tracking-widest uppercase hover:bg-[#D8B77C] transition-all self-start"
+          >
+            + CREATE NEW PROJECT
+          </button>
+        </div>
       </div>
 
       {message && (
@@ -300,10 +370,35 @@ export default function AdminPortfolioPage() {
                 </div>
               </div>
 
+              <input
+                type="file"
+                ref={videoFileInputRef}
+                onChange={handleDirectVideoUpload}
+                accept="video/mp4,video/quicktime,video/webm"
+                className="hidden"
+              />
+
               <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <label className="text-[#8A8A8A] uppercase">VIDEO URL (DIRECT MP4 OR GOOGLE DRIVE)</label>
-                  <span className="text-[10px] text-[#C7A56A] font-bold">AUTO-DETECTS DRIVE</span>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <label className="text-[#8A8A8A] uppercase">VIDEO SOURCE (HQ UPLOAD OR GOOGLE DRIVE)</label>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => videoFileInputRef.current?.click()}
+                      disabled={uploadingVideo}
+                      className="px-2.5 py-1 bg-gradient-to-r from-amber-600 to-[#C7A56A] text-black text-[10px] font-bold uppercase rounded hover:brightness-110 flex items-center space-x-1"
+                    >
+                      <span>⚡</span>
+                      <span>{uploadingVideo ? "UPLOADING HQ VIDEO..." : "UPLOAD HQ VIDEO (.mp4, .mov)"}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openMediaPicker("video")}
+                      className="text-[#C7A56A] hover:underline text-[10px] font-bold uppercase tracking-wider"
+                    >
+                      📁 LIBRARY
+                    </button>
+                  </div>
                 </div>
                 <input
                   type="text"
@@ -312,6 +407,11 @@ export default function AdminPortfolioPage() {
                   onChange={(e) => handleVideoUrlChange(e.target.value)}
                   className="w-full bg-[#080808] border border-[rgba(243,240,232,0.2)] px-4 py-2.5 text-xs text-[#F3F0E8] focus:border-[#C7A56A] focus:outline-none"
                 />
+                {uploadProgressMsg && (
+                  <div className="text-[11px] text-amber-300 font-bold bg-amber-950/40 p-2 rounded border border-amber-500/30">
+                    {uploadProgressMsg}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-1">

@@ -16,13 +16,13 @@ interface HeroProps {
 }
 
 export default function Hero({ content, onOpenVideo }: HeroProps) {
-  const eyebrow = content?.heroEyebrow || "AVAILABLE FOR FREELANCE & CONTRACT WORK";
-  const subtitle = content?.heroSubtitle || "Professional Video Editor & Motion Graphics Designer";
+  const eyebrow = content?.heroEyebrow || "VIDEO EDITOR | GRAPHIC DESIGNER | 3D ARTIST | AI CREATOR";
+  const subtitle = content?.heroSubtitle || "Video Editor | Graphic Designer | 3D Artist | AI Creator";
   const description =
     content?.heroDescription ||
-    "Transforming raw footage into high-converting viral reels, cinematic real estate films, YouTube edits, and commercial motion graphics worldwide.";
-  const ctaPrimary = content?.heroCtaPrimary || "EXPLORE SHOWREEL";
-  const ctaSecondary = content?.heroCtaSecondary || "LET'S TALK ↗";
+    "With 2+ years of experience in creative production, I transform ideas into engaging videos, impactful graphics, stunning 3D visuals, and innovative AI-powered content. I help brands and businesses communicate their stories through creative visuals, professional editing, and modern digital content.";
+  const ctaPrimary = content?.heroCtaPrimary || "EXPLORE MY WORK";
+  const ctaSecondary = content?.heroCtaSecondary || "LET'S WORK TOGETHER";
   const videoUrl = content?.heroMediaUrl || "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
 
   const [isPlaying] = useState(true);
@@ -41,24 +41,24 @@ export default function Hero({ content, onOpenVideo }: HeroProps) {
           {/* Status Badge */}
           <div className="inline-flex items-center space-x-2.5 px-4 py-1.5 glass-panel text-[var(--accent)] font-mono text-[11px] tracking-[0.2em] uppercase font-bold">
             <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-ping" />
-            <span>● {eyebrow}</span>
+            <span>MOHIT BABARIYA — CREATIVE PRODUCER</span>
           </div>
 
           {/* Display Headline */}
-          <div className="space-y-1">
-            <h1 className="font-serif font-bold text-6xl sm:text-7xl lg:text-8xl leading-[0.95] tracking-tight text-[var(--text-primary)]">
-              Visual Editing
+          <div className="space-y-2">
+            <div className="font-mono text-xs tracking-[0.25em] text-[var(--accent)] uppercase font-bold">
+              {subtitle}
+            </div>
+            <h1 className="font-serif font-bold text-5xl sm:text-6xl lg:text-7xl leading-[1.0] tracking-tight text-[var(--text-primary)]">
+              Turning Ideas Into
             </h1>
-            <h1 className="font-serif italic font-light text-5xl sm:text-6xl lg:text-7xl leading-[0.95] tracking-tight text-[var(--accent)]">
-              That Commands Attention.
+            <h1 className="font-serif italic font-light text-5xl sm:text-6xl lg:text-7xl leading-[1.0] tracking-tight text-[var(--accent)]">
+              Visual Experiences.
             </h1>
           </div>
 
           {/* Subtitle & Description */}
           <div className="space-y-3 pt-2 max-w-xl">
-            <div className="font-mono text-xs tracking-[0.25em] text-[var(--text-primary)] uppercase font-semibold">
-              MOHIT BABARIYA — {subtitle}
-            </div>
             <p className="text-sm sm:text-base text-[var(--text-secondary)] font-light leading-relaxed">
               {description}
             </p>
@@ -67,15 +67,15 @@ export default function Hero({ content, onOpenVideo }: HeroProps) {
           {/* Stats Bar */}
           <div className="grid grid-cols-3 gap-4 pt-2 border-y border-[var(--border-glass)] py-4 max-w-lg">
             <div>
-              <div className="font-serif text-2xl sm:text-3xl font-bold text-[var(--text-primary)]">50M+</div>
-              <div className="font-mono text-[10px] text-[var(--text-secondary)] uppercase tracking-wider">Total Views</div>
+              <div className="font-serif text-2xl sm:text-3xl font-bold text-[var(--text-primary)]">2+</div>
+              <div className="font-mono text-[10px] text-[var(--text-secondary)] uppercase tracking-wider">Years Experience</div>
             </div>
             <div>
-              <div className="font-serif text-2xl sm:text-3xl font-bold text-[var(--accent)]">200+</div>
-              <div className="font-mono text-[10px] text-[var(--text-secondary)] uppercase tracking-wider">Edits Delivered</div>
+              <div className="font-serif text-2xl sm:text-3xl font-bold text-[var(--accent)]">500+</div>
+              <div className="font-mono text-[10px] text-[var(--text-secondary)] uppercase tracking-wider">Projects Completed</div>
             </div>
             <div>
-              <div className="font-serif text-2xl sm:text-3xl font-bold text-[var(--text-primary)]">99%</div>
+              <div className="font-serif text-2xl sm:text-3xl font-bold text-[var(--text-primary)]">100%</div>
               <div className="font-mono text-[10px] text-[var(--text-secondary)] uppercase tracking-wider">Client Score</div>
             </div>
           </div>
@@ -83,7 +83,7 @@ export default function Hero({ content, onOpenVideo }: HeroProps) {
           {/* CTAs */}
           <div className="pt-2 flex flex-wrap gap-4 items-center">
             <a
-              href="#showreel"
+              href="#work"
               className="px-8 py-4 bg-[var(--accent)] text-[var(--bg-main)] font-mono text-xs font-bold tracking-[0.2em] uppercase rounded-full hover:bg-[var(--accent-hover)] transition-all shadow-xl transform hover:-translate-y-0.5"
             >
               {ctaPrimary}

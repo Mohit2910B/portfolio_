@@ -8,8 +8,8 @@ interface FooterProps {
 
 export default function Footer({
   ownerName = "MOHIT BABARIYA",
-  tagline = "CRAFTING VISUAL EXCELLENCE WORLDWIDE",
-  copyright = "© 2026 MOHIT BABARIYA. ALL RIGHTS RESERVED.",
+  tagline = "Creative Solutions. Powerful Visual Stories. Worldwide Collaboration.",
+  copyright = "© 2026 Mohit Babariya. All Rights Reserved.",
 }: FooterProps) {
   return (
     <footer className="py-16 bg-[var(--bg-main)] text-[var(--text-primary)] border-t border-[var(--border-glass)]">
@@ -25,13 +25,13 @@ export default function Footer({
 
         <div className="flex items-center space-x-8 tracking-widest uppercase font-mono text-[11px]">
           <a href="#work" className="hover:text-[var(--text-primary)] transition-colors">
-            WORK
-          </a>
-          <a href="#showreel" className="hover:text-[var(--text-primary)] transition-colors">
-            SHOWREEL
+            PORTFOLIO
           </a>
           <a href="#about" className="hover:text-[var(--text-primary)] transition-colors">
             ABOUT
+          </a>
+          <a href="#services" className="hover:text-[var(--text-primary)] transition-colors">
+            SERVICES
           </a>
           <a href="#contact" className="hover:text-[var(--text-primary)] transition-colors">
             CONTACT
