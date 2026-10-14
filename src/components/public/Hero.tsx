@@ -136,13 +136,13 @@ export default function Hero({ content, onOpenVideo }: HeroProps) {
             </div>
           </div>
 
-          {/* Floating Badge: 100% Solid Dark Charcoal, NOT Transparent, Zero Glassmorphism */}
-          <div
+          {/* Floating Card: 100% Solid Dark Charcoal, NOT Transparent, Zero Glassmorphism */}
+          <a
+            href="#work"
             onClick={(e) => {
               e.stopPropagation();
-              if (onOpenVideo) onOpenVideo(videoUrl, "FEATURED SHOWREEL");
             }}
-            className="absolute -bottom-5 -left-4 sm:-bottom-6 sm:-left-6 p-4 space-y-1 cursor-pointer animate-float hidden sm:block max-w-[220px] rounded-xl z-20 border border-[#2a2a2a] shadow-[0_20px_40px_rgba(0,0,0,0.95)]"
+            className="group/badge absolute -bottom-5 left-3 sm:-bottom-6 sm:-left-6 p-4 space-y-1.5 animate-float block w-auto max-w-[220px] rounded-xl z-20 border border-[#2a2a2a] shadow-[0_20px_40px_rgba(0,0,0,0.95)] hover:border-[var(--accent)]/60 transition-colors"
             style={{
               backgroundColor: "#141414",
               background: "#141414",
@@ -151,16 +151,21 @@ export default function Hero({ content, onOpenVideo }: HeroProps) {
               opacity: 1,
             }}
           >
-            <div className="font-mono text-[9px] text-[var(--accent)] tracking-widest uppercase font-bold">
-              FEATURED WORK
+            <div className="font-mono text-[9px] text-[var(--accent)] tracking-[0.2em] uppercase font-bold flex items-center space-x-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
+              <span>VIDEO EDITOR</span>
             </div>
-            <div className="font-serif font-bold text-sm uppercase text-[var(--text-primary)]">
-              COMMERCIAL SHOWREEL
+            <div className="font-serif font-bold text-sm sm:text-base uppercase text-white leading-tight tracking-tight">
+              THE ART OF EDITING
             </div>
-            <div className="font-mono text-[10px] text-[var(--text-secondary)] hover:text-[var(--accent)]">
-              WATCH NOW →
+            <div className="font-mono text-[9px] text-[var(--accent)] tracking-wider uppercase font-medium">
+              CUT • COLOR • CREATE
             </div>
-          </div>
+            <div className="pt-1.5 border-t border-[#252525] flex items-center justify-between font-mono text-[10px] text-white/80 group-hover/badge:text-[var(--accent)] transition-colors font-semibold">
+              <span>EXPLORE MY WORK</span>
+              <span className="transform group-hover/badge:translate-x-1 transition-transform">→</span>
+            </div>
+          </a>
         </div>
       </div>
     </section>
