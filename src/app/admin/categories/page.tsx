@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { uploadFileInChunks } from "@/lib/chunkedUpload";
 
 interface Category {
   id: number;
@@ -38,6 +39,10 @@ export default function AdminCategoriesPage() {
   const [activeCategoryForVideos, setActiveCategoryForVideos] = useState<Category | null>(null);
   const [uploadingForVideoId, setUploadingForVideoId] = useState<string | number | null>(null);
   const [uploadStatus, setUploadStatus] = useState<string>("");
+
+  // Direct URL paste inline state
+  const [editingUrlForVideoId, setEditingUrlForVideoId] = useState<string | number | null>(null);
+  const [inputUrlValue, setInputUrlValue] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const thumbInputRef = useRef<HTMLInputElement>(null);
@@ -144,24 +149,16 @@ export default function AdminCategoriesPage() {
 
     const vidKey = targetVideoForUpload.driveFileId || targetVideoForUpload.title || targetVideoForUpload.id;
     setUploadingForVideoId(vidKey);
-    setUploadStatus(`Uploading high quality video "${file.name}" (${(file.size / (1024 * 1024)).toFixed(1)} MB)...`);
+    setUploadStatus(`Preparing to upload "${file.name}" (${(file.size / (1024 * 1024)).toFixed(1)} MB)...`);
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const resUpload = await fetch("/api/media", {
-        method: "POST",
-        body: formData,
+      // Use Chunked Upload (2MB chunks) to prevent 413 "Request Entity Too Large"
+      const uploadResult = await uploadFileInChunks(file, (percent, loadedMB, totalMB) => {
+        setUploadStatus(`Uploading HQ video: ${percent}% (${loadedMB} / ${totalMB} MB)...`);
       });
 
-      const dataUpload = await resUpload.json();
-      if (!resUpload.ok || !dataUpload.url) {
-        throw new Error(dataUpload.error || "File upload failed");
-      }
-
-      const hqVideoUrl = dataUpload.url;
-      setUploadStatus("Saving high quality replacement into portfolio...");
+      const hqVideoUrl = uploadResult.url;
+      setUploadStatus("Saving high-quality replacement into portfolio...");
 
       // Save override
       const resOverride = await fetch("/api/drive/override", {
@@ -182,7 +179,7 @@ export default function AdminCategoriesPage() {
         throw new Error(dataOverride.error || "Failed to record override");
       }
 
-      setUploadStatus("✓ Success! High-quality video replaced!");
+      setUploadStatus("✓ Success! High-quality video replaced successfully!");
       await fetchCatsAndProjects();
       setTimeout(() => {
         setUploadStatus("");
@@ -245,6 +242,47 @@ export default function AdminCategoriesPage() {
       setTimeout(() => {
         setUploadingForVideoId(null);
       }, 3000);
+    }
+  };
+
+  const handleSavePastedUrl = async (vid: ProjectVideo) => {
+    if (!inputUrlValue.trim()) return;
+    const vidKey = vid.driveFileId || vid.title || vid.id;
+    setUploadingForVideoId(vidKey);
+    setUploadStatus("Saving video URL replacement...");
+
+    try {
+      const res = await fetch("/api/drive/override", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          key: vidKey,
+          driveFileId: vid.driveFileId,
+          projectTitle: vid.title,
+          projectId: vid.id,
+          videoUrl: inputUrlValue.trim(),
+          thumbnailUrl: vid.thumbnailUrl,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to save URL");
+      }
+
+      setEditingUrlForVideoId(null);
+      setInputUrlValue("");
+      setUploadStatus("✓ Video replaced with new link successfully!");
+      await fetchCatsAndProjects();
+      setTimeout(() => {
+        setUploadStatus("");
+        setUploadingForVideoId(null);
+      }, 2000);
+    } catch (err: unknown) {
+      setUploadStatus(`⚠ Error: ${err instanceof Error ? err.message : "Error saving URL"}`);
+      setTimeout(() => {
+        setUploadingForVideoId(null);
+      }, 3500);
     }
   };
 
@@ -331,7 +369,7 @@ export default function AdminCategoriesPage() {
             </div>
             <p className="text-xs text-[#8A8A8A] max-w-3xl leading-relaxed">
               Google Drive automatically provides your categories and video library. For any video where Google Drive preview compression looks low, you can click{" "}
-              <strong className="text-[#C7A56A]">"VIEW & REPLACE VIDEOS"</strong> below and upload your uncompressed 1080p/4K master file directly (.mp4, .mov). The website will stream your crystal-clear high quality video!
+              <strong className="text-[#C7A56A]">"VIEW & REPLACE VIDEOS"</strong> below and either upload your uncompressed master video file (.mp4, .mov) or paste a direct high-definition link!
             </p>
           </div>
 
@@ -499,7 +537,7 @@ export default function AdminCategoriesPage() {
 
             {/* Upload Notification Banner */}
             {uploadStatus && (
-              <div className="p-3 bg-amber-950/80 border-b border-amber-500/50 text-amber-200 text-xs px-6 font-bold flex items-center space-x-2">
+              <div className="p-3 bg-amber-950/90 border-b border-amber-500/50 text-amber-200 text-xs px-6 font-bold flex items-center space-x-2">
                 <span className="animate-spin">🔄</span>
                 <span>{uploadStatus}</span>
               </div>
@@ -507,8 +545,10 @@ export default function AdminCategoriesPage() {
 
             {/* Videos List */}
             <div className="p-6 overflow-y-auto space-y-4 flex-1">
-              <div className="text-xs text-[#8A8A8A] bg-[#161616] p-3 rounded-lg border border-white/5">
-                💡 <strong className="text-white">Tip:</strong> Drive videos show with a gray badge. To replace any video with an uncompressed crystal-clear 1080p/4K master file, click <span className="text-[#C7A56A] font-bold">"⚡ REPLACE WITH HQ VIDEO (.mp4, .mov)"</span>. It uploads directly to the website and streams natively without compression!
+              <div className="text-xs text-[#8A8A8A] bg-[#161616] p-3 rounded-lg border border-white/5 leading-relaxed">
+                💡 <strong className="text-white">બે ઓપ્શન્સ છે:</strong><br />
+                1. <strong>"⚡ UPLOAD HQ VIDEO FILE"</strong>: તમારા કમ્પ્યુટર/મોબાઇલમાંથી ઓરિજિનલ `.mp4` કે `.mov` ફાઇલ સિલેક્ટ કરો. તે ચંક્ડ અપલોડથી ૧૦૦% સેફ અપલોડ થઈ જશે.<br />
+                2. <strong>"🔗 PASTE URL"</strong>: અથવા જો વિડિયો ડ્રાઇવ કે અન્ય લિંક પર હોય તો ડાયરેક્ટ હાઇ-રિઝોલ્યુશન લિંક પેસ્ટ કરીને Save કરી શકો છો!
               </div>
 
               {activeCategoryVideos.length === 0 ? (
@@ -520,6 +560,7 @@ export default function AdminCategoriesPage() {
                   {activeCategoryVideos.map((vid) => {
                     const vidKey = vid.driveFileId || vid.title || vid.id;
                     const isUploading = uploadingForVideoId === vidKey;
+                    const isEditingUrl = editingUrlForVideoId === vidKey;
                     const isHq = Boolean(
                       vid.isHighQualityManual ||
                         vid.videoUrl.startsWith("/uploads/") ||
@@ -529,82 +570,125 @@ export default function AdminCategoriesPage() {
                     return (
                       <div
                         key={vid.id || vidKey}
-                        className={`p-4 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all ${
+                        className={`p-4 rounded-xl border flex flex-col gap-3 transition-all ${
                           isHq
                             ? "bg-emerald-950/20 border-emerald-500/30"
                             : "bg-[#141414] border-[rgba(243,240,232,0.1)]"
                         }`}
                       >
-                        {/* Video Info Left */}
-                        <div className="flex items-center space-x-4 min-w-0">
-                          {vid.thumbnailUrl ? (
-                            <img
-                              src={vid.thumbnailUrl}
-                              referrerPolicy="no-referrer"
-                              alt=""
-                              className="w-16 h-24 object-cover rounded-lg border border-white/10 bg-black shrink-0"
-                            />
-                          ) : (
-                            <div className="w-16 h-24 rounded-lg border border-white/10 bg-black flex items-center justify-center text-[10px] text-gray-500 shrink-0">
-                              NO THUMB
-                            </div>
-                          )}
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                          {/* Video Info Left */}
+                          <div className="flex items-center space-x-4 min-w-0">
+                            {vid.thumbnailUrl ? (
+                              <img
+                                src={vid.thumbnailUrl}
+                                referrerPolicy="no-referrer"
+                                alt=""
+                                className="w-16 h-24 object-cover rounded-lg border border-white/10 bg-black shrink-0"
+                              />
+                            ) : (
+                              <div className="w-16 h-24 rounded-lg border border-white/10 bg-black flex items-center justify-center text-[10px] text-gray-500 shrink-0">
+                                NO THUMB
+                              </div>
+                            )}
 
-                          <div className="space-y-1 min-w-0">
-                            <div className="flex items-center space-x-2">
-                              <span className="font-bold text-sm text-[#F3F0E8] truncate max-w-sm sm:max-w-md">
-                                {vid.title}
-                              </span>
-                              {isHq ? (
-                                <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-500/40 uppercase">
-                                  ⚡ HIGH QUALITY ACTIVE
+                            <div className="space-y-1 min-w-0">
+                              <div className="flex items-center space-x-2">
+                                <span className="font-bold text-sm text-[#F3F0E8] truncate max-w-sm sm:max-w-md">
+                                  {vid.title}
                                 </span>
-                              ) : (
-                                <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-[#222] text-[#8A8A8A] border border-white/10 uppercase">
-                                  📁 DRIVE ORIGINAL
-                                </span>
-                              )}
-                            </div>
+                                {isHq ? (
+                                  <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-500/40 uppercase">
+                                    ⚡ HIGH QUALITY ACTIVE
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-[#222] text-[#8A8A8A] border border-white/10 uppercase">
+                                    📁 DRIVE ORIGINAL
+                                  </span>
+                                )}
+                              </div>
 
-                            <div className="text-[10px] text-[#8A8A8A] truncate max-w-sm sm:max-w-lg">
-                              URL: {vid.videoUrl}
-                            </div>
+                              <div className="text-[10px] text-[#8A8A8A] truncate max-w-sm sm:max-w-lg">
+                                URL: {vid.videoUrl}
+                              </div>
 
-                            <div className="text-[10px] text-[#C7A56A]">
-                              Aspect: {vid.aspectRatio || "9:16"}
+                              <div className="text-[10px] text-[#C7A56A]">
+                                Aspect: {vid.aspectRatio || "9:16"}
+                              </div>
                             </div>
+                          </div>
+
+                          {/* Actions Right */}
+                          <div className="flex flex-wrap items-center gap-2 shrink-0 md:justify-end">
+                            <button
+                              onClick={() => triggerVideoUpload(vid)}
+                              disabled={isUploading}
+                              className="px-3.5 py-2 bg-gradient-to-r from-amber-600 to-[#C7A56A] hover:brightness-110 text-black font-bold text-xs uppercase tracking-wider rounded-lg shadow transition-all flex items-center space-x-1 disabled:opacity-50"
+                            >
+                              <span>⚡</span>
+                              <span>{isUploading ? "UPLOADING..." : "UPLOAD HQ FILE"}</span>
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                if (isEditingUrl) {
+                                  setEditingUrlForVideoId(null);
+                                } else {
+                                  setEditingUrlForVideoId(vidKey);
+                                  setInputUrlValue(vid.videoUrl || "");
+                                }
+                              }}
+                              className="px-3 py-2 bg-[#222] hover:bg-[#333] text-[#C7A56A] border border-[#C7A56A]/40 font-bold text-xs uppercase tracking-wider rounded-lg transition-all"
+                            >
+                              🔗 PASTE URL
+                            </button>
+
+                            <button
+                              onClick={() => triggerThumbUpload(vid)}
+                              disabled={isUploading}
+                              className="px-3 py-2 bg-[#222] hover:bg-[#333] text-[#F3F0E8] border border-white/10 font-bold text-xs uppercase tracking-wider rounded-lg transition-all"
+                            >
+                              🖼 THUMB
+                            </button>
+
+                            {isHq && (
+                              <button
+                                onClick={() => handleRevertVideo(vid)}
+                                className="px-2.5 py-2 bg-rose-950/60 hover:bg-rose-900 text-rose-300 text-xs rounded-lg transition-all"
+                                title="Revert back to Google Drive video stream"
+                              >
+                                ↺ REVERT
+                              </button>
+                            )}
                           </div>
                         </div>
 
-                        {/* Actions Right */}
-                        <div className="flex flex-wrap items-center gap-2 shrink-0 md:justify-end">
-                          <button
-                            onClick={() => triggerVideoUpload(vid)}
-                            disabled={isUploading}
-                            className="px-3.5 py-2 bg-gradient-to-r from-amber-600 to-[#C7A56A] hover:brightness-110 text-black font-bold text-xs uppercase tracking-wider rounded-lg shadow transition-all flex items-center space-x-1 disabled:opacity-50"
-                          >
-                            <span>⚡</span>
-                            <span>{isUploading ? "UPLOADING..." : isHq ? "CHANGE HQ VIDEO" : "REPLACE WITH HQ VIDEO"}</span>
-                          </button>
-
-                          <button
-                            onClick={() => triggerThumbUpload(vid)}
-                            disabled={isUploading}
-                            className="px-3 py-2 bg-[#222] hover:bg-[#333] text-[#F3F0E8] border border-white/10 font-bold text-xs uppercase tracking-wider rounded-lg transition-all"
-                          >
-                            🖼 THUMBNAIL
-                          </button>
-
-                          {isHq && (
-                            <button
-                              onClick={() => handleRevertVideo(vid)}
-                              className="px-2.5 py-2 bg-rose-950/60 hover:bg-rose-900 text-rose-300 text-xs rounded-lg transition-all"
-                              title="Revert back to Google Drive video stream"
-                            >
-                              ↺ REVERT
-                            </button>
-                          )}
-                        </div>
+                        {/* Inline Paste URL Form */}
+                        {isEditingUrl && (
+                          <div className="mt-2 p-3 bg-[#0a0a0a] border border-[#C7A56A]/30 rounded-lg flex flex-col sm:flex-row gap-2 items-center">
+                            <input
+                              type="text"
+                              placeholder="Paste direct high-quality video URL (MP4, MOV, Google Drive HD link)..."
+                              value={inputUrlValue}
+                              onChange={(e) => setInputUrlValue(e.target.value)}
+                              className="w-full bg-[#161616] border border-white/15 px-3 py-2 text-xs text-white rounded focus:border-[#C7A56A] focus:outline-none"
+                            />
+                            <div className="flex items-center space-x-2 shrink-0">
+                              <button
+                                onClick={() => handleSavePastedUrl(vid)}
+                                className="px-4 py-2 bg-[#C7A56A] hover:bg-[#D8B77C] text-black font-bold text-xs uppercase rounded"
+                              >
+                                SAVE LINK
+                              </button>
+                              <button
+                                onClick={() => setEditingUrlForVideoId(null)}
+                                className="px-3 py-2 bg-[#222] hover:bg-[#333] text-gray-400 text-xs rounded"
+                              >
+                                CANCEL
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import MediaPickerModal from "@/components/admin/MediaPickerModal";
+import { uploadFileInChunks } from "@/lib/chunkedUpload";
 
 interface Project {
   id: number;
@@ -48,23 +49,14 @@ export default function AdminPortfolioPage() {
     if (!file || !editingProject) return;
 
     setUploadingVideo(true);
-    setUploadProgressMsg(`Uploading high quality video "${file.name}" (${(file.size / (1024 * 1024)).toFixed(1)} MB)...`);
+    setUploadProgressMsg(`Preparing to upload "${file.name}" (${(file.size / (1024 * 1024)).toFixed(1)} MB)...`);
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const res = await fetch("/api/media", {
-        method: "POST",
-        body: formData,
+      const uploadResult = await uploadFileInChunks(file, (percent, loadedMB, totalMB) => {
+        setUploadProgressMsg(`Uploading HQ video: ${percent}% (${loadedMB} / ${totalMB} MB)...`);
       });
 
-      const data = await res.json();
-      if (!res.ok || !data.url) {
-        throw new Error(data.error || "Upload failed");
-      }
-
-      setEditingProject({ ...editingProject, videoUrl: data.url });
+      setEditingProject({ ...editingProject, videoUrl: uploadResult.url });
       setUploadProgressMsg("✓ High quality video uploaded successfully!");
       setTimeout(() => {
         setUploadProgressMsg("");
@@ -72,7 +64,7 @@ export default function AdminPortfolioPage() {
       }, 2500);
     } catch (err: unknown) {
       setUploadProgressMsg(`⚠ Upload failed: ${err instanceof Error ? err.message : "Error"}`);
-      setTimeout(() => setUploadingVideo(false), 3000);
+      setTimeout(() => setUploadingVideo(false), 3500);
     }
   };
 
