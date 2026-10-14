@@ -13,7 +13,10 @@ interface AboutProps {
 
 export default function About({ content }: AboutProps) {
   const heading = content?.aboutHeading || "CREATIVITY MEETS TECHNOLOGY";
-  const years = content?.aboutExperienceYears || "2+";
+  const years =
+    content?.aboutExperienceYears === "6+"
+      ? "2+"
+      : content?.aboutExperienceYears || "2+";
   const projects = content?.aboutProjectsCompleted || "500+";
   const clients = content?.aboutClientsCount || "100+";
 

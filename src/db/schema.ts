@@ -268,7 +268,7 @@ export const homepageContent = pgTable("homepage_content", {
   aboutHeading: text("about_heading").notNull().default("THE PERSON BEHIND THE WORK"),
   aboutSubheading: text("about_subheading").notNull().default("Passionate Storyteller & Visual Craftsman"),
   aboutDescription: text("about_description").notNull().default("I specialize in transforming raw footage into compelling visual narratives."),
-  aboutExperienceYears: text("about_experience_years").notNull().default("6+"),
+  aboutExperienceYears: text("about_experience_years").notNull().default("2+"),
   aboutProjectsCompleted: text("about_projects_completed").notNull().default("450+"),
   aboutClientsCount: text("about_clients_count").notNull().default("120+"),
   servicesIntro: text("services_intro").notNull().default("Tailored video editing, motion graphics, and post-production solutions."),

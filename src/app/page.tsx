@@ -63,7 +63,14 @@ export default async function HomePage() {
     syncGoogleDriveFolders().catch(() => null),
   ]);
 
-  const content = contentRows[0] || (DEFAULT_CONTENT as unknown as typeof contentRows[0]);
+  const rawContent = contentRows[0] || (DEFAULT_CONTENT as unknown as typeof contentRows[0]);
+  const content = {
+    ...rawContent,
+    aboutExperienceYears:
+      rawContent?.aboutExperienceYears === "6+"
+        ? "2+"
+        : rawContent?.aboutExperienceYears || "2+",
+  };
   const contact = contactRows[0] || undefined;
   const theme = themeRows[0] || { activeTheme: 1, accentColor: "#C8A66A", customConfigJson: "{}" };
   const sections = layoutRows.length > 0 ? layoutRows : [

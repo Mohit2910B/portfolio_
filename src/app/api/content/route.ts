@@ -36,6 +36,10 @@ export async function GET() {
       footerCopyright: "© 2026 MOHIT BABARIYA. ALL RIGHTS RESERVED.",
     };
 
+    if (content && content.aboutExperienceYears === "6+") {
+      content.aboutExperienceYears = "2+";
+    }
+
     return ok({ content });
   });
 }

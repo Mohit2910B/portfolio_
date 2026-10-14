@@ -14,7 +14,7 @@ export default function AdminContentStudioPage() {
     aboutHeading: "THE PERSON BEHIND THE WORK",
     aboutSubheading: "Passionate Storyteller & Visual Craftsman",
     aboutDescription: "I specialize in transforming raw footage into compelling visual narratives.",
-    aboutExperienceYears: "6+",
+    aboutExperienceYears: "2+",
     aboutProjectsCompleted: "450+",
     aboutClientsCount: "120+",
     servicesIntro: "Tailored video editing, motion graphics, and post-production solutions.",
