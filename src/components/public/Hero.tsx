@@ -97,18 +97,22 @@ export default function Hero({ content, onOpenVideo }: HeroProps) {
           </div>
         </div>
 
-        {/* Right Column: 9:16 Vertical Screen Frame */}
+        {/* Right Column: 9:16 Vertical Screen Frame (1080x1920 Proportions) */}
         <div className="lg:col-span-5 relative flex justify-center lg:justify-end">
           <div className="absolute -inset-4 bg-gradient-to-r from-[var(--accent)]/15 to-[var(--accent-cool)]/10 rounded-[32px] blur-2xl opacity-50 pointer-events-none" />
 
           <div
             onClick={() => onOpenVideo && onOpenVideo(videoUrl, "MOHIT BABARIYA — REEL SHOWREEL")}
-            className="relative glass-panel-strong p-3 space-y-3 cursor-pointer group transform hover:scale-[1.01] transition-transform duration-500 rounded-[28px] max-w-[340px] sm:max-w-[380px] w-full shadow-2xl"
+            className="relative glass-panel-strong p-3 space-y-3 cursor-pointer group transform hover:scale-[1.01] transition-transform duration-500 rounded-[28px] shadow-2xl"
+            style={{ width: "100%", maxWidth: "360px" }}
           >
-            {/* The 9:16 Vertical Reel Screen Frame */}
-            <div className="relative aspect-[9/16] w-full rounded-[22px] overflow-hidden bg-black border border-white/10 shadow-inner">
+            {/* The 9:16 Vertical Reel Screen Frame (1080x1920 Proportions) */}
+            <div
+              className="relative w-full rounded-[22px] overflow-hidden bg-black border border-white/10 shadow-inner"
+              style={{ aspectRatio: "9 / 16", minHeight: "560px" }}
+            >
               <img
-                src="/images/mohit-vertical.png?v=5"
+                src="/images/mohit-vertical.png?v=7"
                 alt="Mohit Babariya — Video Editor, 3D Artist & Creative Producer"
                 className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
                 loading="eager"
@@ -128,8 +132,8 @@ export default function Hero({ content, onOpenVideo }: HeroProps) {
 
             {/* Bottom Metadata Bar */}
             <div className="flex items-center justify-between px-2 font-mono text-[10px] text-[var(--text-secondary)] uppercase">
-              <span>PREMIERE PRO / AFTER EFFECTS / DAVINCI</span>
-              <span className="text-[var(--accent)] font-bold">4K 60FPS</span>
+              <span>PREMIERE PRO / AFTER EFFECTS</span>
+              <span className="text-[var(--accent)] font-bold">9:16 4K</span>
             </div>
           </div>
 
