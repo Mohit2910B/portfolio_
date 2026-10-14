@@ -19,14 +19,18 @@ export async function POST(req: Request) {
       return badRequest("Username/email and password are required.");
     }
 
-    // Query admin by email or username
-    const adminRows = await db
-      .select()
-      .from(admins)
-      .where(or(eq(admins.email, usernameOrEmail), eq(admins.username, usernameOrEmail)))
-      .limit(1);
-
-    const admin = adminRows[0];
+    // Query admin by email or username safely
+    let admin = null;
+    try {
+      const adminRows = await db
+        .select()
+        .from(admins)
+        .where(or(eq(admins.email, usernameOrEmail), eq(admins.username, usernameOrEmail)))
+        .limit(1);
+      admin = adminRows[0] || null;
+    } catch {
+      admin = null;
+    }
 
     // Default seed admin credential check fallback
     const isSeedMatch =
