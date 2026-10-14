@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { DEFAULT_CATEGORIES, DEFAULT_PROJECTS } from "./defaultPortfolioData";
 import { getAllVideoOverrides } from "./videoOverrides";
+import { isCategoryDeleted } from "./categoryManager";
 
 export interface DriveVideoItem {
   id: number;
@@ -48,6 +49,10 @@ export const DEFAULT_ROOT_FOLDER_ID = "1qDP0lUvRfyDsvktivuDTviwKxfi67W1i";
 // In-memory cache
 let memoryCache: DriveSyncResult | null = null;
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+export function clearDriveMemoryCache(): void {
+  memoryCache = null;
+}
 
 function slugify(text: string): string {
   return text
@@ -144,9 +149,15 @@ export async function syncGoogleDriveFolders(
       throw new Error("No subfolders discovered in root folder");
     }
 
+    // Filter out deleted/hidden categories
+    const activeFolders = folders.filter((f) => {
+      const catSlug = slugify(f.title);
+      return !isCategoryDeleted({ slug: catSlug, name: f.title, driveFolderId: f.id });
+    });
+
     // Parallel fetch contents of each subfolder
     const folderContents = await Promise.all(
-      folders.map(async (folder) => {
+      activeFolders.map(async (folder) => {
         try {
           const fUrl = `https://drive.google.com/drive/folders/${folder.id}`;
           const fRes = await fetch(fUrl, {
@@ -294,12 +305,19 @@ export async function syncGoogleDriveFolders(
       return p;
     });
 
-    // Default static fallback
+    // Default static fallback filtered by deleted categories
+    const filteredFallbackCats = (DEFAULT_CATEGORIES as DriveCategoryItem[]).filter(
+      (c) => !isCategoryDeleted({ slug: c.slug, id: c.id, name: c.name })
+    );
+    const filteredFallbackProjects = fallbackProjects.filter(
+      (p) => !isCategoryDeleted({ slug: slugify(p.category), name: p.category, id: p.categoryId })
+    );
+
     return {
       folderId: rootFolderId,
       lastSyncedAt: now,
-      categories: DEFAULT_CATEGORIES as DriveCategoryItem[],
-      projects: fallbackProjects,
+      categories: filteredFallbackCats,
+      projects: filteredFallbackProjects,
       source: "default",
     };
   }

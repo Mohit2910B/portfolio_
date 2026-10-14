@@ -4,7 +4,7 @@ import {
   saveVideoOverride,
   deleteVideoOverride,
 } from "@/lib/videoOverrides";
-import { syncGoogleDriveFolders } from "@/lib/driveSync";
+import { clearDriveMemoryCache } from "@/lib/driveSync";
 
 export const dynamic = "force-dynamic";
 
@@ -36,9 +36,7 @@ export async function POST(req: Request) {
     });
 
     // Invalidate Drive sync cache so live website sees changes immediately
-    try {
-      await syncGoogleDriveFolders(undefined, true);
-    } catch {}
+    clearDriveMemoryCache();
 
     return NextResponse.json({
       success: true,
@@ -62,10 +60,7 @@ export async function DELETE(req: Request) {
     }
 
     const deleted = deleteVideoOverride(key);
-
-    try {
-      await syncGoogleDriveFolders(undefined, true);
-    } catch {}
+    clearDriveMemoryCache();
 
     return NextResponse.json({
       success: true,

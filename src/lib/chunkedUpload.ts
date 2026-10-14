@@ -1,17 +1,41 @@
+import { upload } from "@vercel/blob/client";
+
 /**
- * Uploads a file in 2MB chunks to /api/media/chunk to prevent 413 "Request Entity Too Large" errors
- * Works on any server (Vercel, local, VPS) regardless of server body size limits!
+ * Uploads a file with dual strategy:
+ * 1. Direct browser-to-Vercel Blob upload (supports up to 500MB if token exists)
+ * 2. 1.5MB chunked fallback to /api/media/chunk (bypasses server payload limits)
+ * Safe response parsing ensures no "Unexpected token 'R'" syntax crashes!
  */
 export async function uploadFileInChunks(
   file: File,
   onProgress?: (percent: number, loadedMB: string, totalMB: string) => void
 ): Promise<{ success: boolean; url: string; filename?: string }> {
-  const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB per chunk (safely under the 4.5MB limit)
-  const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-  const uploadId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
   const totalMB = (file.size / (1024 * 1024)).toFixed(1);
 
-  // If file is very small (< 1.5MB), can be uploaded directly or in 1 chunk
+  // Strategy 1: Attempt direct client-side Vercel Blob upload
+  try {
+    const newBlob = await upload(file.name, file, {
+      access: "public",
+      handleUploadUrl: "/api/blob/upload",
+      onUploadProgress: (progress) => {
+        const percent = Math.round(progress.percentage);
+        const loadedMB = ((progress.loaded) / (1024 * 1024)).toFixed(1);
+        if (onProgress) onProgress(percent, loadedMB, totalMB);
+      },
+    });
+
+    if (newBlob?.url) {
+      return { success: true, url: newBlob.url, filename: file.name };
+    }
+  } catch (blobErr: unknown) {
+    console.info("[chunkedUpload] Client blob upload bypassed, using chunked stream:", blobErr);
+  }
+
+  // Strategy 2: 1.5MB chunked upload
+  const CHUNK_SIZE = 1.5 * 1024 * 1024; // 1.5MB chunks (guaranteed under 4.5MB Vercel serverless limit)
+  const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+  const uploadId = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+
   for (let i = 0; i < totalChunks; i++) {
     const start = i * CHUNK_SIZE;
     const end = Math.min(start + CHUNK_SIZE, file.size);
@@ -30,28 +54,37 @@ export async function uploadFileInChunks(
       onProgress(percent, currentMB, totalMB);
     }
 
-    const res = await fetch("/api/media/chunk", {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
-      let errorMsg = `Server returned status ${res.status}`;
-      try {
-        const json = JSON.parse(text);
-        if (json.error) errorMsg = json.error;
-      } catch {
-        if (text) errorMsg = text.slice(0, 100);
-      }
-      throw new Error(`Upload error on chunk ${i + 1}/${totalChunks}: ${errorMsg}`);
+    let res: Response;
+    try {
+      res = await fetch("/api/media/chunk", {
+        method: "POST",
+        body: formData,
+      });
+    } catch (networkErr: unknown) {
+      throw new Error(`નેટવર્ક એરર આવી છે. કૃપા કરીને ફરી ટ્રાય કરો અથવા 'PASTE URL' વાપરો (${networkErr instanceof Error ? networkErr.message : "Network error"}).`);
     }
 
-    const data = await res.json();
+    const text = await res.text();
+    let data: any = null;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      if (res.status === 413 || text.includes("Request Entity") || text.includes("Too Large")) {
+        throw new Error(
+          "ફાઇલ સાઇઝ Vercel લિમિટથી મોટી છે. મહેરબાની કરીને નીચે આપેલા '🔗 PASTE URL' બોક્સમાં ગૂગલ ડ્રાઇવ લિંક કે MP4 વિડિયો લિંક પેસ્ટ કરી 'SAVE' કરો!"
+        );
+      }
+      throw new Error(`Upload response error (${res.status}): ${text.slice(0, 100)}`);
+    }
+
+    if (!res.ok || data?.error) {
+      throw new Error(data?.error || `Upload error on chunk ${i + 1}/${totalChunks}`);
+    }
+
     if (data.done && data.url) {
       return { success: true, url: data.url, filename: data.filename };
     }
   }
 
-  throw new Error("Upload completed without receiving final file URL.");
+  throw new Error("Upload completed without receiving final video URL.");
 }

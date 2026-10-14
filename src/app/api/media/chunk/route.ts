@@ -1,15 +1,32 @@
 import { NextResponse } from "next/server";
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import { put } from "@vercel/blob";
 
 export const dynamic = "force-dynamic";
+
+function getUploadDir(): string {
+  const localPublic = path.join(process.cwd(), "public", "uploads");
+  try {
+    if (!fs.existsSync(localPublic)) {
+      fs.mkdirSync(localPublic, { recursive: true });
+    }
+    return localPublic;
+  } catch {
+    const tmpDir = path.join(os.tmpdir(), "portfolio_uploads");
+    if (!fs.existsSync(tmpDir)) {
+      fs.mkdirSync(tmpDir, { recursive: true });
+    }
+    return tmpDir;
+  }
+}
 
 export async function POST(req: Request) {
   try {
     const formData = await req.formData().catch(() => null);
     if (!formData) {
-      return NextResponse.json({ success: false, error: "Invalid form data" }, { status: 400 });
+      return NextResponse.json({ success: false, error: "Invalid form data payload" }, { status: 400 });
     }
 
     const chunk = formData.get("chunk") as Blob | null;
@@ -22,11 +39,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: "No chunk received" }, { status: 400 });
     }
 
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-
+    const uploadDir = getUploadDir();
     const tempFilePath = path.join(uploadDir, `upload-session-${uploadId}.tmp`);
     const chunkBuffer = Buffer.from(await chunk.arrayBuffer());
 
@@ -36,25 +49,30 @@ export async function POST(req: Request) {
       fs.appendFileSync(tempFilePath, chunkBuffer);
     }
 
-    // If this is the final chunk, finalize file
+    // Final chunk reached
     if (chunkIndex === totalChunks - 1) {
       const timestamp = Date.now();
       const cleanName = fileName.toLowerCase().replace(/[^a-z0-9.]/g, "-").replace(/-+/g, "-");
       const finalFilename = `${timestamp}-${cleanName}`;
       const finalLocalPath = path.join(uploadDir, finalFilename);
 
-      fs.renameSync(tempFilePath, finalLocalPath);
+      try {
+        fs.renameSync(tempFilePath, finalLocalPath);
+      } catch {
+        fs.copyFileSync(tempFilePath, finalLocalPath);
+        try { fs.unlinkSync(tempFilePath); } catch {}
+      }
 
       let finalUrl = `/uploads/${finalFilename}`;
 
-      // If Vercel Blob is available, upload final buffer to Blob
+      // Upload to Vercel Blob if token available
       if (process.env.BLOB_READ_WRITE_TOKEN) {
         try {
           const finalBuffer = fs.readFileSync(finalLocalPath);
           const blob = await put(finalFilename, finalBuffer, { access: "public" });
           finalUrl = blob.url;
         } catch (err) {
-          console.warn("[chunk upload] Vercel Blob sync fallback to local:", err);
+          console.warn("[chunk upload] Vercel Blob upload note:", err);
         }
       }
 
