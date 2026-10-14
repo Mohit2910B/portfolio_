@@ -97,25 +97,25 @@ export default function Hero({ content, onOpenVideo }: HeroProps) {
           </div>
         </div>
 
-        {/* Right Column: Exact Monitor Screen Frame */}
-        <div className="lg:col-span-5 relative">
+        {/* Right Column: 9:16 Vertical Screen Frame */}
+        <div className="lg:col-span-5 relative flex justify-center lg:justify-end">
           <div className="absolute -inset-4 bg-gradient-to-r from-[var(--accent)]/15 to-[var(--accent-cool)]/10 rounded-[32px] blur-2xl opacity-50 pointer-events-none" />
 
           <div
             onClick={() => onOpenVideo && onOpenVideo(videoUrl, "MOHIT BABARIYA — REEL SHOWREEL")}
-            className="relative glass-panel-strong p-3 space-y-3 cursor-pointer group transform hover:scale-[1.01] transition-transform duration-500 rounded-[24px]"
+            className="relative glass-panel-strong p-3 space-y-3 cursor-pointer group transform hover:scale-[1.01] transition-transform duration-500 rounded-[28px] max-w-[340px] sm:max-w-[380px] w-full shadow-2xl"
           >
-            {/* The Exact Monitor Screen Frame */}
-            <div className="relative aspect-video w-full rounded-[18px] overflow-hidden bg-black border border-white/10 shadow-inner">
+            {/* The 9:16 Vertical Reel Screen Frame */}
+            <div className="relative aspect-[9/16] w-full rounded-[22px] overflow-hidden bg-black border border-white/10 shadow-inner">
               <img
-                src="/images/mohit-suit.png?v=3"
+                src="/images/mohit-vertical.png?v=5"
                 alt="Mohit Babariya — Video Editor, 3D Artist & Creative Producer"
-                className="w-full h-full object-cover object-[center_20%] transition-transform duration-700 group-hover:scale-105"
+                className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
                 loading="eager"
               />
 
               {/* Bottom Subtle Vignette Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
 
               {/* Play Showreel Overlay on Hover */}
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
@@ -139,7 +139,7 @@ export default function Hero({ content, onOpenVideo }: HeroProps) {
               e.stopPropagation();
               if (onOpenVideo) onOpenVideo(videoUrl, "FEATURED SHOWREEL");
             }}
-            className="absolute -bottom-6 -left-6 p-4 space-y-1 cursor-pointer animate-float hidden sm:block max-w-[220px] rounded-xl z-20 border border-[#2a2a2a] shadow-[0_20px_40px_rgba(0,0,0,0.95)]"
+            className="absolute -bottom-5 -left-4 sm:-bottom-6 sm:-left-6 p-4 space-y-1 cursor-pointer animate-float hidden sm:block max-w-[220px] rounded-xl z-20 border border-[#2a2a2a] shadow-[0_20px_40px_rgba(0,0,0,0.95)]"
             style={{
               backgroundColor: "#141414",
               background: "#141414",
