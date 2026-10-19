@@ -11,6 +11,14 @@ interface HeroProps {
     heroCtaPrimary?: string;
     heroCtaSecondary?: string;
     heroMediaUrl?: string;
+    heroImageUrl?: string;
+    heroImageAspect?: string;
+    heroImageFit?: string;
+    heroImageWidth?: string;
+    heroImageFrame?: string;
+    heroBadgeTitle?: string;
+    heroBadgeSubtitle?: string;
+    heroBadgeVisible?: boolean;
   };
   onOpenVideo?: (videoUrl: string, title: string) => void;
 }
@@ -25,7 +33,47 @@ export default function Hero({ content, onOpenVideo }: HeroProps) {
   const ctaSecondary = content?.heroCtaSecondary || "LET'S WORK TOGETHER";
   const videoUrl = content?.heroMediaUrl || "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
 
-  const [isPlaying] = useState(true);
+  // Dynamic Image & Sizing options
+  const heroImage = content?.heroImageUrl || "/images/mohit-vertical.png?v=7";
+  const aspectMode = content?.heroImageAspect || "9:16";
+  const fitMode = content?.heroImageFit || "cover-top";
+  const frameWidth = content?.heroImageWidth || "360px";
+  const frameStyle = content?.heroImageFrame || "phone";
+  const badgeTitle = content?.heroBadgeTitle || "THE ART OF EDITING";
+  const badgeSubtitle = content?.heroBadgeSubtitle || "VIDEO EDITOR";
+  const isBadgeVisible = content?.heroBadgeVisible !== false;
+
+  // Aspect Ratio Mapping
+  const aspectStyle =
+    aspectMode === "3:4"
+      ? { aspectRatio: "3 / 4", minHeight: "480px" }
+      : aspectMode === "4:5"
+      ? { aspectRatio: "4 / 5", minHeight: "460px" }
+      : aspectMode === "1:1"
+      ? { aspectRatio: "1 / 1", minHeight: "360px" }
+      : aspectMode === "16:9"
+      ? { aspectRatio: "16 / 9", minHeight: "280px" }
+      : { aspectRatio: "9 / 16", minHeight: "560px" };
+
+  // Object Fit & Position Mapping
+  const imgFitClass =
+    fitMode === "cover-center"
+      ? "object-cover object-center"
+      : fitMode === "cover-bottom"
+      ? "object-cover object-bottom"
+      : fitMode === "contain"
+      ? "object-contain object-center bg-black/80"
+      : "object-cover object-top";
+
+  // Frame Container Styling
+  const containerFrameClass =
+    frameStyle === "glass"
+      ? "glass-panel-strong p-3.5 space-y-3 rounded-[24px] border border-[var(--accent)]/30 shadow-2xl"
+      : frameStyle === "minimal"
+      ? "p-2 bg-[#101010] border border-white/10 rounded-[20px] shadow-2xl"
+      : frameStyle === "borderless"
+      ? "p-0 rounded-[18px] shadow-2xl overflow-hidden"
+      : "glass-panel-strong p-3 space-y-3 rounded-[28px] border-2 border-white/10 shadow-2xl bg-[#0c0c0c]/85";
 
   return (
     <section className="relative min-h-screen pt-36 pb-24 flex items-center justify-center overflow-hidden border-b border-[var(--border-glass)]">
@@ -97,24 +145,24 @@ export default function Hero({ content, onOpenVideo }: HeroProps) {
           </div>
         </div>
 
-        {/* Right Column: 9:16 Vertical Screen Frame (1080x1920 Proportions) */}
+        {/* Right Column: Dynamic Screen Frame with Configurable Image & Sizing */}
         <div className="lg:col-span-5 relative flex justify-center lg:justify-end">
           <div className="absolute -inset-4 bg-gradient-to-r from-[var(--accent)]/15 to-[var(--accent-cool)]/10 rounded-[32px] blur-2xl opacity-50 pointer-events-none" />
 
           <div
-            onClick={() => onOpenVideo && onOpenVideo(videoUrl, "MOHIT BABARIYA — REEL SHOWREEL")}
-            className="relative glass-panel-strong p-3 space-y-3 cursor-pointer group transform hover:scale-[1.01] transition-transform duration-500 rounded-[28px] shadow-2xl"
-            style={{ width: "100%", maxWidth: "360px" }}
+            onClick={() => onOpenVideo && videoUrl && onOpenVideo(videoUrl, "MOHIT BABARIYA — REEL SHOWREEL")}
+            className={`relative cursor-pointer group transform hover:scale-[1.01] transition-transform duration-500 ${containerFrameClass}`}
+            style={{ width: "100%", maxWidth: frameWidth }}
           >
-            {/* The 9:16 Vertical Reel Screen Frame (1080x1920 Proportions) */}
+            {/* The Configurable Frame */}
             <div
               className="relative w-full rounded-[22px] overflow-hidden bg-black border border-white/10 shadow-inner"
-              style={{ aspectRatio: "9 / 16", minHeight: "560px" }}
+              style={aspectStyle}
             >
               <img
-                src="/images/mohit-vertical.png?v=7"
+                src={heroImage}
                 alt="Mohit Babariya — Video Editor, 3D Artist & Creative Producer"
-                className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
+                className={`w-full h-full transition-transform duration-700 group-hover:scale-105 ${imgFitClass}`}
                 loading="eager"
               />
 
@@ -122,50 +170,55 @@ export default function Hero({ content, onOpenVideo }: HeroProps) {
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
 
               {/* Play Showreel Overlay on Hover */}
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                <button className="px-6 py-3 bg-[var(--accent)] text-[var(--bg-main)] font-mono text-xs font-bold tracking-widest uppercase rounded-full shadow-2xl flex items-center space-x-2">
-                  <span>▶</span>
-                  <span>PLAY SHOWREEL</span>
-                </button>
-              </div>
+              {videoUrl && (
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                  <button className="px-6 py-3 bg-[var(--accent)] text-[var(--bg-main)] font-mono text-xs font-bold tracking-widest uppercase rounded-full shadow-2xl flex items-center space-x-2">
+                    <span>▶</span>
+                    <span>PLAY SHOWREEL</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Bottom Metadata Bar */}
             <div className="flex items-center justify-between px-2 font-mono text-[10px] text-[var(--text-secondary)] uppercase tracking-wider">
-              <span>MOHIT BABARIYA</span>
+              <span>{content?.heroHeading || "MOHIT BABARIYA"}</span>
+              <span className="text-[var(--accent)]">{aspectMode}</span>
             </div>
           </div>
 
           {/* Floating Card: 100% Solid Dark Charcoal, NOT Transparent, Zero Glassmorphism */}
-          <a
-            href="#work"
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-            className="group/badge absolute -bottom-5 left-3 sm:-bottom-6 sm:-left-6 p-4 space-y-1.5 animate-float block w-auto max-w-[220px] rounded-xl z-20 border border-[#2a2a2a] shadow-[0_20px_40px_rgba(0,0,0,0.95)] hover:border-[var(--accent)]/60 transition-colors"
-            style={{
-              backgroundColor: "#141414",
-              background: "#141414",
-              backdropFilter: "none",
-              WebkitBackdropFilter: "none",
-              opacity: 1,
-            }}
-          >
-            <div className="font-mono text-[9px] text-[var(--accent)] tracking-[0.2em] uppercase font-bold flex items-center space-x-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
-              <span>VIDEO EDITOR</span>
-            </div>
-            <div className="font-serif font-bold text-sm sm:text-base uppercase text-white leading-tight tracking-tight">
-              THE ART OF EDITING
-            </div>
-            <div className="font-mono text-[9px] text-[var(--accent)] tracking-wider uppercase font-medium">
-              CUT • COLOR • CREATE
-            </div>
-            <div className="pt-1.5 border-t border-[#252525] flex items-center justify-between font-mono text-[10px] text-white/80 group-hover/badge:text-[var(--accent)] transition-colors font-semibold">
-              <span>EXPLORE MY WORK</span>
-              <span className="transform group-hover/badge:translate-x-1 transition-transform">→</span>
-            </div>
-          </a>
+          {isBadgeVisible && (
+            <a
+              href="#work"
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+              className="group/badge absolute -bottom-5 left-3 sm:-bottom-6 sm:-left-6 p-4 space-y-1.5 animate-float block w-auto max-w-[220px] rounded-xl z-20 border border-[#2a2a2a] shadow-[0_20px_40px_rgba(0,0,0,0.95)] hover:border-[var(--accent)]/60 transition-colors"
+              style={{
+                backgroundColor: "#141414",
+                background: "#141414",
+                backdropFilter: "none",
+                WebkitBackdropFilter: "none",
+                opacity: 1,
+              }}
+            >
+              <div className="font-mono text-[9px] text-[var(--accent)] tracking-[0.2em] uppercase font-bold flex items-center space-x-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
+                <span>{badgeSubtitle}</span>
+              </div>
+              <div className="font-serif font-bold text-sm sm:text-base uppercase text-white leading-tight tracking-tight">
+                {badgeTitle}
+              </div>
+              <div className="font-mono text-[9px] text-[var(--accent)] tracking-wider uppercase font-medium">
+                CUT • COLOR • CREATE
+              </div>
+              <div className="pt-1.5 border-t border-[#252525] flex items-center justify-between font-mono text-[10px] text-white/80 group-hover/badge:text-[var(--accent)] transition-colors font-semibold">
+                <span>EXPLORE MY WORK</span>
+                <span className="transform group-hover/badge:translate-x-1 transition-transform">→</span>
+              </div>
+            </a>
+          )}
         </div>
       </div>
     </section>

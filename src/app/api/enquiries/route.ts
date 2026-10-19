@@ -2,53 +2,9 @@ import { and, desc, eq, ilike, or } from "drizzle-orm";
 import { db } from "@/db";
 import { enquiries } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
-import { badRequest, guard, notFound, ok } from "@/lib/http";
-
-async function sendEmailNotification(enquiry: {
-  name: string;
-  email: string;
-  phone: string;
-  projectType: string;
-  description: string;
-}) {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) return;
-
-  try {
-    const from = process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
-    const to = process.env.NOTIFICATION_EMAIL || "mohitbabariyaa@gmail.com";
-
-    await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from,
-        to,
-        subject: `New Project Enquiry from ${enquiry.name}`,
-        html: `
-          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; background: #0b0b0c; color: #f3f0e8; padding: 30px; border-radius: 8px;">
-            <h2 style="color: #c7a56a; margin-top: 0;">NEW PROJECT ENQUIRY</h2>
-            <p><strong>Name:</strong> ${enquiry.name}</p>
-            <p><strong>Email:</strong> ${enquiry.email}</p>
-            <p><strong>Phone:</strong> ${enquiry.phone || 'N/A'}</p>
-            <p><strong>Project Type:</strong> ${enquiry.projectType || 'General'}</p>
-            <p><strong>Message / Brief:</strong></p>
-            <div style="background: #141416; padding: 15px; border-left: 3px solid #c7a56a; border-radius: 4px;">
-              ${enquiry.description.replace(/\n/g, '<br/>')}
-            </div>
-            <hr style="border: none; border-top: 1px solid #222; margin: 25px 0;" />
-            <p style="font-size: 12px; color: #8a8a8a;">Received via Mohit Babariya Creative Portfolio CMS.</p>
-          </div>
-        `,
-      }),
-    });
-  } catch (err) {
-    console.warn("[enquiry email] Failed to send email via Resend (safe ignore, enquiry saved in DB):", err);
-  }
-}
+import { badRequest, clientIp, guard, notFound, ok, rateLimit } from "@/lib/http";
+import { sendProjectInquiryEmail } from "@/lib/emailService";
+import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
   return guard(async () => {
@@ -84,46 +40,126 @@ export async function GET(req: Request) {
   });
 }
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
+
 export async function POST(req: Request) {
   return guard(async () => {
-    const body = await req.json().catch(() => ({}));
+    const ip = clientIp(req);
 
-    const name = (body.name || "").toString().trim();
-    const email = (body.email || "").toString().trim();
-    const description = (body.description || body.message || "").toString().trim();
-
-    if (!name || !email || !description) {
-      return badRequest("Name, Email, and Message/Brief are required.");
+    // 1. Rate Limiting: Max 5 submissions per 10 minutes per IP
+    const allowed = rateLimit(`enquiries:${ip}`, 5, 10 * 60 * 1000);
+    if (!allowed) {
+      return NextResponse.json(
+        {
+          error: "Too many project briefs submitted. Please wait a few moments before trying again.",
+          code: "RATE_LIMITED",
+        },
+        { status: 429 }
+      );
     }
 
-    const inserted = await db
-      .insert(enquiries)
-      .values({
-        name,
-        email,
-        countryCode: (body.countryCode || "+91").toString(),
-        phone: (body.phone || body.phoneNumber || "").toString(),
-        company: (body.company || "").toString(),
-        projectType: (body.projectType || body.selectedWork || "").toString(),
-        description,
-        budget: (body.budget || "").toString(),
-        deadline: (body.deadline || "").toString(),
-        status: "new",
-      })
-      .returning();
+    const body = await req.json().catch(() => ({}));
 
-    const record = inserted[0];
+    // 2. Spam Bot Protection: Check hidden honeypot fields
+    if (body._hp || body.honeypot || body.website) {
+      console.warn(`[enquiries] Spam submission blocked from IP ${ip} via honeypot.`);
+      return badRequest("Submission rejected.");
+    }
 
-    // Fire email notification in background safely
-    sendEmailNotification({
-      name: record.name,
-      email: record.email,
-      phone: record.phone,
-      projectType: record.projectType,
-      description: record.description,
-    }).catch(() => {});
+    // 3. Field Extraction & Sanitization
+    const name = (body.name || "").toString().trim().slice(0, 100);
+    const email = (body.email || "").toString().trim().toLowerCase().slice(0, 254);
+    const phone = (body.phone || body.phoneNumber || "").toString().trim().slice(0, 40);
+    const countryCode = (body.countryCode || "+91").toString().trim().slice(0, 10);
+    const company = (body.company || "").toString().trim().slice(0, 150);
+    const projectType = (body.projectType || body.category || "General Inquiry").toString().trim().slice(0, 100);
+    const deadline = (body.deadline || body.timeline || "Flexible").toString().trim().slice(0, 80);
+    const budget = (body.budget || "").toString().trim().slice(0, 80);
+    const description = (body.description || body.message || "").toString().trim().slice(0, 5000);
 
-    return ok({ success: true, enquiry: record });
+    // 4. Server-Side Validation
+    if (!name || name.length < 2) {
+      return badRequest("Please enter your name (at least 2 characters).", { field: "name" });
+    }
+
+    if (!email || !EMAIL_REGEX.test(email)) {
+      return badRequest("Please enter a valid email address.", { field: "email" });
+    }
+
+    if (!description || description.length < 5) {
+      return badRequest("Please provide your project details & requirements (at least 5 characters).", { field: "description" });
+    }
+
+    // 5. Resilient Database Storage
+    // Saves to PostgreSQL if database is reachable; gracefully logs and proceeds if DB is unconfigured/down.
+    let dbRecord = null;
+    try {
+      const inserted = await db
+        .insert(enquiries)
+        .values({
+          name,
+          email,
+          countryCode,
+          phone,
+          company,
+          projectType,
+          description,
+          budget,
+          deadline,
+          status: "new",
+        })
+        .returning();
+
+      if (inserted && inserted[0]) {
+        dbRecord = inserted[0];
+        console.log(`[enquiries] Project inquiry #${dbRecord.id} saved in database.`);
+      }
+    } catch (dbErr) {
+      console.warn(
+        "[enquiries] Database save skipped or unavailable (continuing to email delivery):",
+        dbErr instanceof Error ? dbErr.message : dbErr
+      );
+    }
+
+    // 6. Reliable Email Delivery to Mohitbabariyaa@gmail.com
+    const emailResult = await sendProjectInquiryEmail({
+      name,
+      email,
+      phone,
+      countryCode,
+      company,
+      projectType,
+      deadline,
+      budget,
+      description,
+      clientIp: ip,
+    });
+
+    // 7. Verify Genuine Acceptance
+    if (emailResult.success) {
+      return ok({
+        success: true,
+        message: "Thank you! Your project inquiry has been received. Mohit will get back to you promptly.",
+        enquiryId: dbRecord?.id || null,
+        delivered: true,
+      });
+    }
+
+    // 8. If Email Delivery Failed or Email Provider is Unconfigured
+    console.error(
+      `[enquiries] Email delivery failed for inquiry from ${email}:`,
+      emailResult.error || "Unknown error"
+    );
+
+    return NextResponse.json(
+      {
+        error: "Unable to dispatch your project brief at this moment. Please email Mohit directly at Mohitbabariyaa@gmail.com or message on WhatsApp at +91 90338 28412.",
+        code: emailResult.unconfigured ? "EMAIL_SERVICE_UNCONFIGURED" : "EMAIL_DELIVERY_FAILED",
+        delivered: false,
+        savedLocally: Boolean(dbRecord),
+      },
+      { status: 503 }
+    );
   });
 }
 

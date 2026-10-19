@@ -15,3 +15,4 @@ storage/uploads/
 *.zip
 radhe-pan-app/
 scratch/
+database_backup_pre_fix.json

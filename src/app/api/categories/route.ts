@@ -1,44 +1,61 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import { categories } from "@/db/schema";
+import { categories, portfolioProjects } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { badRequest, guard, notFound, ok, slugify } from "@/lib/http";
-import { DEFAULT_CATEGORIES } from "@/lib/defaultPortfolioData";
 import {
-  getDeletedCategories,
-  isCategoryDeleted,
-  markCategoryDeleted,
-  restoreCategory,
+  getActiveCategories,
+  getTrashCategories,
+  permanentlyDeleteCategory,
+  restoreCategoryFromTrash,
+  softDeleteCategory,
 } from "@/lib/categoryManager";
-import { clearDriveMemoryCache } from "@/lib/driveSync";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
   return guard(async () => {
-    let list: any[] = [];
-    try {
-      list = await db
-        .select()
-        .from(categories)
-        .where(eq(categories.isActive, true))
-        .orderBy(asc(categories.sortOrder), asc(categories.id));
-    } catch {
-      list = [];
+    const { searchParams } = new URL(req.url);
+    const includeTrash = searchParams.get("includeTrash") === "true" || searchParams.get("trash") === "true";
+
+    // 1. Fetch active categories
+    const activeList = await getActiveCategories();
+
+    // 2. Compute live video counts for each category
+    const videoCounts = await db
+      .select({
+        categoryId: portfolioProjects.categoryId,
+        count: sql<number>`count(*)`,
+      })
+      .from(portfolioProjects)
+      .where(and(isNull(portfolioProjects.deletedAt), eq(portfolioProjects.isPublished, true)))
+      .groupBy(portfolioProjects.categoryId)
+      .catch(() => []);
+
+    const countMap: Record<number, number> = {};
+    for (const vc of videoCounts) {
+      if (vc.categoryId) {
+        countMap[vc.categoryId] = Number(vc.count);
+      }
     }
 
-    if (list.length === 0) {
-      list = DEFAULT_CATEGORIES;
-    }
+    const categoriesWithCount = activeList.map((cat) => ({
+      ...cat,
+      videoCount: countMap[cat.id] || 0,
+    }));
 
-    // Filter out any category marked as deleted
-    const activeCategories = list.filter(
-      (c) => !isCategoryDeleted({ id: c.id, slug: c.slug, name: c.name })
-    );
+    // 3. Fetch trash categories if requested
+    let trashList: any[] = [];
+    if (includeTrash) {
+      trashList = await getTrashCategories();
+    }
 
     return ok({
-      categories: activeCategories,
-      deletedCategories: getDeletedCategories(),
+      categories: categoriesWithCount,
+      deletedCategories: trashList,
+      totalActive: categoriesWithCount.length,
+      totalTrash: trashList.length,
     });
   });
 }
@@ -50,30 +67,17 @@ export async function POST(req: Request) {
 
     // Handle Restoration of Deleted Categories
     if (body.action === "restore") {
-      const target = body.slug || body.id || body.name;
-      if (!target) return badRequest("Category slug or ID required to restore.");
-      restoreCategory(target);
-      clearDriveMemoryCache();
+      const target = body.id || body.slug;
+      if (!target) return badRequest("Category ID or slug is required to restore.");
 
-      // Also reactivate in database
-      try {
-        if (body.id && !isNaN(Number(body.id))) {
-          await db
-            .update(categories)
-            .set({ isActive: true, updatedAt: new Date() })
-            .where(eq(categories.id, Number(body.id)))
-            .catch(() => {});
-        }
-        if (body.slug) {
-          await db
-            .update(categories)
-            .set({ isActive: true, updatedAt: new Date() })
-            .where(eq(categories.slug, body.slug))
-            .catch(() => {});
-        }
-      } catch {}
+      const result = await restoreCategoryFromTrash(target);
+      if (!result.success) {
+        return notFound("Category not found in Trash or already active.");
+      }
 
-      return ok({ success: true, message: "Category restored successfully" });
+      revalidatePath("/");
+      revalidatePath("/admin/categories");
+      return ok({ success: true, message: "Category restored successfully", category: result.category });
     }
 
     const name = (body.name || "").toString().trim();
@@ -81,35 +85,54 @@ export async function POST(req: Request) {
 
     const slug = (body.slug || slugify(name)).toString().trim();
 
-    // If previously deleted, un-delete it
-    restoreCategory(slug);
-    clearDriveMemoryCache();
+    // Check if category with this slug already exists
+    const existing = await db
+      .select()
+      .from(categories)
+      .where(eq(categories.slug, slug))
+      .limit(1);
 
-    let insertedRow = null;
-    try {
-      const inserted = await db
-        .insert(categories)
-        .values({
-          name,
-          slug,
-          description: (body.description || "").toString(),
-          sortOrder: body.sortOrder ? Number(body.sortOrder) : 0,
-          isActive: body.isActive !== undefined ? Boolean(body.isActive) : true,
-        })
-        .returning();
-      insertedRow = inserted[0];
-    } catch {
-      insertedRow = {
-        id: Date.now(),
-        name,
-        slug,
-        description: body.description || "",
-        sortOrder: 0,
-        isActive: true,
-      };
+    if (existing.length > 0) {
+      const existingCat = existing[0];
+      // If it's in Trash, restore it with the new name!
+      if (existingCat.deletedAt) {
+        await restoreCategoryFromTrash(existingCat.id);
+        const updated = await db
+          .update(categories)
+          .set({ name, description: (body.description || "").toString(), updatedAt: new Date() })
+          .where(eq(categories.id, existingCat.id))
+          .returning();
+
+        revalidatePath("/");
+        revalidatePath("/admin/categories");
+        return ok({ category: updated[0], restoredFromTrash: true });
+      }
+
+      return badRequest(`A category with slug "${slug}" already exists.`);
     }
 
-    return ok({ category: insertedRow });
+    // Get max sortOrder
+    const maxSort = await db
+      .select({ max: sql<number>`COALESCE(MAX(${categories.sortOrder}), 0)` })
+      .from(categories);
+    const nextSort = Number(maxSort[0]?.max ?? 0) + 1;
+
+    const inserted = await db
+      .insert(categories)
+      .values({
+        name,
+        slug,
+        description: (body.description || "").toString(),
+        sortOrder: body.sortOrder !== undefined ? Number(body.sortOrder) : nextSort,
+        isActive: body.isActive !== undefined ? Boolean(body.isActive) : true,
+        driveFolderId: body.driveFolderId || null,
+        deletedAt: null,
+      })
+      .returning();
+
+    revalidatePath("/");
+    revalidatePath("/admin/categories");
+    return ok({ category: inserted[0] });
   });
 }
 
@@ -124,27 +147,43 @@ export async function PUT(req: Request) {
     const name = (body.name || "").toString().trim();
     if (!name) return badRequest("Name is required.");
 
-    const slug = (body.slug || slugify(name)).toString();
+    const slug = (body.slug || slugify(name)).toString().trim();
 
-    let updatedRow = null;
-    try {
-      const updated = await db
-        .update(categories)
-        .set({
-          name,
-          slug,
-          description: (body.description || "").toString(),
-          sortOrder: Number(body.sortOrder ?? 0),
-          isActive: Boolean(body.isActive),
-          updatedAt: new Date(),
-        })
-        .where(eq(categories.id, id))
-        .returning();
-      updatedRow = updated[0];
-    } catch {}
+    // Check slug collision with another category
+    const existingSlug = await db
+      .select({ id: categories.id })
+      .from(categories)
+      .where(and(eq(categories.slug, slug), sql`${categories.id} != ${id}`))
+      .limit(1);
 
-    clearDriveMemoryCache();
-    return ok({ category: updatedRow || { id, name, slug } });
+    if (existingSlug.length > 0) {
+      return badRequest(`Slug "${slug}" is already used by another category.`);
+    }
+
+    const updated = await db
+      .update(categories)
+      .set({
+        name,
+        slug,
+        description: (body.description || "").toString(),
+        sortOrder: body.sortOrder !== undefined ? Number(body.sortOrder) : undefined,
+        isActive: body.isActive !== undefined ? Boolean(body.isActive) : true,
+        updatedAt: new Date(),
+      })
+      .where(eq(categories.id, id))
+      .returning();
+
+    if (!updated.length) return notFound("Category not found.");
+
+    // Update categoryLabel on associated projects
+    await db
+      .update(portfolioProjects)
+      .set({ categoryLabel: name })
+      .where(eq(portfolioProjects.categoryId, id));
+
+    revalidatePath("/");
+    revalidatePath("/admin/categories");
+    return ok({ category: updated[0] });
   });
 }
 
@@ -155,57 +194,43 @@ export async function DELETE(req: Request) {
 
     let id = searchParams.get("id");
     let slug = searchParams.get("slug");
-    let name = searchParams.get("name");
-    let driveFolderId = searchParams.get("driveFolderId");
+    const isPermanent = searchParams.get("permanent") === "true";
 
-    // Also parse JSON body if provided in DELETE request
-    if (!slug && !id) {
+    // Also parse JSON body if provided
+    if (!id && !slug) {
       try {
         const body = await req.json().catch(() => ({}));
         if (body.id) id = String(body.id);
         if (body.slug) slug = body.slug;
-        if (body.name) name = body.name;
-        if (body.driveFolderId) driveFolderId = body.driveFolderId;
       } catch {}
     }
 
-    if (!id && !slug && !name && !driveFolderId) {
-      return badRequest("Category ID, slug, or name is required for deletion.");
+    if (!id && !slug) {
+      return badRequest("Category ID or slug is required for deletion.");
     }
 
-    // 1. Mark as persistently deleted in categoryManager (works across Drive Sync & local store)
-    const deletedInfo = markCategoryDeleted({
-      id: id || undefined,
-      slug: slug || "",
-      name: name || undefined,
-      driveFolderId: driveFolderId || undefined,
-    });
+    // 1. Explicit Permanent Delete
+    if (isPermanent && id) {
+      const result = await permanentlyDeleteCategory(Number(id));
+      if (!result.success) return notFound("Category not found.");
+      return ok({
+        success: true,
+        permanent: true,
+        message: "Category permanently deleted from database.",
+      });
+    }
 
-    // 2. Clear Drive cache immediately so the next request refreshes without this category
-    clearDriveMemoryCache();
-
-    // 3. Attempt DB soft delete or hard delete if database table exists
-    try {
-      if (id && !isNaN(Number(id))) {
-        await db
-          .update(categories)
-          .set({ isActive: false, updatedAt: new Date() })
-          .where(eq(categories.id, Number(id)))
-          .catch(() => {});
-      }
-      if (slug) {
-        await db
-          .update(categories)
-          .set({ isActive: false, updatedAt: new Date() })
-          .where(eq(categories.slug, slug))
-          .catch(() => {});
-      }
-    } catch {}
+    // 2. Soft-delete (Move to Trash)
+    const result = await softDeleteCategory(id ? Number(id) : slug!);
+    if (!result.success) {
+      return notFound("Category not found or already in Trash.");
+    }
 
     return ok({
       success: true,
-      message: `Category "${deletedInfo.name || deletedInfo.slug}" deleted successfully.`,
-      deleted: deletedInfo,
+      softDeleted: true,
+      message: `Category moved to Trash. You can restore it anytime.`,
+      category: result.category,
     });
   });
 }

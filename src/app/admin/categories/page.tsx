@@ -49,6 +49,16 @@ function normalizeVideoUrl(input: string): string {
   return trimmed;
 }
 
+interface PortfolioSourceConfig {
+  sourceType: "google_drive" | "youtube_channel" | "youtube_playlist" | "vimeo" | "custom";
+  sourceUrl: string;
+  sourceLabel?: string;
+  autoSync: boolean;
+  lastSyncedAt?: string | null;
+  syncStatus?: string | null;
+  itemsCount?: number;
+}
+
 export default function AdminCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [deletedCategories, setDeletedCategories] = useState<DeletedCategoryInfo[]>([]);
@@ -57,6 +67,13 @@ export default function AdminCategoriesPage() {
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState("");
   const [editingCat, setEditingCat] = useState<Partial<Category> | null>(null);
+
+  // Portfolio Source (Drive / YouTube / Vimeo) Switcher State
+  const [sourceConfig, setSourceConfig] = useState<PortfolioSourceConfig | null>(null);
+  const [sourceModalOpen, setSourceModalOpen] = useState(false);
+  const [sourceInputUrl, setSourceInputUrl] = useState("");
+  const [savingSource, setSavingSource] = useState(false);
+  const [sourceSyncStatus, setSourceSyncStatus] = useState("");
 
   // Video Replacement Drawer/Modal State
   const [activeCategoryForVideos, setActiveCategoryForVideos] = useState<Category | null>(null);
@@ -74,13 +91,25 @@ export default function AdminCategoriesPage() {
 
   const fetchCatsAndProjects = async () => {
     try {
-      // 1. Fetch categories (including deleted categories list)
-      const resCat = await fetch("/api/categories");
+      // 0. Fetch active portfolio source config (Google Drive or YouTube)
+      try {
+        const resSource = await fetch("/api/portfolio/source");
+        const sourceData = await resSource.json().catch(() => ({}));
+        if (sourceData.config) {
+          setSourceConfig(sourceData.config);
+          setSourceInputUrl(sourceData.config.sourceUrl || "");
+        }
+      } catch (e) {
+        console.warn("Could not fetch portfolio source config:", e);
+      }
+
+      // 1. Fetch categories (including soft-deleted categories list)
+      const resCat = await fetch("/api/categories?includeTrash=true");
       const catData = await resCat.json().catch(() => ({}));
       if (catData.categories) setCategories(catData.categories);
       if (catData.deletedCategories) setDeletedCategories(catData.deletedCategories);
 
-      // 2. Fetch projects synced from Drive
+      // 2. Fetch projects synced from Drive / Database
       const resDrive = await fetch("/api/drive/sync");
       const driveData = await resDrive.json().catch(() => ({}));
       if (driveData.projects) setProjects(driveData.projects);
@@ -102,20 +131,32 @@ export default function AdminCategoriesPage() {
     setSyncing(true);
     setSyncMessage("");
     try {
-      const res = await fetch("/api/drive/sync", {
+      // Run sync on the active configured source (Google Drive or YouTube)
+      const res = await fetch("/api/portfolio/source", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ force: true }),
+        body: JSON.stringify({ syncNow: true }),
       });
       const data = await res.json().catch(() => ({}));
       if (data.success) {
-        setCategories(data.categories || []);
-        setProjects(data.projects || []);
-        setSyncMessage(
-          `✓ SUCCESS! Synced ${data.categoriesCount} categories and ${data.projectsCount} videos from Google Drive!`
-        );
+        setSyncMessage(`✓ SUCCESS! ${data.message || "Portfolio synced successfully!"}`);
+        await fetchCatsAndProjects();
       } else {
-        setSyncMessage(`⚠ Sync note: ${data.error || "Unable to sync"}`);
+        // Fallback to legacy drive sync
+        const resDrive = await fetch("/api/drive/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ force: true }),
+        });
+        const driveData = await resDrive.json().catch(() => ({}));
+        if (driveData.success) {
+          setSyncMessage(
+            `✓ SUCCESS! Synced ${driveData.categoriesCount} categories and ${driveData.projectsCount} videos from Google Drive!`
+          );
+          await fetchCatsAndProjects();
+        } else {
+          setSyncMessage(`⚠ Sync note: ${data.error || driveData.error || "Unable to sync"}`);
+        }
       }
     } catch (err: unknown) {
       setSyncMessage(
@@ -123,6 +164,44 @@ export default function AdminCategoriesPage() {
       );
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const handleSaveSourceConfig = async (syncNow: boolean) => {
+    if (!sourceInputUrl.trim()) {
+      alert("Please enter a valid Google Drive folder URL or YouTube Channel/Playlist link.");
+      return;
+    }
+    setSavingSource(true);
+    setSourceSyncStatus(syncNow ? "Connecting & Scanning Media Source..." : "Saving configuration...");
+    try {
+      const res = await fetch("/api/portfolio/source", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceUrl: sourceInputUrl.trim(),
+          syncNow,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to update source");
+      }
+      setSourceConfig(data.config);
+      setSourceSyncStatus(
+        syncNow
+          ? `✓ SUCCESS! ${data.message || "Portfolio source synced!"}`
+          : "✓ Source link saved successfully!"
+      );
+      await fetchCatsAndProjects();
+      setTimeout(() => {
+        setSavingSource(false);
+        setSourceModalOpen(false);
+        setSourceSyncStatus("");
+      }, 1800);
+    } catch (err: unknown) {
+      setSavingSource(false);
+      setSourceSyncStatus(`⚠ Error: ${err instanceof Error ? err.message : "Network error"}`);
     }
   };
 
@@ -138,29 +217,33 @@ export default function AdminCategoriesPage() {
         body: JSON.stringify(editingCat),
       });
 
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setEditingCat(null);
+        setSyncMessage(`✓ Category "${editingCat.name}" saved successfully!`);
         await fetchCatsAndProjects();
+      } else {
+        setSyncMessage(`⚠ Error saving category: ${data.error || "Failed to save category"}`);
       }
-    } catch {}
+    } catch (err: any) {
+      setSyncMessage(`⚠ Save failed: ${err.message || "Network error"}`);
+    }
   };
 
-  // Persistent Category Deletion
+  // Soft-Delete (Move to Trash)
   const handleDelete = async (cat: Category) => {
     const okDelete = confirm(
-      `Are you sure you want to delete "${cat.name}" category?\nThis category and its videos will be removed from the website.`
+      `Move "${cat.name}" category to Trash?\nThis category and its videos will be hidden from the website immediately. You can restore it anytime.`
     );
     if (!okDelete) return;
 
     try {
-      // Optimistically remove from state
+      // Optimistically remove from active list
       setCategories((prev) => prev.filter((c) => c.slug !== cat.slug && c.id !== cat.id));
 
       const queryParams = new URLSearchParams({
         id: String(cat.id),
         slug: cat.slug || "",
-        name: cat.name || "",
-        driveFolderId: cat.driveFolderId || "",
       });
 
       const res = await fetch(`/api/categories?${queryParams.toString()}`, {
@@ -172,7 +255,7 @@ export default function AdminCategoriesPage() {
         throw new Error(data.error || "Failed to delete category");
       }
 
-      setSyncMessage(`✓ Category "${cat.name}" deleted and hidden from website!`);
+      setSyncMessage(`✓ Category "${cat.name}" moved to Trash and removed from live website!`);
       await fetchCatsAndProjects();
     } catch (err: unknown) {
       setSyncMessage(
@@ -182,7 +265,7 @@ export default function AdminCategoriesPage() {
     }
   };
 
-  // Restore Previously Deleted Category
+  // Restore Previously Soft-Deleted Category from Trash
   const handleRestore = async (deletedCat: DeletedCategoryInfo) => {
     try {
       const res = await fetch("/api/categories", {
@@ -193,11 +276,34 @@ export default function AdminCategoriesPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Failed to restore");
 
-      setSyncMessage(`✓ Restored "${deletedCat.name}" category back to website!`);
+      setSyncMessage(`✓ Restored "${deletedCat.name}" and all its videos back to the website!`);
       await fetchCatsAndProjects();
     } catch (err: unknown) {
       setSyncMessage(
         `⚠ Error restoring: ${err instanceof Error ? err.message : "Error restoring category"}`
+      );
+    }
+  };
+
+  // Permanent Deletion (Explicit Confirmed Action)
+  const handlePermanentDelete = async (delCat: DeletedCategoryInfo) => {
+    const okPermanent = confirm(
+      `⚠️ PERMANENT DELETION CONFIRMATION:\n\nAre you sure you want to permanently delete "${delCat.name}" from the database?\nThis action CANNOT be undone.`
+    );
+    if (!okPermanent) return;
+
+    try {
+      const res = await fetch(`/api/categories?id=${delCat.id}&permanent=true`, {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to permanently delete");
+
+      setSyncMessage(`✓ Category "${delCat.name}" permanently deleted.`);
+      await fetchCatsAndProjects();
+    } catch (err: unknown) {
+      setSyncMessage(
+        `⚠ Error: ${err instanceof Error ? err.message : "Permanent delete failed"}`
       );
     }
   };
@@ -222,6 +328,17 @@ export default function AdminCategoriesPage() {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !targetVideoForUpload) return;
+
+    const ALLOWED_EXT = [".mp4", ".mov", ".webm", ".mkv", ".avi", ".m4v"];
+    const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
+    if (!ALLOWED_EXT.includes(ext)) {
+      alert(`Unsupported video format "${ext}". Please select a valid video file (.mp4, .mov, .webm, .mkv).`);
+      return;
+    }
+    if (file.size > 500 * 1024 * 1024) {
+      alert(`File size ${(file.size / (1024 * 1024)).toFixed(0)} MB exceeds the 500MB maximum upload limit.`);
+      return;
+    }
 
     const vidKey = targetVideoForUpload.driveFileId || targetVideoForUpload.title || targetVideoForUpload.id;
     setUploadingForVideoId(vidKey);
@@ -424,13 +541,31 @@ export default function AdminCategoriesPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          {/* Portfolio Source Switcher Button */}
+          <button
+            onClick={() => {
+              setSourceInputUrl(sourceConfig?.sourceUrl || "");
+              setSourceModalOpen(true);
+            }}
+            className="px-5 py-2.5 bg-gradient-to-r from-amber-500 via-[#C7A56A] to-amber-600 text-black font-mono text-xs font-bold tracking-widest uppercase hover:brightness-110 transition-all shadow-lg flex items-center space-x-2 rounded"
+          >
+            <span>🔗</span>
+            <span>PORTFOLIO LINK</span>
+          </button>
+
           <button
             onClick={handleSyncWithDrive}
             disabled={syncing}
             className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-mono text-xs font-bold tracking-widest uppercase hover:brightness-110 transition-all shadow-lg flex items-center space-x-2 disabled:opacity-50 rounded"
           >
             <span className={syncing ? "animate-spin" : ""}>🔄</span>
-            <span>{syncing ? "SCANNING DRIVE..." : "SYNC WITH GOOGLE DRIVE"}</span>
+            <span>
+              {syncing
+                ? "SYNCING..."
+                : sourceConfig?.sourceType?.startsWith("youtube")
+                ? "SYNC WITH YOUTUBE"
+                : "SYNC WITH GOOGLE DRIVE"}
+            </span>
           </button>
 
           <button
@@ -461,29 +596,55 @@ export default function AdminCategoriesPage() {
         </div>
       )}
 
-      {/* Google Drive Connection Info Card */}
+      {/* Portfolio Source Connection Info Card */}
       <div className="bg-[#111111] border border-[rgba(243,240,232,0.15)] p-6 space-y-4 rounded-xl shadow-xl">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center space-x-2 font-mono text-xs">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-emerald-400 font-bold tracking-widest uppercase">
-                GOOGLE DRIVE AUTO-SYNC + HIGH-QUALITY VIDEO REPLACEMENT
+              <span className={`w-2.5 h-2.5 rounded-full ${sourceConfig?.sourceType?.startsWith("youtube") ? "bg-rose-500" : "bg-emerald-400"} animate-pulse`} />
+              <span className={`${sourceConfig?.sourceType?.startsWith("youtube") ? "text-rose-400" : "text-emerald-400"} font-bold tracking-widest uppercase`}>
+                ACTIVE SOURCE: {sourceConfig?.sourceType?.startsWith("youtube") ? "YOUTUBE CHANNEL / PLAYLIST" : "GOOGLE DRIVE CLOUD STORAGE"}
               </span>
+              {sourceConfig?.lastSyncedAt && (
+                <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded text-gray-300 font-mono">
+                  Synced: {new Date(sourceConfig.lastSyncedAt).toLocaleTimeString()}
+                </span>
+              )}
             </div>
             <p className="text-xs text-[#8A8A8A] max-w-3xl leading-relaxed">
-              Google Drive automatically provides your categories and videos. If any video preview has low quality or you want to delete a category, you can manage it below. Clicking <strong className="text-rose-400">"DELETE"</strong> will immediately remove the category from the website. Clicking <strong className="text-[#C7A56A]">"VIEW & REPLACE VIDEOS"</strong> allows you to upload high-quality master videos or paste direct links!
+              {sourceConfig?.sourceType?.startsWith("youtube")
+                ? "Your portfolio is currently synced with YouTube. Videos stream at maximum HD/4K resolution with zero login permission blocks or Google Drive bandwidth limits. Click 'PORTFOLIO LINK' anytime to switch channels, playlists, or return to Drive."
+                : "Google Drive automatically syncs your folders and videos into portfolio categories. If clients report 'Request Access' errors on newly created folders, ensure folder sharing is set to 'Anyone with the link - Viewer', or switch to YouTube with zero access limits!"}
             </p>
+            {sourceConfig?.sourceUrl && (
+              <div className="pt-1 flex items-center gap-2 font-mono text-[11px] text-[#C7A56A] truncate max-w-2xl">
+                <span className="text-gray-500">Connected URL:</span>
+                <span className="truncate underline">{sourceConfig.sourceUrl}</span>
+              </div>
+            )}
           </div>
 
-          <a
-            href="https://drive.google.com/drive/folders/1qDP0lUvRfyDsvktivuDTviwKxfi67W1i"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-4 py-2 border border-[#C7A56A] text-[#C7A56A] hover:bg-[#C7A56A] hover:text-black font-mono text-xs font-bold tracking-wider uppercase transition-all rounded shrink-0 self-start md:self-center"
-          >
-            Open Drive Root ↗
-          </a>
+          <div className="flex flex-wrap items-center gap-2 shrink-0 self-start md:self-center">
+            <button
+              onClick={() => {
+                setSourceInputUrl(sourceConfig?.sourceUrl || "");
+                setSourceModalOpen(true);
+              }}
+              className="px-4 py-2 border border-[#C7A56A] text-[#C7A56A] hover:bg-[#C7A56A] hover:text-black font-mono text-xs font-bold tracking-wider uppercase transition-all rounded"
+            >
+              ⚙ Change Link
+            </button>
+            {sourceConfig?.sourceUrl && (
+              <a
+                href={sourceConfig.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 border border-white/20 text-gray-300 hover:text-white hover:border-white/40 font-mono text-xs font-bold tracking-wider uppercase transition-all rounded"
+              >
+                Open Source ↗
+              </a>
+            )}
+          </div>
         </div>
       </div>
 
@@ -661,12 +822,21 @@ export default function AdminCategoriesPage() {
                   )}
                 </div>
 
-                <button
-                  onClick={() => handleRestore(del)}
-                  className="px-3 py-1.5 bg-emerald-950/80 hover:bg-emerald-600 hover:text-white text-emerald-300 border border-emerald-500/40 rounded text-xs font-bold uppercase transition-all"
-                >
-                  ↺ RESTORE CATEGORY
-                </button>
+                <div className="flex items-center space-x-2 shrink-0">
+                  <button
+                    onClick={() => handleRestore(del)}
+                    className="px-3 py-1.5 bg-emerald-950/80 hover:bg-emerald-600 hover:text-white text-emerald-300 border border-emerald-500/40 rounded text-xs font-bold uppercase transition-all"
+                  >
+                    ↺ RESTORE
+                  </button>
+                  <button
+                    onClick={() => handlePermanentDelete(del)}
+                    className="px-2.5 py-1.5 bg-rose-950/80 hover:bg-rose-600 hover:text-white text-rose-300 border border-rose-500/40 rounded text-xs font-bold uppercase transition-all"
+                    title="Permanently remove category from database"
+                  >
+                    🗑 PERMANENT DELETE
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -869,6 +1039,189 @@ export default function AdminCategoriesPage() {
                   })}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Portfolio Source / Master Link Modal */}
+      {sourceModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-[#121212] border border-[#C7A56A]/50 rounded-2xl max-w-2xl w-full p-6 sm:p-8 space-y-6 shadow-2xl relative my-8">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b border-white/10 pb-4">
+              <div>
+                <div className="flex items-center space-x-2 font-mono text-xs text-[#C7A56A] font-bold tracking-widest uppercase">
+                  <span>🔗</span>
+                  <span>PORTFOLIO MEDIA SOURCE SWITCHER</span>
+                </div>
+                <h3 className="text-xl sm:text-2xl font-bold font-display uppercase tracking-tight text-[#F3F0E8] mt-1">
+                  MANAGE MASTER PORTFOLIO LINK
+                </h3>
+              </div>
+              <button
+                onClick={() => {
+                  if (!savingSource) {
+                    setSourceModalOpen(false);
+                    setSourceSyncStatus("");
+                  }
+                }}
+                disabled={savingSource}
+                className="text-gray-400 hover:text-white text-lg font-bold p-1 rounded-lg hover:bg-white/10 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Description */}
+            <p className="text-xs sm:text-sm text-gray-300 leading-relaxed">
+              Tame tamari portfolio mate <strong className="text-white">Google Drive Folder</strong> athva <strong className="text-rose-400">YouTube Channel / Playlist</strong> ni link configure kari shako chho. Jyare pan link badlsho, live website par te platform na badha videos automatically sync thai jashe ane clients ne permission no koi issue nahi ave!
+            </p>
+
+            {/* Live Platform Detection Badge */}
+            {sourceInputUrl.trim() && (
+              <div className="p-3 rounded-lg border font-mono text-xs flex items-center space-x-2.5 transition-all animate-in fade-in duration-150">
+                {sourceInputUrl.includes("youtube.com") || sourceInputUrl.includes("youtu.be") ? (
+                  <div className="flex items-center space-x-2 text-rose-300 bg-rose-950/40 border border-rose-500/40 p-2.5 rounded-lg w-full">
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
+                    <span className="font-bold">🔴 YOUTUBE CHANNEL / PLAYLIST DETECTED</span>
+                    <span className="text-[11px] text-gray-400 ml-auto hidden sm:inline">Zero permission blocks &amp; instant HD streaming!</span>
+                  </div>
+                ) : sourceInputUrl.includes("drive.google.com") ? (
+                  <div className="flex items-center space-x-2 text-emerald-300 bg-emerald-950/40 border border-emerald-500/40 p-2.5 rounded-lg w-full">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                    <span className="font-bold">📁 GOOGLE DRIVE FOLDER DETECTED</span>
+                    <span className="text-[11px] text-gray-400 ml-auto hidden sm:inline">Set sharing to "Anyone with link"</span>
+                  </div>
+                ) : sourceInputUrl.includes("vimeo.com") ? (
+                  <div className="flex items-center space-x-2 text-sky-300 bg-sky-950/40 border border-sky-500/40 p-2.5 rounded-lg w-full">
+                    <span className="w-2.5 h-2.5 rounded-full bg-sky-400" />
+                    <span className="font-bold">🔵 VIMEO DETECTED</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-2 text-gray-300 bg-white/5 border border-white/10 p-2.5 rounded-lg w-full">
+                    <span>🌐</span>
+                    <span>CUSTOM WEB SOURCE</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Input Form */}
+            <div className="space-y-2">
+              <label className="block font-mono text-xs text-[#C7A56A] uppercase font-bold tracking-wider">
+                PORTFOLIO SOURCE URL / LINK:
+              </label>
+              <div className="relative">
+                <input
+                  type="url"
+                  value={sourceInputUrl}
+                  onChange={(e) => setSourceInputUrl(e.target.value)}
+                  placeholder="e.g. https://youtube.com/@mohitbabariya or Google Drive folder URL"
+                  className="w-full bg-[#080808] border border-white/20 focus:border-[#C7A56A] text-[#F3F0E8] px-4 py-3 text-xs sm:text-sm rounded-lg font-mono focus:outline-none transition-colors"
+                />
+                {sourceInputUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setSourceInputUrl("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-xs font-bold"
+                  >
+                    CLEAR
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Presets & Quick Select */}
+            <div className="space-y-1.5">
+              <span className="font-mono text-[10px] text-gray-400 uppercase tracking-wider">Quick Presets:</span>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSourceInputUrl("https://youtube.com/@mohitbabariya")}
+                  className="px-3 py-1.5 bg-rose-950/40 hover:bg-rose-900/60 border border-rose-500/40 text-rose-200 text-xs font-mono rounded flex items-center space-x-1.5 transition-all"
+                >
+                  <span>🔴</span>
+                  <span>Mohit Babariya YouTube (@mohitbabariya)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSourceInputUrl(
+                      "https://drive.google.com/drive/folders/1qDP0lUvRfyDsvktivuDTviwKxfi67W1i"
+                    )
+                  }
+                  className="px-3 py-1.5 bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-500/40 text-emerald-200 text-xs font-mono rounded flex items-center space-x-1.5 transition-all"
+                >
+                  <span>📁</span>
+                  <span>Default Google Drive Root Folder</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Helpful Platform Comparison Card */}
+            <div className="bg-[#181818] border border-white/10 rounded-xl p-4 text-xs space-y-2">
+              <div className="font-mono text-[11px] text-[#C7A56A] font-bold uppercase tracking-wider flex items-center space-x-1.5">
+                <span>💡</span>
+                <span>Pro Tip: Google Drive vs YouTube for Client Portfolios</span>
+              </div>
+              <ul className="space-y-1 text-gray-300 text-[11px] leading-relaxed list-disc list-inside">
+                <li>
+                  <strong className="text-white">YouTube Channels / Playlists</strong>: Zero permission limits, no "Request Access" screens for visitors, instant 4K/1080p loading worldwide, and gives you organic views!
+                </li>
+                <li>
+                  <strong className="text-white">Google Drive</strong>: Ensure your folder permission is set to <em>"Anyone with the link can view"</em>. Whenever you add a new subfolder or video in Drive, it will automatically inherit this permission.
+                </li>
+              </ul>
+            </div>
+
+            {/* Status Indicator */}
+            {sourceSyncStatus && (
+              <div
+                className={`p-3 rounded-lg font-mono text-xs flex items-center space-x-2 ${
+                  sourceSyncStatus.startsWith("✓")
+                    ? "bg-emerald-950/70 border border-emerald-500/40 text-emerald-200"
+                    : sourceSyncStatus.startsWith("⚠")
+                    ? "bg-amber-950/70 border border-amber-500/40 text-amber-200"
+                    : "bg-blue-950/70 border border-blue-500/40 text-blue-200 animate-pulse"
+                }`}
+              >
+                <span>{savingSource ? "⏳" : sourceSyncStatus.startsWith("✓") ? "✓" : "ℹ"}</span>
+                <span>{sourceSyncStatus}</span>
+              </div>
+            )}
+
+            {/* Modal Actions */}
+            <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 pt-3 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => {
+                  setSourceModalOpen(false);
+                  setSourceSyncStatus("");
+                }}
+                disabled={savingSource}
+                className="w-full sm:w-auto px-5 py-2.5 bg-[#222] hover:bg-[#333] text-gray-300 font-mono text-xs font-bold uppercase tracking-wider rounded transition-colors disabled:opacity-50"
+              >
+                CANCEL
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSaveSourceConfig(false)}
+                disabled={savingSource}
+                className="w-full sm:w-auto px-5 py-2.5 bg-[#2a2a2a] hover:bg-[#383838] border border-white/20 text-[#F3F0E8] font-mono text-xs font-bold uppercase tracking-wider rounded transition-colors disabled:opacity-50"
+              >
+                SAVE LINK ONLY
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSaveSourceConfig(true)}
+                disabled={savingSource}
+                className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-amber-500 via-[#C7A56A] to-amber-600 hover:brightness-110 text-black font-mono text-xs font-bold uppercase tracking-widest rounded shadow-lg transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
+              >
+                <span>{savingSource ? "SCANNING & SYNCING..." : "⚡ SAVE & SYNC NOW"}</span>
+              </button>
             </div>
           </div>
         </div>

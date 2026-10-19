@@ -7,13 +7,7 @@ import { guard, ok } from "@/lib/http";
 
 export async function GET() {
   return guard(async () => {
-    const rows = await db
-      .select()
-      .from(homepageContent)
-      .where(eq(homepageContent.id, 1))
-      .limit(1);
-
-    const content = rows[0] || {
+    let content = {
       id: 1,
       heroEyebrow: "VIDEO EDITOR / MOTION DESIGNER",
       heroHeading: "MOHIT BABARIYA",
@@ -22,6 +16,14 @@ export async function GET() {
       heroCtaPrimary: "VIEW MY WORK",
       heroCtaSecondary: "LET'S WORK TOGETHER",
       heroMediaUrl: "",
+      heroImageUrl: "/images/mohit-vertical.png?v=7",
+      heroImageAspect: "9:16",
+      heroImageFit: "cover-top",
+      heroImageWidth: "360px",
+      heroImageFrame: "phone",
+      heroBadgeTitle: "THE ART OF EDITING",
+      heroBadgeSubtitle: "VIDEO EDITOR",
+      heroBadgeVisible: true,
       aboutHeading: "THE PERSON BEHIND THE WORK",
       aboutSubheading: "Passionate Storyteller & Visual Craftsman",
       aboutDescription: "I specialize in transforming raw footage into compelling visual narratives.",
@@ -35,6 +37,20 @@ export async function GET() {
       footerTagline: "CRAFTING VISUAL EXCELLENCE WORLDWIDE",
       footerCopyright: "© 2026 MOHIT BABARIYA. ALL RIGHTS RESERVED.",
     };
+
+    try {
+      const rows = await db
+        .select()
+        .from(homepageContent)
+        .where(eq(homepageContent.id, 1))
+        .limit(1);
+
+      if (rows[0]) {
+        content = { ...content, ...rows[0] };
+      }
+    } catch (err) {
+      console.warn("[api/content GET db fallback]:", err);
+    }
 
     if (content && content.aboutExperienceYears === "6+") {
       content.aboutExperienceYears = "2+";
@@ -57,6 +73,14 @@ export async function PUT(req: Request) {
       heroCtaPrimary: (body.heroCtaPrimary || "VIEW MY WORK").toString(),
       heroCtaSecondary: (body.heroCtaSecondary || "LET'S WORK TOGETHER").toString(),
       heroMediaUrl: (body.heroMediaUrl || "").toString(),
+      heroImageUrl: (body.heroImageUrl || "/images/mohit-vertical.png?v=7").toString(),
+      heroImageAspect: (body.heroImageAspect || "9:16").toString(),
+      heroImageFit: (body.heroImageFit || "cover-top").toString(),
+      heroImageWidth: (body.heroImageWidth || "360px").toString(),
+      heroImageFrame: (body.heroImageFrame || "phone").toString(),
+      heroBadgeTitle: (body.heroBadgeTitle || "THE ART OF EDITING").toString(),
+      heroBadgeSubtitle: (body.heroBadgeSubtitle || "VIDEO EDITOR").toString(),
+      heroBadgeVisible: body.heroBadgeVisible !== undefined ? Boolean(body.heroBadgeVisible) : true,
       aboutHeading: (body.aboutHeading || "THE PERSON BEHIND THE WORK").toString(),
       aboutSubheading: (body.aboutSubheading || "").toString(),
       aboutDescription: (body.aboutDescription || "").toString(),
@@ -72,16 +96,23 @@ export async function PUT(req: Request) {
       updatedAt: new Date(),
     };
 
-    const updated = await db
-      .insert(homepageContent)
-      .values({ id: 1, ...data })
-      .onConflictDoUpdate({
-        target: homepageContent.id,
-        set: data,
-      })
-      .returning();
+    let updatedRow: any = null;
+    try {
+      const updated = await db
+        .insert(homepageContent)
+        .values({ id: 1, ...data })
+        .onConflictDoUpdate({
+          target: homepageContent.id,
+          set: data,
+        })
+        .returning();
+      updatedRow = updated[0];
+    } catch (dbErr) {
+      console.warn("[api/content PUT db fallback]:", dbErr);
+      updatedRow = { id: 1, ...data };
+    }
 
     revalidatePath("/");
-    return ok({ content: updated[0] });
+    return ok({ content: updatedRow });
   });
 }

@@ -147,16 +147,31 @@ export default function ShowreelCarousel({ items = [], onOpenVideo }: ShowreelCa
                 >
                   {/* Media Aspect Container */}
                   <div className="relative aspect-video w-full rounded-[16px] overflow-hidden bg-black group">
-                    <video
-                      key={item.id}
-                      src={item.videoUrl}
-                      poster={item.thumbnailUrl}
-                      autoPlay={isActive && isPlaying}
-                      loop
-                      muted
-                      playsInline
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                    />
+                    {item.videoUrl &&
+                    (item.videoUrl.startsWith("/uploads/") ||
+                      item.videoUrl.includes("blob.vercel-storage.com") ||
+                      Boolean(item.videoUrl.match(/\.(mp4|mov|webm|m4v)(\?.*)?$/i))) &&
+                    !item.videoUrl.includes("drive.google.com") &&
+                    !item.videoUrl.includes("youtube.com") &&
+                    !item.videoUrl.includes("youtu.be") ? (
+                      <video
+                        key={item.id}
+                        src={item.videoUrl}
+                        poster={item.thumbnailUrl}
+                        autoPlay={isActive && isPlaying}
+                        loop
+                        muted
+                        playsInline
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                      />
+                    ) : (
+                      <img
+                        key={item.id}
+                        src={item.thumbnailUrl || "/images/placeholder.jpg"}
+                        alt={item.title}
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                      />
+                    )}
 
                     {/* Gradient Overlay */}
                     <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-main)] via-transparent to-transparent opacity-80" />

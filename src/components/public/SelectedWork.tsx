@@ -167,7 +167,13 @@ export default function SelectedWork({
 
                 {/* Media Aspect Frame */}
                 <div className="relative aspect-video w-full rounded-[16px] overflow-hidden bg-black group-hover:shadow-2xl">
-                  {project.videoUrl ? (
+                  {project.videoUrl &&
+                  (project.videoUrl.startsWith("/uploads/") ||
+                    project.videoUrl.includes("blob.vercel-storage.com") ||
+                    Boolean(project.videoUrl.match(/\.(mp4|mov|webm|m4v)(\?.*)?$/i))) &&
+                  !project.videoUrl.includes("drive.google.com") &&
+                  !project.videoUrl.includes("youtube.com") &&
+                  !project.videoUrl.includes("youtu.be") ? (
                     <video
                       src={project.videoUrl}
                       poster={project.thumbnailUrl}

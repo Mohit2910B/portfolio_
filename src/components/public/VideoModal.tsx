@@ -17,6 +17,21 @@ function getGoogleDriveId(url: string | null): string | null {
   return null;
 }
 
+function getYouTubeId(url: string | null): string | null {
+  if (!url) return null;
+  const matchWatch = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
+  if (matchWatch) return matchWatch[1];
+  const matchShorts = url.match(/youtube\.com\/shorts\/([^"&?\/\s]{11})/i);
+  if (matchShorts) return matchShorts[1];
+  return null;
+}
+
+function getVimeoId(url: string | null): string | null {
+  if (!url) return null;
+  const match = url.match(/vimeo\.com\/(?:channels\/(?:\w+\/)?|groups\/([^\/]*)\/videos\/|album\/(\d+)\/video\/|)(\d+)/i);
+  return match ? match[3] : null;
+}
+
 export default function VideoModal({ videoUrl, title, onClose }: VideoModalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -138,15 +153,25 @@ export default function VideoModal({ videoUrl, title, onClose }: VideoModalProps
 
   if (!videoUrl) return null;
 
-  const driveId = getGoogleDriveId(videoUrl);
+  const youtubeId = getYouTubeId(videoUrl);
+  const vimeoId = !youtubeId ? getVimeoId(videoUrl) : null;
+  const driveId = !youtubeId && !vimeoId ? getGoogleDriveId(videoUrl) : null;
+
   const isDirectNativeVideo =
-    !driveId ||
-    videoUrl.startsWith("/uploads/") ||
-    videoUrl.includes("blob.vercel-storage.com") ||
-    videoUrl.match(/\.(mp4|mov|webm|m4v)(\?.*)?$/i);
+    !youtubeId &&
+    !vimeoId &&
+    !driveId &&
+    (videoUrl.startsWith("/uploads/") ||
+      videoUrl.includes("blob.vercel-storage.com") ||
+      Boolean(videoUrl.match(/\.(mp4|mov|webm|m4v)(\?.*)?$/i)));
 
   const drivePreviewUrl = driveId ? `https://drive.google.com/file/d/${driveId}/preview` : null;
   const driveDirectUrl = driveId ? `https://drive.google.com/file/d/${driveId}/view` : null;
+
+  const isShort = Boolean(
+    videoUrl.includes("/shorts/") ||
+    (title && (title.toLowerCase().includes("short") || title.toLowerCase().includes("reel")))
+  );
 
   return (
     <div
@@ -159,7 +184,7 @@ export default function VideoModal({ videoUrl, title, onClose }: VideoModalProps
         className={`relative w-full bg-[#0A0A0A] border border-[var(--border-color)] overflow-hidden shadow-2xl rounded-2xl flex flex-col transition-all duration-300 ${
           isFullscreen
             ? "fixed inset-0 w-screen h-screen rounded-none z-[200] max-w-none border-0"
-            : aspectMode === "vertical"
+            : aspectMode === "vertical" || (aspectMode === "auto" && isShort)
             ? "max-w-md max-h-[94vh]"
             : "max-w-5xl max-h-[92vh]"
         }`}
@@ -171,9 +196,19 @@ export default function VideoModal({ videoUrl, title, onClose }: VideoModalProps
             <span className="text-[var(--accent)] tracking-wider uppercase font-bold truncate text-[11px] sm:text-xs">
               {title || "CINEMATIC VIDEO SHOWCASE"}
             </span>
+            {youtubeId && (
+              <span className="hidden md:inline-flex px-2 py-0.5 rounded text-[9px] font-bold bg-rose-950 text-rose-400 border border-rose-500/30 shrink-0 uppercase tracking-widest">
+                🔴 YOUTUBE HD
+              </span>
+            )}
             {isDirectNativeVideo && (
               <span className="hidden md:inline-flex px-2 py-0.5 rounded text-[9px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-500/30 shrink-0 uppercase tracking-widest">
                 ⚡ 1080P/4K HQ
+              </span>
+            )}
+            {drivePreviewUrl && (
+              <span className="hidden md:inline-flex px-2 py-0.5 rounded text-[9px] font-bold bg-amber-950 text-amber-400 border border-amber-500/30 shrink-0 uppercase tracking-widest">
+                ☁ DRIVE STREAM
               </span>
             )}
           </div>
@@ -201,6 +236,20 @@ export default function VideoModal({ videoUrl, title, onClose }: VideoModalProps
               <span className="text-sm leading-none">⛶</span>
               <span className="font-extrabold">{isFullscreen ? "EXIT" : "FULLSCREEN"}</span>
             </button>
+
+            {/* YouTube Direct Link */}
+            {youtubeId && (
+              <a
+                href={`https://www.youtube.com/watch?v=${youtubeId}`}
+                target="_blank"
+                rel="noreferrer"
+                className="hidden sm:inline-flex items-center space-x-1 px-3 py-1.5 bg-[var(--bg-main)] text-rose-400 hover:text-rose-300 border border-rose-500/30 rounded-lg text-[11px] uppercase transition-all"
+                title="Open directly on YouTube"
+              >
+                <span>YOUTUBE</span>
+                <span>↗</span>
+              </a>
+            )}
 
             {/* Drive Original link */}
             {driveDirectUrl && (
@@ -232,14 +281,34 @@ export default function VideoModal({ videoUrl, title, onClose }: VideoModalProps
           className={`relative w-full bg-black flex items-center justify-center overflow-hidden ${
             isFullscreen
               ? "flex-1 h-full max-h-none"
-              : aspectMode === "vertical"
+              : aspectMode === "vertical" || (aspectMode === "auto" && isShort)
               ? "h-[74vh] sm:h-[80vh]"
               : aspectMode === "wide"
               ? "aspect-video"
               : "h-[62vh] sm:h-[72vh] max-h-[82vh]"
           }`}
         >
-          {isDirectNativeVideo && !drivePreviewUrl ? (
+          {youtubeId ? (
+            <div className="relative w-full h-full flex items-center justify-center bg-black">
+              <iframe
+                src={`https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
+                className="w-full h-full border-0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                title={title || "YouTube Video Player"}
+              />
+            </div>
+          ) : vimeoId ? (
+            <div className="relative w-full h-full flex items-center justify-center bg-black">
+              <iframe
+                src={`https://player.vimeo.com/video/${vimeoId}?autoplay=1&color=c7a56a&title=0&byline=0&portrait=0`}
+                className="w-full h-full border-0"
+                allow="autoplay; fullscreen; picture-in-picture"
+                allowFullScreen
+                title={title || "Vimeo Video Player"}
+              />
+            </div>
+          ) : isDirectNativeVideo && !drivePreviewUrl ? (
             <video
               ref={videoRef}
               src={videoUrl}
@@ -286,14 +355,26 @@ export default function VideoModal({ videoUrl, title, onClose }: VideoModalProps
         <div className="px-4 py-2 bg-[#080808] border-t border-[var(--border-color)]/50 flex flex-wrap items-center justify-between text-[10px] font-mono text-[var(--text-secondary)] gap-2 shrink-0">
           <div className="flex items-center space-x-2">
             <span>SOURCE:</span>
-            {isDirectNativeVideo && !drivePreviewUrl ? (
+            {youtubeId ? (
+              <span className="text-rose-400 font-bold">YOUTUBE CLOUD STREAM (HD / NO PERMISSIONS REQUIRED)</span>
+            ) : isDirectNativeVideo && !drivePreviewUrl ? (
               <span className="text-emerald-400 font-bold">HIGH-QUALITY NATIVE MP4 / MOV</span>
             ) : (
-              <span className="text-[var(--accent)] font-bold">GOOGLE DRIVE PREVIEW (TAP FULLSCREEN FOR MOBILE)</span>
+              <span className="text-amber-400 font-bold">GOOGLE DRIVE PREVIEW STREAM</span>
             )}
           </div>
 
           <div className="flex items-center space-x-3 text-[10px]">
+            {youtubeId && (
+              <a
+                href={`https://www.youtube.com/watch?v=${youtubeId}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-rose-400 hover:underline"
+              >
+                Watch on YouTube ↗
+              </a>
+            )}
             {driveDirectUrl && (
               <a
                 href={driveDirectUrl}

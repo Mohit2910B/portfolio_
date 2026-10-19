@@ -53,6 +53,10 @@ async function sync() {
       );
     `);
     await client.query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';`);
+    await client.query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS drive_folder_id TEXT;`);
+    await client.query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;`);
+    await client.query(`CREATE INDEX IF NOT EXISTS categories_drive_folder_id_idx ON categories(drive_folder_id);`);
+    await client.query(`CREATE INDEX IF NOT EXISTS categories_deleted_at_idx ON categories(deleted_at);`);
 
     // 4. Projects (portfolio_projects)
     await client.query(`
@@ -73,6 +77,13 @@ async function sync() {
         is_featured BOOLEAN NOT NULL DEFAULT false,
         is_published BOOLEAN NOT NULL DEFAULT true,
         sort_order INTEGER NOT NULL DEFAULT 0,
+        drive_file_id TEXT,
+        drive_folder_id TEXT,
+        is_replacement BOOLEAN NOT NULL DEFAULT false,
+        file_size INTEGER NOT NULL DEFAULT 0,
+        mime_type TEXT NOT NULL DEFAULT '',
+        deleted_at TIMESTAMPTZ,
+        last_synced_at TIMESTAMPTZ,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
@@ -83,6 +94,35 @@ async function sync() {
     await client.query(`ALTER TABLE portfolio_projects ADD COLUMN IF NOT EXISTS tags TEXT DEFAULT '';`);
     await client.query(`ALTER TABLE portfolio_projects ADD COLUMN IF NOT EXISTS aspect_ratio TEXT DEFAULT '16:9';`);
     await client.query(`ALTER TABLE portfolio_projects ADD COLUMN IF NOT EXISTS display_size TEXT DEFAULT 'medium';`);
+    await client.query(`ALTER TABLE portfolio_projects ADD COLUMN IF NOT EXISTS drive_file_id TEXT;`);
+    await client.query(`ALTER TABLE portfolio_projects ADD COLUMN IF NOT EXISTS drive_folder_id TEXT;`);
+    await client.query(`ALTER TABLE portfolio_projects ADD COLUMN IF NOT EXISTS is_replacement BOOLEAN DEFAULT false;`);
+    await client.query(`ALTER TABLE portfolio_projects ADD COLUMN IF NOT EXISTS file_size INTEGER DEFAULT 0;`);
+    await client.query(`ALTER TABLE portfolio_projects ADD COLUMN IF NOT EXISTS mime_type TEXT DEFAULT '';`);
+    await client.query(`ALTER TABLE portfolio_projects ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;`);
+    await client.query(`ALTER TABLE portfolio_projects ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMPTZ;`);
+    await client.query(`CREATE INDEX IF NOT EXISTS portfolio_projects_drive_file_id_idx ON portfolio_projects(drive_file_id);`);
+    await client.query(`CREATE INDEX IF NOT EXISTS portfolio_projects_deleted_at_idx ON portfolio_projects(deleted_at);`);
+
+    // 4B. Drive Sync State
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS drive_sync_state (
+        id SERIAL PRIMARY KEY,
+        root_folder_id TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'idle',
+        last_sync_started_at TIMESTAMPTZ,
+        last_sync_completed_at TIMESTAMPTZ,
+        total_drive_files INTEGER NOT NULL DEFAULT 0,
+        total_categories_synced INTEGER NOT NULL DEFAULT 0,
+        total_videos_synced INTEGER NOT NULL DEFAULT 0,
+        last_error TEXT,
+        change_token TEXT,
+        sync_type TEXT NOT NULL DEFAULT 'manual',
+        details_json TEXT NOT NULL DEFAULT '{}',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
 
     // 5. Carousel Items
     await client.query(`
@@ -325,6 +365,7 @@ async function sync() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
     `);
+    await client.query(`ALTER TABLE enquiries ADD COLUMN IF NOT EXISTS country_code TEXT DEFAULT '+91';`);
     await client.query(`ALTER TABLE enquiries ADD COLUMN IF NOT EXISTS message TEXT DEFAULT '';`);
     await client.query(`ALTER TABLE enquiries ALTER COLUMN message DROP NOT NULL;`);
     await client.query(`ALTER TABLE enquiries ADD COLUMN IF NOT EXISTS company TEXT DEFAULT '';`);

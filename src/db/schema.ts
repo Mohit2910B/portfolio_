@@ -58,10 +58,16 @@ export const categories = pgTable(
     description: text("description").notNull().default(""),
     sortOrder: integer("sort_order").notNull().default(0),
     isActive: boolean("is_active").notNull().default(true),
+    driveFolderId: text("drive_folder_id"),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("categories_slug_key").on(t.slug)]
+  (t) => [
+    uniqueIndex("categories_slug_key").on(t.slug),
+    index("categories_drive_folder_id_idx").on(t.driveFolderId),
+    index("categories_deleted_at_idx").on(t.deletedAt),
+  ]
 );
 
 /* ------------------------------------------------------------------ */
@@ -87,6 +93,13 @@ export const portfolioProjects = pgTable(
     isFeatured: boolean("is_featured").notNull().default(false),
     isPublished: boolean("is_published").notNull().default(true),
     sortOrder: integer("sort_order").notNull().default(0),
+    driveFileId: text("drive_file_id"),
+    driveFolderId: text("drive_folder_id"),
+    isReplacement: boolean("is_replacement").notNull().default(false),
+    fileSize: integer("file_size").notNull().default(0),
+    mimeType: text("mime_type").notNull().default(""),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -94,7 +107,33 @@ export const portfolioProjects = pgTable(
     index("portfolio_projects_category_id_idx").on(t.categoryId),
     index("portfolio_projects_sort_order_idx").on(t.sortOrder),
     index("portfolio_projects_is_published_idx").on(t.isPublished),
+    index("portfolio_projects_drive_file_id_idx").on(t.driveFileId),
+    index("portfolio_projects_deleted_at_idx").on(t.deletedAt),
   ]
+);
+
+/* ------------------------------------------------------------------ */
+/* 3B. GOOGLE DRIVE SYNC STATE & LOGS                                 */
+/* ------------------------------------------------------------------ */
+
+export const driveSyncState = pgTable(
+  "drive_sync_state",
+  {
+    id: serial("id").primaryKey(),
+    rootFolderId: text("root_folder_id").notNull(),
+    status: text("status").notNull().default("idle"), // 'idle' | 'syncing' | 'success' | 'error'
+    lastSyncStartedAt: timestamp("last_sync_started_at", { withTimezone: true }),
+    lastSyncCompletedAt: timestamp("last_sync_completed_at", { withTimezone: true }),
+    totalDriveFiles: integer("total_drive_files").notNull().default(0),
+    totalCategoriesSynced: integer("total_categories_synced").notNull().default(0),
+    totalVideosSynced: integer("total_videos_synced").notNull().default(0),
+    lastError: text("last_error"),
+    changeToken: text("change_token"),
+    syncType: text("sync_type").notNull().default("manual"),
+    detailsJson: text("details_json").notNull().default("{}"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  }
 );
 
 /* ------------------------------------------------------------------ */
@@ -265,6 +304,14 @@ export const homepageContent = pgTable("homepage_content", {
   heroCtaPrimary: text("hero_cta_primary").notNull().default("VIEW MY WORK"),
   heroCtaSecondary: text("hero_cta_secondary").notNull().default("LET'S WORK TOGETHER"),
   heroMediaUrl: text("hero_media_url").notNull().default(""),
+  heroImageUrl: text("hero_image_url").notNull().default("/images/mohit-vertical.png?v=7"),
+  heroImageAspect: text("hero_image_aspect").notNull().default("9:16"),
+  heroImageFit: text("hero_image_fit").notNull().default("cover-top"),
+  heroImageWidth: text("hero_image_width").notNull().default("360px"),
+  heroImageFrame: text("hero_image_frame").notNull().default("phone"),
+  heroBadgeTitle: text("hero_badge_title").notNull().default("THE ART OF EDITING"),
+  heroBadgeSubtitle: text("hero_badge_subtitle").notNull().default("VIDEO EDITOR"),
+  heroBadgeVisible: boolean("hero_badge_visible").notNull().default(true),
   aboutHeading: text("about_heading").notNull().default("THE PERSON BEHIND THE WORK"),
   aboutSubheading: text("about_subheading").notNull().default("Passionate Storyteller & Visual Craftsman"),
   aboutDescription: text("about_description").notNull().default("I specialize in transforming raw footage into compelling visual narratives."),
@@ -277,6 +324,24 @@ export const homepageContent = pgTable("homepage_content", {
   contactIntro: text("contact_intro").notNull().default("Have an upcoming video project? Let's create something exceptional together."),
   footerTagline: text("footer_tagline").notNull().default("CRAFTING VISUAL EXCELLENCE WORLDWIDE"),
   footerCopyright: text("footer_copyright").notNull().default("© 2026 MOHIT BABARIYA. ALL RIGHTS RESERVED."),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/* ------------------------------------------------------------------ */
+/* 11B. PORTFOLIO SOURCE CONFIGURATION (Drive / YouTube / Other)       */
+/* ------------------------------------------------------------------ */
+
+export const portfolioSourceConfig = pgTable("portfolio_source_config", {
+  id: serial("id").primaryKey(),
+  sourceType: text("source_type").notNull().default("drive"),
+  sourceUrl: text("source_url").notNull().default("https://drive.google.com/drive/folders/1qDP0lUvRfyDsvktivuDTviwKxfi67W1i"),
+  folderId: text("folder_id").notNull().default("1qDP0lUvRfyDsvktivuDTviwKxfi67W1i"),
+  channelTitle: text("channel_title").notNull().default("Google Drive Portfolio"),
+  lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
+  syncStatus: text("sync_status").notNull().default("idle"),
+  totalItems: integer("total_items").notNull().default(0),
+  detailsJson: text("details_json").notNull().default("{}"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -402,3 +467,5 @@ export type LayoutOrderItem = typeof layoutOrder.$inferSelect;
 export type Enquiry = typeof enquiries.$inferSelect;
 export type ChatConversation = typeof chatConversations.$inferSelect;
 export type ChatMessage = typeof chatMessages.$inferSelect;
+export type DriveSyncState = typeof driveSyncState.$inferSelect;
+export type PortfolioSourceConfig = typeof portfolioSourceConfig.$inferSelect;

@@ -1,161 +1,190 @@
-import fs from "fs";
-import path from "path";
-import os from "os";
+import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
+import { db } from "@/db";
+import { categories, portfolioProjects } from "@/db/schema";
+import { revalidatePath } from "next/cache";
 
-export interface DeletedCategoryInfo {
-  id?: number | string;
-  slug: string;
+export interface CategoryInfo {
+  id: number;
   name: string;
-  driveFolderId?: string;
-  deletedAt: string;
+  slug: string;
+  description: string;
+  sortOrder: number;
+  isActive: boolean;
+  driveFolderId?: string | null;
+  deletedAt?: Date | string | null;
+  videoCount?: number;
 }
 
-const PRIMARY_FILE_PATH = path.join(process.cwd(), "src", "data", "deletedCategories.json");
-const TMP_FILE_PATH = path.join(os.tmpdir(), "mohit_deleted_categories.json");
-
-// In-memory registry
-let memoryDeleted: Record<string, DeletedCategoryInfo> = {};
-let isInitialized = false;
-
-function loadFromFile(): void {
-  const filePaths = [PRIMARY_FILE_PATH, TMP_FILE_PATH];
-  for (const fp of filePaths) {
-    try {
-      if (fs.existsSync(fp)) {
-        const raw = fs.readFileSync(fp, "utf-8");
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          parsed.forEach((item: DeletedCategoryInfo) => {
-            if (item && item.slug) {
-              memoryDeleted[item.slug.toLowerCase().trim()] = item;
-            }
-          });
-        } else if (parsed && typeof parsed === "object") {
-          Object.entries(parsed).forEach(([k, v]) => {
-            memoryDeleted[k.toLowerCase().trim()] = v as DeletedCategoryInfo;
-          });
-        }
-      }
-    } catch (err) {
-      console.warn(`[categoryManager] Read error from ${fp}:`, err);
-    }
-  }
-}
-
-function persistToFile(): void {
-  const list = Object.values(memoryDeleted);
-  const jsonStr = JSON.stringify(list, null, 2);
-
-  // Try writing to primary project path
-  let written = false;
+/**
+ * Returns all active categories (not soft-deleted).
+ */
+export async function getActiveCategories(): Promise<CategoryInfo[]> {
   try {
-    const dir = path.dirname(PRIMARY_FILE_PATH);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    fs.writeFileSync(PRIMARY_FILE_PATH, jsonStr, "utf-8");
-    written = true;
-  } catch (err) {
-    console.warn("[categoryManager] Primary write failed (read-only FS on serverless):", err);
-  }
+    const rows = await db
+      .select({
+        id: categories.id,
+        name: categories.name,
+        slug: categories.slug,
+        description: categories.description,
+        sortOrder: categories.sortOrder,
+        isActive: categories.isActive,
+        driveFolderId: categories.driveFolderId,
+        deletedAt: categories.deletedAt,
+      })
+      .from(categories)
+      .where(and(eq(categories.isActive, true), isNull(categories.deletedAt)))
+      .orderBy(categories.sortOrder, categories.id);
 
-  // Also write to OS tmp directory for serverless persistence
+    return rows;
+  } catch (err) {
+    console.warn("[categoryManager] Error getting active categories:", err);
+    return [];
+  }
+}
+
+/**
+ * Returns all soft-deleted categories currently in the Trash.
+ */
+export async function getTrashCategories(): Promise<CategoryInfo[]> {
   try {
-    fs.writeFileSync(TMP_FILE_PATH, jsonStr, "utf-8");
-    written = true;
+    const rows = await db
+      .select({
+        id: categories.id,
+        name: categories.name,
+        slug: categories.slug,
+        description: categories.description,
+        sortOrder: categories.sortOrder,
+        isActive: categories.isActive,
+        driveFolderId: categories.driveFolderId,
+        deletedAt: categories.deletedAt,
+      })
+      .from(categories)
+      .where(isNotNull(categories.deletedAt))
+      .orderBy(sql`${categories.deletedAt} DESC`);
+
+    return rows;
   } catch (err) {
-    console.warn("[categoryManager] Temp write failed:", err);
-  }
-
-  if (!written) {
-    console.warn("[categoryManager] Could not persist to disk, kept in memory.");
+    console.warn("[categoryManager] Error getting trash categories:", err);
+    return [];
   }
 }
 
-export function getDeletedCategories(): DeletedCategoryInfo[] {
-  if (!isInitialized) {
-    loadFromFile();
-    isInitialized = true;
-  }
-  return Object.values(memoryDeleted);
-}
-
-export function isCategoryDeleted(cat: {
-  id?: number | string;
-  slug?: string;
-  name?: string;
-  driveFolderId?: string;
-}): boolean {
-  const deletedList = getDeletedCategories();
-  if (deletedList.length === 0) return false;
-
-  const targetSlug = (cat.slug || "").toLowerCase().trim();
-  const targetName = (cat.name || "").toLowerCase().trim();
-  const targetFolderId = cat.driveFolderId || "";
-  const targetId = cat.id !== undefined && cat.id !== null ? String(cat.id).trim() : "";
-
-  return deletedList.some((d) => {
-    if (targetSlug && d.slug && d.slug.toLowerCase() === targetSlug) return true;
-    if (targetName && d.name && d.name.toLowerCase() === targetName) return true;
-    if (targetFolderId && d.driveFolderId && d.driveFolderId === targetFolderId) return true;
-    if (targetId && d.id !== undefined && String(d.id).trim() === targetId) return true;
-    return false;
-  });
-}
-
-export function markCategoryDeleted(cat: {
-  id?: number | string;
-  slug?: string;
-  name?: string;
-  driveFolderId?: string;
-}): DeletedCategoryInfo {
-  getDeletedCategories(); // ensure loaded
-
-  const slug = (
-    cat.slug ||
-    cat.name ||
-    cat.driveFolderId ||
-    `category-${cat.id || Date.now()}`
-  )
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/[^\w\-]+/g, "");
-
-  const name = cat.name || cat.slug || `Category ${cat.id || ""}`;
-
-  const info: DeletedCategoryInfo = {
-    id: cat.id,
-    slug,
-    name,
-    driveFolderId: cat.driveFolderId,
-    deletedAt: new Date().toISOString(),
-  };
-
-  memoryDeleted[slug] = info;
-  persistToFile();
-  return info;
-}
-
-export function restoreCategory(identifier: string | number): boolean {
-  getDeletedCategories(); // ensure loaded
-  const target = String(identifier).toLowerCase().trim();
-
-  let removed = false;
-  for (const [slug, item] of Object.entries(memoryDeleted)) {
-    if (
-      slug.toLowerCase() === target ||
-      (item.name && item.name.toLowerCase() === target) ||
-      (item.driveFolderId && item.driveFolderId === target) ||
-      (item.id !== undefined && String(item.id).trim() === target)
-    ) {
-      delete memoryDeleted[slug];
-      removed = true;
+/**
+ * Soft-deletes a category, moving it to Trash.
+ * Its videos are preserved so they can be restored later.
+ */
+export async function softDeleteCategory(idOrSlug: number | string): Promise<{ success: boolean; category?: any }> {
+  const now = new Date();
+  try {
+    let condition;
+    if (typeof idOrSlug === "number" || !isNaN(Number(idOrSlug))) {
+      condition = eq(categories.id, Number(idOrSlug));
+    } else {
+      condition = eq(categories.slug, String(idOrSlug));
     }
-  }
 
-  if (removed) {
-    persistToFile();
+    const updated = await db
+      .update(categories)
+      .set({
+        isActive: false,
+        deletedAt: now,
+        updatedAt: now,
+      })
+      .where(condition)
+      .returning();
+
+    if (updated.length > 0) {
+      const cat = updated[0];
+
+      // Also soft-delete associated projects so they immediately disappear from public website
+      await db
+        .update(portfolioProjects)
+        .set({
+          deletedAt: now,
+          updatedAt: now,
+        })
+        .where(and(eq(portfolioProjects.categoryId, cat.id), isNull(portfolioProjects.deletedAt)));
+
+      revalidatePath("/");
+      revalidatePath("/admin/categories");
+      return { success: true, category: cat };
+    }
+
+    return { success: false };
+  } catch (err) {
+    console.error("[categoryManager] Soft delete failed:", err);
+    throw err;
   }
-  return removed;
+}
+
+/**
+ * Restores a soft-deleted category and its associated projects.
+ */
+export async function restoreCategoryFromTrash(idOrSlug: number | string): Promise<{ success: boolean; category?: any }> {
+  const now = new Date();
+  try {
+    let condition;
+    if (typeof idOrSlug === "number" || !isNaN(Number(idOrSlug))) {
+      condition = eq(categories.id, Number(idOrSlug));
+    } else {
+      condition = eq(categories.slug, String(idOrSlug));
+    }
+
+    const updated = await db
+      .update(categories)
+      .set({
+        isActive: true,
+        deletedAt: null,
+        updatedAt: now,
+      })
+      .where(condition)
+      .returning();
+
+    if (updated.length > 0) {
+      const cat = updated[0];
+
+      // Restore associated projects
+      await db
+        .update(portfolioProjects)
+        .set({
+          deletedAt: null,
+          updatedAt: now,
+        })
+        .where(eq(portfolioProjects.categoryId, cat.id));
+
+      revalidatePath("/");
+      revalidatePath("/admin/categories");
+      return { success: true, category: cat };
+    }
+
+    return { success: false };
+  } catch (err) {
+    console.error("[categoryManager] Restore failed:", err);
+    throw err;
+  }
+}
+
+/**
+ * Permanently deletes a category from the database (explicit action).
+ */
+export async function permanentlyDeleteCategory(id: number): Promise<{ success: boolean }> {
+  try {
+    // Unlink projects from this category before deleting to prevent orphan errors
+    await db
+      .update(portfolioProjects)
+      .set({ categoryId: null, categoryLabel: "Uncategorized" })
+      .where(eq(portfolioProjects.categoryId, id));
+
+    const deleted = await db
+      .delete(categories)
+      .where(eq(categories.id, id))
+      .returning();
+
+    revalidatePath("/");
+    revalidatePath("/admin/categories");
+    return { success: deleted.length > 0 };
+  } catch (err) {
+    console.error("[categoryManager] Permanent delete failed:", err);
+    throw err;
+  }
 }

@@ -1,4 +1,4 @@
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import {
   carouselItems,
@@ -26,13 +26,12 @@ import {
   DEFAULT_PROCESS,
   DEFAULT_CONTACT,
 } from "@/lib/defaultPortfolioData";
-import { syncGoogleDriveFolders } from "@/lib/driveSync";
 
 export const revalidate = 0; // Dynamic database data
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  // 1. Fetch content, theme settings, and live Google Drive folders
+  // 1. Fetch content, theme settings, and live database portfolio records
   const [
     contentRows,
     contactRows,
@@ -46,21 +45,19 @@ export default async function HomePage() {
     toolRows,
     experienceRows,
     processRows,
-    driveData,
   ] = await Promise.all([
     db.select().from(homepageContent).where(eq(homepageContent.id, 1)).limit(1).catch(() => []),
     db.select().from(contactSettings).where(eq(contactSettings.id, 1)).limit(1).catch(() => []),
     db.select().from(themeSettings).where(eq(themeSettings.id, 1)).limit(1).catch(() => []),
     db.select().from(layoutOrder).orderBy(asc(layoutOrder.sortOrder)).catch(() => []),
-    db.select().from(portfolioProjects).where(eq(portfolioProjects.isPublished, true)).orderBy(asc(portfolioProjects.sortOrder), desc(portfolioProjects.id)).catch(() => []),
+    db.select().from(portfolioProjects).where(and(eq(portfolioProjects.isPublished, true), isNull(portfolioProjects.deletedAt))).orderBy(asc(portfolioProjects.sortOrder), desc(portfolioProjects.id)).catch(() => []),
     db.select().from(carouselItems).where(eq(carouselItems.isPublished, true)).orderBy(asc(carouselItems.sortOrder), desc(carouselItems.id)).catch(() => []),
-    db.select().from(categories).where(eq(categories.isActive, true)).orderBy(asc(categories.sortOrder)).catch(() => []),
+    db.select().from(categories).where(and(eq(categories.isActive, true), isNull(categories.deletedAt))).orderBy(asc(categories.sortOrder)).catch(() => []),
     db.select().from(services).where(eq(services.isActive, true)).orderBy(asc(services.sortOrder)).catch(() => []),
     db.select().from(skills).where(eq(skills.isActive, true)).orderBy(asc(skills.sortOrder)).catch(() => []),
     db.select().from(toolsSoftware).where(eq(toolsSoftware.isActive, true)).orderBy(asc(toolsSoftware.sortOrder)).catch(() => []),
     db.select().from(experience).where(eq(experience.isActive, true)).orderBy(asc(experience.sortOrder)).catch(() => []),
     db.select().from(creativeProcess).where(eq(creativeProcess.isActive, true)).orderBy(asc(creativeProcess.sortOrder)).catch(() => []),
-    syncGoogleDriveFolders().catch(() => null),
   ]);
 
   const rawContent = contentRows[0] || (DEFAULT_CONTENT as unknown as typeof contentRows[0]);
@@ -93,14 +90,14 @@ export default async function HomePage() {
     }
   } catch {}
 
-  // Google Drive folders & videos automatically populate categories & portfolio!
-  const activeCategories = (driveData && driveData.categories.length > 0)
-    ? (driveData.categories as unknown as typeof categoryRows)
-    : (categoryRows.length > 0 ? categoryRows : (DEFAULT_CATEGORIES as unknown as typeof categoryRows));
+  // Active categories and projects from live PostgreSQL database
+  const activeCategories = categoryRows.length > 0
+    ? categoryRows
+    : (DEFAULT_CATEGORIES as unknown as typeof categoryRows);
 
-  const activeProjects = (driveData && driveData.projects.length > 0)
-    ? (driveData.projects as unknown as typeof projectRows)
-    : (projectRows.length > 0 ? projectRows : (DEFAULT_PROJECTS as unknown as typeof projectRows));
+  const activeProjects = projectRows.length > 0
+    ? projectRows
+    : (DEFAULT_PROJECTS as unknown as typeof projectRows);
 
   const activeServices = serviceRows.length > 0 ? serviceRows : (DEFAULT_SERVICES as unknown as typeof serviceRows);
   const activeExperience = experienceRows.length > 0 ? experienceRows : (DEFAULT_EXPERIENCE as unknown as typeof experienceRows);

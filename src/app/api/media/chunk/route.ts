@@ -4,6 +4,8 @@ import path from "node:path";
 import os from "node:os";
 import { put } from "@vercel/blob";
 
+import { requireAdmin } from "@/lib/auth";
+
 export const dynamic = "force-dynamic";
 
 function getUploadDir(): string {
@@ -22,8 +24,11 @@ function getUploadDir(): string {
   }
 }
 
+const ALLOWED_EXTENSIONS = [".mp4", ".mov", ".webm", ".mkv", ".avi", ".m4v", ".jpeg", ".jpg", ".png", ".webp"];
+
 export async function POST(req: Request) {
   try {
+    await requireAdmin();
     const formData = await req.formData().catch(() => null);
     if (!formData) {
       return NextResponse.json({ success: false, error: "Invalid form data payload" }, { status: 400 });
@@ -34,6 +39,14 @@ export async function POST(req: Request) {
     const totalChunks = Number(formData.get("totalChunks") || 1);
     const fileName = (formData.get("fileName") as string) || "video.mp4";
     const uploadId = (formData.get("uploadId") as string) || "temp";
+
+    const ext = path.extname(fileName).toLowerCase();
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      return NextResponse.json({
+        success: false,
+        error: `File format "${ext}" is not supported. Please upload an MP4, MOV, WEBM, MKV, JPG, or PNG file.`,
+      }, { status: 400 });
+    }
 
     if (!chunk) {
       return NextResponse.json({ success: false, error: "No chunk received" }, { status: 400 });

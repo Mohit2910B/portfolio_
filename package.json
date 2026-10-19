@@ -12,6 +12,7 @@
     "@vercel/blob": "^2.8.0",
     "dotenv": "17.3.1",
     "drizzle-orm": "0.45.2",
+    "googleapis": "^186.0.0",
     "mysql2": "^3.24.2",
     "next": "16.2.6",
     "pg": "8.20.0",

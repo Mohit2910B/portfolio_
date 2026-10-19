@@ -29,6 +29,10 @@ interface SingleVerticalPortfolioProps {
 function getCleanThumbnail(thumbnailUrl?: string, videoUrl?: string): string {
   const target = thumbnailUrl || videoUrl;
   if (!target) return "";
+  const matchYt = target.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/|youtube\.com\/shorts\/)([^"&?\/\s]{11})/i);
+  if (matchYt) {
+    return `https://img.youtube.com/vi/${matchYt[1]}/hqdefault.jpg`;
+  }
   const matchId = target.match(/[?&]id=([a-zA-Z0-9_-]{20,})/);
   if (matchId) {
     return `/api/media/drive-thumb?id=${matchId[1]}`;

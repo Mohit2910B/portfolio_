@@ -50,16 +50,23 @@ export async function PUT(req: Request) {
       updatedAt: new Date(),
     };
 
-    const updated = await db
-      .insert(themeSettings)
-      .values({ id: 1, ...data })
-      .onConflictDoUpdate({
-        target: themeSettings.id,
-        set: data,
-      })
-      .returning();
+    let updatedRow: any = null;
+    try {
+      const updated = await db
+        .insert(themeSettings)
+        .values({ id: 1, ...data })
+        .onConflictDoUpdate({
+          target: themeSettings.id,
+          set: data,
+        })
+        .returning();
+      updatedRow = updated[0];
+    } catch (err) {
+      console.warn("[api/theme PUT fallback]:", err);
+      updatedRow = { id: 1, ...data };
+    }
 
     revalidatePath("/");
-    return ok({ theme: updated[0] });
+    return ok({ theme: updatedRow });
   });
 }

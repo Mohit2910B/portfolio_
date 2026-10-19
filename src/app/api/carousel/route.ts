@@ -5,16 +5,55 @@ import { carouselItems } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { badRequest, guard, notFound, ok } from "@/lib/http";
 
+import { portfolioProjects } from "@/db/schema";
+import { isNull } from "drizzle-orm";
+
 export async function GET(req: Request) {
   return guard(async () => {
     const { searchParams } = new URL(req.url);
     const publishedOnly = searchParams.get("all") !== "true";
 
-    const items = await db
+    let items = await db
       .select()
       .from(carouselItems)
       .where(publishedOnly ? eq(carouselItems.isPublished, true) : undefined)
-      .orderBy(asc(carouselItems.sortOrder), desc(carouselItems.id));
+      .orderBy(asc(carouselItems.sortOrder), desc(carouselItems.id))
+      .catch(() => []);
+
+    // If carousel table is empty in DB, auto-populate from active portfolio projects
+    if (items.length === 0) {
+      try {
+        const projects = await db
+          .select()
+          .from(portfolioProjects)
+          .where(and(eq(portfolioProjects.isPublished, true), isNull(portfolioProjects.deletedAt)))
+          .orderBy(asc(portfolioProjects.sortOrder), desc(portfolioProjects.id))
+          .catch(() => []);
+
+        if (projects.length > 0) {
+          const toInsert = projects.map((p, idx) => ({
+            projectId: p.id,
+            title: p.title,
+            category: p.categoryLabel || "Selected Work",
+            badge: p.isFeatured ? "FEATURED REEL" : "CINEMATIC 4K",
+            videoUrl: p.videoUrl || "",
+            thumbnailUrl: p.thumbnailUrl || "",
+            duration: "01:00",
+            aspectRatio: p.aspectRatio || "16:9",
+            description: p.description || "",
+            sortOrder: idx + 1,
+            isPublished: true,
+          }));
+
+          const inserted = await db.insert(carouselItems).values(toInsert).returning().catch(() => []);
+          if (inserted.length > 0) {
+            items = inserted as any;
+          }
+        }
+      } catch (e) {
+        console.warn("[carousel auto-populate error]:", e);
+      }
+    }
 
     return ok({ items });
   });
